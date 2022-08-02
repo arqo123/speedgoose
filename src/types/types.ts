@@ -10,7 +10,7 @@ export type CachedResult = CachedDocument | AggregationResult | number
 
 export type CacheOptions = {namespace: string, store: any}
 
-export type MongooseCacheAutoCleanerOptions = {
+export type SpeedGooseCacheAutoCleanerOptions = {
     wasRecordDeletedCallback: <T>(record: Document<T>) => boolean
 }
 

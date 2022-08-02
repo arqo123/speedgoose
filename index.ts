@@ -1,2 +1,2 @@
 export {applySpeedGooseCacheLayer} from './src/wrapper'
-export  {default as SpeedGooseCacheAutoCleaner} from './src/plugin/SpeedGooseCacheAutoCleaner'
+export  {SpeedGooseCacheAutoCleaner} from './src/plugin/SpeedGooseCacheAutoCleaner'
