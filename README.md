@@ -25,6 +25,13 @@ To get a local copy up and running follow these simple example steps.
 
 ### Installation
 
+```
+npm install speedgoose
+or 
+yarn add speedgoose
+```
+
+
 1. Simple wrap your mongoose with the library (required)
 ```
 import {applyMongooseCacheLayer} from "mongooseCacheLayer";
