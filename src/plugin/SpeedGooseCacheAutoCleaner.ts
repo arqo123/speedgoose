@@ -1,6 +1,6 @@
 import {Mongoose, Schema, Document} from "mongoose";
 import {clearCacheOnClientForKey, clearHydrationCache} from "../cacheClientUtils";
-import {CacheClients, MongooseCacheAutoCleanerOptions, MongooseDocumentEvents, MongooseDocumentEventsContext} from "../types/types";
+import {CacheClients, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions} from "../types/types";
 import {getMongooseModelFromDocument} from "../utils";
 
 type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
@@ -25,7 +25,7 @@ const listenOnEvents = (
     eventsToListen: MongooseDocumentEvents[],
     callback: MongooseDocumentEventCallback): void => {
     eventsToListen.forEach(event => {
-        Object.values(mongoose.models).forEach(model => {
+        Object.values(mongoose?.models ?? {}).forEach(model => {
             model.on(event, async (context: MongooseDocumentEventsContext) => {
                 await callback(context, cacheClients)
             })
@@ -33,7 +33,7 @@ const listenOnEvents = (
     })
 }
 
-const wasRecordDeleted = <T>(record: Document<T>, options: MongooseCacheAutoCleanerOptions): boolean => {
+const wasRecordDeleted = <T>(record: Document<T>, options: SpeedGooseCacheAutoCleanerOptions): boolean => {
     if (record && options?.wasRecordDeletedCallback) {
         return options.wasRecordDeletedCallback(record)
     }
@@ -41,7 +41,7 @@ const wasRecordDeleted = <T>(record: Document<T>, options: MongooseCacheAutoClea
     return false
 }
 
-const appendPreSaveListener = (schema: Schema, options: MongooseCacheAutoCleanerOptions): void => {
+const appendPreSaveListener = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     schema.pre('save', function (next) {
         this.$locals.wasNew = this.isNew
         this.$locals.wasDeleted = wasRecordDeleted(this, options)
@@ -72,7 +72,7 @@ const appendPostRemoveListener = (schema: Schema): void => {
     })
 }
 
-export const MongooseCacheAutoCleaner = (schema: Schema, options: MongooseCacheAutoCleanerOptions): void => {
+export const SpeedGooseCacheAutoCleaner = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     appendPreSaveListener(schema, options)
     appendPostSaveListener(schema)
     appendPostRemoveListener(schema)
