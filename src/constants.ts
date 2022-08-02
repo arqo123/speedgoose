@@ -1,0 +1,1 @@
+export const SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS = 'globalCacheAccess'
