@@ -34,10 +34,10 @@ yarn add speedgoose
 
 1. Simple wrap your mongoose with the library (required)
 ```
-import {applySpeedgooseCacheLayer} from "speedgoose";
+import {applySpeedGooseCacheLayer} from "speedgoose";
 import mongoose from "mongoose";
 
-applySpeedgooseCacheLayer(mongoose, {
+applySpeedGooseCacheLayer(mongoose, {
   redisUri: process.env.REDIS_URI,
   redisIndex : process.env.REDIS_INDEX_DB
 })
