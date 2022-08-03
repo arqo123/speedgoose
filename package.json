@@ -13,7 +13,11 @@
   "license": "MIT",
   "keywords": [
     "mongoose",
-    "cache"
+    "cache",
+    "mongodb",
+    "redis",
+    "keyv",
+    "ttl"
   ],
   "files": [
     "lib/**/*.js",
