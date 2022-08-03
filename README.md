@@ -4,7 +4,7 @@
 <br />
 <div align="center">
 
-<h3 align="center">Mongoose Cache Layer</h3>
+<h3 align="center">SpeedGoose</h3>
 </div> 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
