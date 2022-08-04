@@ -34,21 +34,21 @@ yarn add speedgoose
 
 1. Simple wrap your mongoose with the library (required)
 ```
-import {applyMongooseCacheLayer} from "mongooseCacheLayer";
+import {applySpeedGooseCacheLayer} from "speedgoose";
 import mongoose from "mongoose";
 
-applyMongooseCacheLayer(mongoose, {
+applySpeedGooseCacheLayer(mongoose, {
   redisUri: process.env.REDIS_URI,
   redisIndex : process.env.REDIS_INDEX_DB
 })
 ```
 2. To enable auto-clearing for given schema, just add plugin to it (required)
 ```
-import {MongooseCacheAutoCleaner} from "mongooseCacheLayer";
+import {SpeedGooseCacheAutoCleaner} from "speedgoose";
 
-Schema.plugin(MongooseCacheAutoCleaner)
+Schema.plugin(SpeedGooseCacheAutoCleaner)
 // additionaly you can pass options for example callback for setting record as deleted 
-Schema.plugin(MongooseCacheAutoCleaner, {wasRecordDeletedCallback} )
+Schema.plugin(SpeedGooseCacheAutoCleaner, {wasRecordDeletedCallback} )
 ```
   
  
@@ -76,8 +76,10 @@ model.aggregate([]).cachePipeline()
 - [ ] Deep hydration for nested documents
 - [ ] Cache-based population
 - [ ] Manual cache clearing for custom keys
-- [ ] Flowchart of 
+- [ ] Flowchart of logic
 - [ ] Tests
+- [ ] Multitenant (tenant field indicator) support
+- [ ] 
 
  
 See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of proposed features (and known issues).
