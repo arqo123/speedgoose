@@ -76,8 +76,10 @@ model.aggregate([]).cachePipeline()
 - [ ] Deep hydration for nested documents
 - [ ] Cache-based population
 - [ ] Manual cache clearing for custom keys
-- [ ] Flowchart of 
+- [ ] Flowchart of logic
 - [ ] Tests
+- [ ] Multitenant (tenant field indicator) support
+- [ ] 
 
  
 See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of proposed features (and known issues).
