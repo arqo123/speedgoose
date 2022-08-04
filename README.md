@@ -44,11 +44,11 @@ applySpeedGooseCacheLayer(mongoose, {
 ```
 2. To enable auto-clearing for given schema, just add plugin to it (required)
 ```
-import {MongooseCacheAutoCleaner} from "mongooseCacheLayer";
+import {SpeedGooseCacheAutoCleaner} from "speedgoose";
 
-Schema.plugin(MongooseCacheAutoCleaner)
+Schema.plugin(SpeedGooseCacheAutoCleaner)
 // additionaly you can pass options for example callback for setting record as deleted 
-Schema.plugin(MongooseCacheAutoCleaner, {wasRecordDeletedCallback} )
+Schema.plugin(SpeedGooseCacheAutoCleaner, {wasRecordDeletedCallback} )
 ```
   
  
