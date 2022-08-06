@@ -1,30 +1,33 @@
 import {Aggregate, Mongoose} from "mongoose";
-import {CacheClients} from "./types/types";
-import {generateCacheKeyFromPipeline, setKeyInResultsCaches} from "./utils";
+import {setKeyInResultsCaches} from "./cacheClientUtils";
+import {CacheClients, SpeedGooseCacheOperationParams} from "./types/types";
+import {prepareAggregateOperationParams} from "./utils";
 
 export const addCachingToAggregate = (mongoose: Mongoose, cacheClients: CacheClients): void => {
-    mongoose.Aggregate.prototype.cachePipeline = function (ttl = 30 * 1000, customKey = null) {
-        return execAggregationWithCache(this, cacheClients, ttl, customKey)
+    /** 
+     * Caches given aggregation operation. 
+    */
+    mongoose.Aggregate.prototype.cachePipeline = function <R>(params: SpeedGooseCacheOperationParams = {}): Promise<Aggregate<R>> {
+        return execAggregationWithCache<R>(this, cacheClients, params)
     }
 }
 
 const execAggregationWithCache = async <R>(
     aggregation: Aggregate<R>,
     cacheClients: CacheClients,
-    ttl: number,
-    customKey?: string
+    params: SpeedGooseCacheOperationParams,
 ): Promise<Aggregate<R>> => {
-    const key = customKey ?? generateCacheKeyFromPipeline(aggregation)
- 
-    const cachedValue = await cacheClients.resultsCache.get(key) as R
+    prepareAggregateOperationParams(aggregation, params)
+
+    const cachedValue = await cacheClients.resultsCache.get(params.cacheKey) as R
 
     if (cachedValue) return cachedValue
 
     const result = await aggregation.exec() as R
 
     if (result) {
-        await setKeyInResultsCaches(key, ttl, result, aggregation._model, cacheClients)
-    }
+        await setKeyInResultsCaches(params, result, aggregation._model, cacheClients)
 
-    return result
+        return result
+    }
 }

@@ -3,18 +3,19 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-
-<h3 align="center">SpeedGoose</h3>
+ <img src="speedgoose.png" alt="Logo" width="180" >
+ 
 </div> 
 <!-- ABOUT THE PROJECT -->
+
 ## About The Project
 
 This project is a next-level mongoose caching library which is fully written in typescript.
 It's caching on two levels. Shared - with redis. And local inside memory. Supports all mongoose operations like find,findOne,count,aggregate... and others. Also supports lean queries. Why it is different? 
-- It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations
+- It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations.
 - It has auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime that records changes, all cached related results will be cleared.  
-- Supports custom eventing. For example you wan't to remove given results from cache, but removal logic is not based on removing documents from db but rather field based (like `deleted: true`), then you can apply a `wasRecordDeleted` callback as an option for the plugin
-
+- Supports custom eventing. For example you wan't to remove given results from cache, but removal logic is not based on removing documents from db but rather field based (like `deleted: true`), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
+- Supports multitenancy by clearing cached results only for related tenant.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
@@ -25,15 +26,15 @@ To get a local copy up and running follow these simple example steps.
 
 ### Installation
 
-```
-npm install speedgoose
-or 
-yarn add speedgoose
+```console
+$ npm install speedgoose
+# or 
+$ yarn add speedgoose
 ```
 
 
 1. Simple wrap your mongoose with the library (required)
-```
+```ts
 import {applySpeedGooseCacheLayer} from "speedgoose";
 import mongoose from "mongoose";
 
@@ -43,7 +44,7 @@ applySpeedGooseCacheLayer(mongoose, {
 })
 ```
 2. To enable auto-clearing for given schema, just add plugin to it (required)
-```
+```ts
 import {SpeedGooseCacheAutoCleaner} from "speedgoose";
 
 Schema.plugin(SpeedGooseCacheAutoCleaner)
@@ -56,40 +57,132 @@ Schema.plugin(SpeedGooseCacheAutoCleaner, {wasRecordDeletedCallback} )
 ## Usage
 1. With find, count etc...
 
+```ts
+// with findOne
+const result  = await model<SomeModelType>.findOne({}).cacheQuery()
 ```
-model.find({}).cacheQuery()
-model.find({}).sort({fieldA : 1}).cacheQuery()
-model.find({}).lean().cacheQuery()
+```ts
+// with count
+const result  = await model<SomeModelType>.count({age: {$gt : 25}}).cacheQuery()
+```
+```ts
+// with sorting query
+const result  = await model<SomeModelType>.find({}).sort({fieldA : 1}).cacheQuery()
+```
+```ts
+// with lean query
+const result  = await model<SomeModelType>.find({}).lean().cacheQuery()
 ```
 
 2. With aggregation
 
-```
-model.aggregate([]).cachePipeline()
+```ts
+const result = await model.aggregate<AggregationResultType>([]).cachePipeline()
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+<!-- Multitenancy -->
+## Multitenancy
+  For enabling multitenancy, you have to pass multitenantKey into wrapper config, so it will looks like
+```ts
+applySpeedGooseCacheLayer(mongoose, {
+  redisUri: process.env.REDIS_URI,
+  redisIndex : process.env.REDIS_INDEX_DB,
+  multitenancyConfig: {
+    multitenantKey: 'tenantId'
+}
+})
+```
+
+ 
+SpeedGooseCacheAutoCleaner plugin clears cache for given model each time when new record appears, or some record was deleted. In multitenancy we wan't clear cache for all of the clients - as the change appear only for one tenant. 
+SpeeGoose will handle it for You! But to make it work, you have to follow the rules:
+1. Tenant key must be in root of mongo documents
+2. You have to somehow pass tenant value while running ```cacheQuery()``` or ```cachePipeline()```.
+ - In case of ```cacheQuery()``` you can simply include tenant filtering condition in the root of query, so tenantValue will be automaticly set from there
+ example: 
+ ```ts
+const result = await model<SomeModelType>.find({
+    someCondition : {$gt: 123},
+    tenantId: "someTenantUniqueValue",
+    ... //rest of the query
+ }).cacheQuery()
+ ```
+ - In other cases for ```cacheQuery()``` and ```cachePipeline()``` you have to pass tenantValue manualy by passing params 
+```ts
+/// with cachePipeline()
+const result = await model.aggregate<AggregationResultType>([]).cachePipeline({multitenantValue : 'someTenantUniqueValue'})  
+ ```
+ 
+ ```ts
+ /// with cacheQuery()
+ const result = await model<SomeModelType>.find({}).cacheQuery({multitenantValue : 'someTenantUniqueValue'})
+ ```
+
+ <!-- Options -->
+## Configuration and method options
+
+#### applySpeedGooseCacheLayer(mongoose, speedgooseConfig)
+```ts
+{
+    // required: Connection string for redis containing url, credentials and port.
+    redisUri: string;
+    // optional: Contains redis index.
+    redisIndex?: string;
+    // optional: Config for multitenancy.
+    multitenancyConfig?: {
+    // optional: If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record.
+      multitenantKey: string
+    },
+    // optional: You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds. Set 0 to make it disable. 
+    defaultTtl?: number
+}
+```
+#### ```cacheQuery(operationParams)``` and ```cachePipeline(operationParams)```
+```ts
+{ 
+    // optional: It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. 
+    ttl?: number;
+    // optional: Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.
+    multitenantValue?: string;
+    // optional: Your custom caching key.
+    cacheKey?: string;
+}
+```
+#### ```SpeedGooseCacheAutoCleaner(...)``` 
+```ts
+{
+    /** Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true */
+    wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
+}
+```
+#### ```clearCacheForKeys(cacheKey)``` 
+```ts
+/** This method can be used for manually clearing cache for given key. */
+clearCacheForKeys(cacheKey: string) : Promise<void>
+```
+
 <!-- ROADMAP -->
 ## Roadmap
+- [ ] Separated documentation
 - [ ] Add more examples
 - [ ] Deep hydration for nested documents
 - [ ] Cache-based population
-- [ ] Manual cache clearing for custom keys
+- [X] Manual cache clearing for custom keys
 - [ ] Flowchart of logic
 - [ ] Tests
-- [ ] Multitenant (tenant field indicator) support
-- [ ] 
+- [X] Multitenancy (tenant field indicator) support
 
  
-See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 
 <!-- CONTRIBUTING -->
 ## Contributing
-
+Want to contribute? Great! Open new issue or pull request with the solution for given bug/feature. Any ideas for extending this library are more then wellcome.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- LICENSE -->
@@ -99,10 +192,3 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-<!-- CONTACT -->
-## Contact
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
- 
- 
