@@ -87,7 +87,7 @@ export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T>, mo
     const config = getConfig()
     const multitenantKey = config?.multitenancyConfig?.multitenantKey
 
-    return multitenantKey ? `${modelName}_${String(record[multitenantKey])})` : modelName
+    return multitenantKey ? `${modelName}_${String(record[multitenantKey])}` : modelName
 }
 
 //@ts-expect-error
