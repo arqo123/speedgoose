@@ -11,12 +11,31 @@ export type CachedResult = CachedDocument | AggregationResult | number
 export type CacheOptions = {namespace: string, store: any}
 
 export type SpeedGooseCacheAutoCleanerOptions = {
-    wasRecordDeletedCallback: <T>(record: Document<T>) => boolean
+     /** Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true */
+    wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
 }
 
-export type SpeedGooseCacheLayerConfig = {
-    redisUri: string;
-    redisIndex?: string;
+export type SpeedGooseConfig = {
+  /** Connection string for redis containing url, credentials and port. */
+  redisUri: string;
+  /** Contains redis index. */
+  redisIndex?: string;
+  /** Config for multitenancy. */
+  multitenancyConfig?: {
+  /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
+    multitenantKey: string
+  },
+  /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
+  defaultTtl?: number
+}
+
+export type SpeedGooseCacheOperationParams = {
+    /** It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. */
+    ttl?: number;
+    /** Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
+    multitenantValue?: string;
+     /** Your custom caching key.*/
+    cacheKey?: string;
 }
 
 export type CacheClients = {
@@ -46,4 +65,10 @@ export enum CacheNamespaces {
     KEY_RELATIONS_NAMESPACE = 'keyRelationsNamespace',
     MODELS_KEY_NAMESPACE = 'modelsKeyNamespace',
     SINGLE_RECORDS_KEY_NAMESPACE = 'singleRecordsKeyNamespace',
- }
+}
+
+export enum GlobalDiContainerRegistryNames {
+    SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS = 'globalCacheAccess',
+    SPEEDGOOSE_CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
+    MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess'
+}

@@ -1,5 +1,49 @@
-import mongoose, {Model, Query, Document, Aggregate} from "mongoose";
-import {CacheClients, CachedDocument, CachedResult} from "./types/types";
+import {Mongoose} from "mongoose";
+import {Model, Query, Document, Aggregate} from "mongoose";
+import Container from "typedi";
+import {CachedDocument, GlobalDiContainerRegistryNames, SpeedGooseCacheOperationParams, SpeedGooseConfig} from "./types/types";
+
+const stringifyProjectionFields = (queryProjection: Record<string, number>): string =>
+    Object.entries(queryProjection).map(([field, projection]) => `${field}:${projection}`).sort().toString()
+
+const isArrayOfObjectsWithIds = (value: unknown): boolean => {
+    if (Array.isArray(value)) {
+        return value[0] && typeof value[0] === 'object' && value[0].hasOwnProperty('_id')
+    } return false
+};
+
+const getMultitenantValueFromQuery = <T>(query: Query<T, T>, multitenantKey: string): string =>
+    query.getQuery()[multitenantKey]
+
+export const prepareQueryOperationParams = <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams): void => {
+    const config = getConfig()
+
+    if (config?.multitenancyConfig?.multitenantKey) {
+        params.multitenantValue = params.multitenantValue ?? getMultitenantValueFromQuery(query, config.multitenancyConfig.multitenantKey)
+    }
+
+    if (config?.defaultTtl) {
+        params.ttl = params?.ttl ?? config.defaultTtl
+    }
+
+    params.cacheKey = params?.cacheKey ?? generateCacheKeyFromQuery(query)
+}
+
+export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, params: SpeedGooseCacheOperationParams): void => {
+    const config = getConfig()
+
+    if (config?.defaultTtl) {
+        params.ttl = params?.ttl ?? config.defaultTtl
+    }
+
+    params.cacheKey = params?.cacheKey ?? generateCacheKeyFromPipeline(aggregation)
+}
+
+export const getConfig = (): SpeedGooseConfig =>
+    Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CONFIG_GLOBAL_ACCESS)
+
+export const getMongooseInstance = (): Mongoose =>
+    Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
 
 export const makeArrayUnique = <T extends any>(array: T[]) => [...new Set(array)]
 
@@ -26,9 +70,6 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): stri
     }
 )
 
-const stringifyProjectionFields = (queryProjection: Record<string, number>): string =>
-    Object.entries(queryProjection).map(([field, projection]) => `${field}:${projection}`).sort().toString()
-
 export const generateCacheKeyForSingleDocument = <T extends CachedDocument>(query: Query<T, T>, record: Document<T>): string => {
     if (!query.selected) {
         return String(record._id)
@@ -38,63 +79,26 @@ export const generateCacheKeyForSingleDocument = <T extends CachedDocument>(quer
 
     return `${record._id}_${projectionFields}`
 }
- 
+
+export const generateCacheKeyForModelName = <T>(model: Model<T>, multitenantValue: string = ''): string =>
+    `${model.modelName}_${String(multitenantValue)}`
+
+export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T>, modelName: string): string => {
+    const config = getConfig()
+    const multitenantKey = config?.multitenancyConfig?.multitenantKey
+
+    return multitenantKey ? `${modelName}_${String(record[multitenantKey])})` : modelName
+}
+
 //@ts-expect-error
 export const getMongooseModelName = <T>(record: Document<T>): string => record.constructor.modelName
 
-export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => mongoose.models[getMongooseModelName(record)]
+export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => getMongooseInstance().models[getMongooseModelName(record)]
 
-export const getMongooseModelForName = <T>(mongooseModelName: string): Model<T> => mongoose.models[mongooseModelName]
+export const getMongooseModelForName = <T>(mongooseModelName: string): Model<T> => getMongooseInstance().models[mongooseModelName]
 
 export const isObjectWithId = (value: unknown): boolean => {
     return value && typeof value === 'object' && value.hasOwnProperty('_id')
 };
 
-const isArrayOfObjectsWithIds = (value: unknown): boolean => {
-    if (Array.isArray(value)) {
-        return value[0] && typeof value[0] === 'object' && value[0].hasOwnProperty('_id')
-    } return false
-};
-
 export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isObjectWithId(result)
-
-export const setKeyInResultsCaches = async <T extends CachedResult, M>(key: string, ttl: number, result: T, model: Model<M>, cacheClients: CacheClients): Promise<void> => {
-    await setKeyInResultsCache(result, key, ttl, cacheClients)
-    await setKeyInModelCache(model, key, ttl, cacheClients)
-
-    if (isResultWithIds(result)) {
-        await setKeyInRecordsCache(result as CachedDocument, key, ttl, cacheClients)
-    }
-}
-
-export const setKeyInHydrationCaches = async <T>(key: string, document: Document<T>, ttl: number, cacheClients: CacheClients): Promise<void> => {
-    await setKeyInSingleRecordsCache(document, key, ttl, cacheClients)
-    await setKeyInSingleRecordsKeyCache(document, key, ttl, cacheClients)
-}
-
-const setKeyInSingleRecordsCache = async <T>(document: Document<T>, key: string, ttl: number, cacheClients: CacheClients): Promise<void> => {
-    await cacheClients.singleRecordsCache.set(key, document, ttl * 1000)
-}
-
-const setKeyInSingleRecordsKeyCache = async <T>(document: Document<T>, key: string, ttl: number, cacheClients: CacheClients): Promise<void> => {
-    const existingCacheEntry = await cacheClients.modelsKeyCache.get(String(document._id)) ?? []
-    await cacheClients.modelsKeyCache.set(String(document._id), makeArrayUnique([...existingCacheEntry, key]), ttl * 1000)
-}
-
-const setKeyInResultsCache = async <T extends CachedResult>(results: T, key: string, ttl: number, cacheClients: CacheClients): Promise<void> => {
-    await cacheClients.resultsCache.set(key, results, ttl * 1000)
-}
-
-const setKeyInModelCache = async <T>(model: Model<T>, key: string, ttl: number, cacheClients: CacheClients): Promise<void> => {
-    const existingCacheEntry = await cacheClients.modelsKeyCache.get(model.modelName) ?? []
-    await cacheClients.modelsKeyCache.set(model.modelName, makeArrayUnique([...existingCacheEntry, key]), ttl * 1000)
-}
-
-const setKeyInRecordsCache = async (result: CachedDocument, key: string, ttl: number, cacheClients: CacheClients): Promise<void> => {
-    const resultsIds = Array.isArray(result) ? result.map(record => record._id) : [result._id]
-
-    for (const id of resultsIds) {
-        const existingCacheEntry = await cacheClients.recordsKeyCache.get(String(id)) ?? []
-        await cacheClients.recordsKeyCache.set(String(id), makeArrayUnique([...existingCacheEntry, key]), ttl * 1000)
-    }
-}

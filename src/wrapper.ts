@@ -2,21 +2,31 @@ import Keyv from "keyv";
 import {Container} from 'typedi'
 import KeyvRedis from "@keyv/redis"
 import {Mongoose, Document} from "mongoose"
-import {CacheClients, CachedResult, CacheNamespaces, SpeedGooseCacheLayerConfig} from "./types/types"
+import {CacheClients, CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseConfig} from "./types/types"
 import listenForChanges from "./plugin/SpeedGooseCacheAutoCleaner";
 import {addCachingToQuery} from "./extendQuery";
 import {addCachingToAggregate} from "./extendAggregate";
 import {objectDeserializer, objectSerializer} from "./utils";
-import {SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS} from "./constants";
 
 const registerGlobalCacheAccess = (cacheClients: CacheClients): void => {
-    Container.set<CacheClients>(SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS, cacheClients)
+    Container.set<CacheClients>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS, cacheClients)
+}
+
+const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
+    Container.set<SpeedGooseConfig>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CONFIG_GLOBAL_ACCESS, {
+        ...config,
+        defaultTtl: config.defaultTtl ?? 60
+    })
+}
+
+const registerGlobalMongooseAccess = (mongoose: Mongoose): void => {
+    Container.set<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS, mongoose)
 }
 
 const clearCacheOnClients = (cacheClients: CacheClients): Promise<void[]> =>
     Promise.all(Object.values(cacheClients).map(client => client.clear()))
 
-const prepareCacheClients = async (config: SpeedGooseCacheLayerConfig): Promise<CacheClients> => {
+const prepareCacheClients = async (config: SpeedGooseConfig): Promise<CacheClients> => {
     const keyvRedis = new KeyvRedis(config.redisUri);
 
     const clients: CacheClients = {
@@ -32,10 +42,12 @@ const prepareCacheClients = async (config: SpeedGooseCacheLayerConfig): Promise<
     return clients
 }
 
-export const applySpeedGooseCacheLayer = async (mongose: Mongoose, config: SpeedGooseCacheLayerConfig): Promise<void> => {
+export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: SpeedGooseConfig): Promise<void> => {
     const cacheClients = await prepareCacheClients(config)
     registerGlobalCacheAccess(cacheClients)
-    listenForChanges(mongose, cacheClients)
-    addCachingToQuery(mongose, cacheClients)
-    addCachingToAggregate(mongose, cacheClients)
+    registerGlobalConfigAccess(config)
+    registerGlobalMongooseAccess(mongoose)
+    listenForChanges(mongoose, cacheClients)
+    addCachingToQuery(mongoose, cacheClients)
+    addCachingToAggregate(mongoose, cacheClients)
 }

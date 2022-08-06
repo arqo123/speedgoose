@@ -1,12 +1,18 @@
 import {Mongoose, Schema, Document} from "mongoose";
 import {clearCacheOnClientForKey, clearHydrationCache} from "../cacheClientUtils";
 import {CacheClients, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions} from "../types/types";
-import {getMongooseModelFromDocument} from "../utils";
+import {generateCacheKeyForRecordAndModelName, getMongooseModelFromDocument} from "../utils";
 
 type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
 
 export default (mongoose: Mongoose, cacheClients: CacheClients): void => {
     listenOnEvents(mongoose, cacheClients, [MongooseDocumentEvents.AFTER_SAVE], clearCacheForRecordCallback)
+}
+
+const clearModelCache = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
+    const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName)
+
+    await clearCacheOnClientForKey(modelCacheKey, cacheClients.modelsKeyCache, cacheClients)
 }
 
 const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
@@ -15,7 +21,7 @@ const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContex
     await clearHydrationCache(recordId, cacheClients)
 
     if (context.wasNew || context.wasDeleted) {
-        await clearCacheOnClientForKey(context.modelName, cacheClients.modelsKeyCache, cacheClients)
+        await clearModelCache(context, cacheClients)
     }
 }
 
