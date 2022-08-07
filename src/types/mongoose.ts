@@ -14,4 +14,8 @@ declare module 'mongoose' {
         cachePipeline(params?: SpeedGooseCacheOperationParams): Promise<R>;
         _model: Model<any>
     }
+    //@ts-expect-error
+    interface SchemaType extends SchemaType {
+        options: SchemaTypeOptions<any>
+    }
 }

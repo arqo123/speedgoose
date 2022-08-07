@@ -1,10 +1,14 @@
 import {Mongoose} from "mongoose";
 import {Model, Query, Document, Aggregate} from "mongoose";
 import Container from "typedi";
+import mpath from 'mpath'
 import {CachedDocument, GlobalDiContainerRegistryNames, SpeedGooseCacheOperationParams, SpeedGooseConfig} from "./types/types";
 
-const stringifyProjectionFields = (queryProjection: Record<string, number>): string =>
-    Object.entries(queryProjection).map(([field, projection]) => `${field}:${projection}`).sort().toString()
+const stringifyQueryParam = (queryParam: Record<string, number>): string =>
+    Object.entries(queryParam).map(([field, value]) => `${field}:${value}`).sort().toString()
+
+const stringifyPopulatedPaths = (populatedPaths: string[]): string =>
+    populatedPaths.sort().toString()
 
 const isArrayOfObjectsWithIds = (value: unknown): boolean => {
     if (Array.isArray(value)) {
@@ -75,9 +79,10 @@ export const generateCacheKeyForSingleDocument = <T extends CachedDocument>(quer
         return String(record._id)
     }
 
-    const projectionFields = stringifyProjectionFields(query?.getOptions()?.projection ?? {})
+    const projectionFields = stringifyQueryParam(query?.getOptions()?.projection ?? {})
+    const populationFields = stringifyPopulatedPaths(query?.getPopulatedPaths() ?? [])
 
-    return `${record._id}_${projectionFields}`
+    return `${record._id}_${projectionFields}_${populationFields}`
 }
 
 export const generateCacheKeyForModelName = <T>(model: Model<T>, multitenantValue: string = ''): string =>
@@ -97,8 +102,15 @@ export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => g
 
 export const getMongooseModelForName = <T>(mongooseModelName: string): Model<T> => getMongooseInstance().models[mongooseModelName]
 
-export const isObjectWithId = (value: unknown): boolean => {
+export const isResultWithId = (value: unknown): boolean => {
     return value && typeof value === 'object' && value.hasOwnProperty('_id')
 };
 
-export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isObjectWithId(result)
+export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isResultWithId(result)
+
+export const getValueFromDocument = <T>(pathToValue: string, record: Document<T>): unknown =>
+    mpath.get(pathToValue, record)
+
+
+export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, record: Document<T>): void =>  
+    mpath.set(pathToValue, valueToSet, record)
