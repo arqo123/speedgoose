@@ -13,7 +13,8 @@
 This project is a next-level mongoose caching library which is fully written in typescript.
 It's caching on two levels. Shared - with redis. And local inside memory. Supports all mongoose operations like find,findOne,count,aggregate... and others. Also supports lean queries. Why it is different? 
 - It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations.
-- It has auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime that records changes, all cached related results will be cleared.  
+- It has auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime that records changes, all cached related results will be cleared. 
+- It supports deep hydration, for caching not only the root document instances, but also those that are populated.   
 - Supports custom eventing. For example you wan't to remove given results from cache, but removal logic is not based on removing documents from db but rather field based (like `deleted: true`), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
 - Supports multitenancy by clearing cached results only for related tenant.
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -167,7 +168,7 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 ## Roadmap
 - [ ] Separated documentation
 - [ ] Add more examples
-- [ ] Deep hydration for nested documents
+- [X] Deep hydration for nested documents
 - [ ] Cache-based population
 - [X] Manual cache clearing for custom keys
 - [ ] Flowchart of logic
