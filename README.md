@@ -40,8 +40,7 @@ import {applySpeedGooseCacheLayer} from "speedgoose";
 import mongoose from "mongoose";
 
 applySpeedGooseCacheLayer(mongoose, {
-  redisUri: process.env.REDIS_URI,
-  redisIndex : process.env.REDIS_INDEX_DB
+  redisUri: process.env.REDIS_URI
 })
 ```
 2. To enable auto-clearing for given schema, just add plugin to it (required)
@@ -84,12 +83,11 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline()
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- Multitenancy -->
-## Multitenancy
+## :briefcase: Multitenancy
   For enabling multitenancy, you have to pass multitenantKey into wrapper config, so it will looks like
 ```ts
 applySpeedGooseCacheLayer(mongoose, {
   redisUri: process.env.REDIS_URI,
-  redisIndex : process.env.REDIS_INDEX_DB,
   multitenancyConfig: {
     multitenantKey: 'tenantId'
 }
@@ -122,19 +120,17 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline({m
  ```
 
  <!-- Options -->
-## Configuration and method options
+## :wrench: Configuration and method options
 
 #### applySpeedGooseCacheLayer(mongoose, speedgooseConfig)
 ```ts
 {
     // required: Connection string for redis containing url, credentials and port.
     redisUri: string;
-    // optional: Contains redis index.
-    redisIndex?: string;
     // optional: Config for multitenancy.
     multitenancyConfig?: {
     // optional: If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record.
-      multitenantKey: string
+    multitenantKey: string
     },
     // optional: You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds. Set 0 to make it disable. 
     defaultTtl?: number
@@ -165,12 +161,14 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 ```
 
 <!-- ROADMAP -->
-## Roadmap
+## :dart: Roadmap
 - [ ] Separated documentation
 - [ ] Add more examples
-- [X] Deep hydration for nested documents
+- [X] Deep hydration for nested documents [BETA]
 - [ ] Cache-based population
 - [X] Manual cache clearing for custom keys
+- [X] Support for clustered servers [BETA]
+- [ ] Flowchart of logic
 - [ ] Flowchart of logic
 - [ ] Tests
 - [X] Multitenancy (tenant field indicator) support
@@ -182,12 +180,18 @@ See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full l
 
 
 <!-- CONTRIBUTING -->
-## Contributing
+## :ticket: Contributing
 Want to contribute? Great! Open new issue or pull request with the solution for given bug/feature. Any ideas for extending this library are more then wellcome.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+<!-- Known bugs -->
+## :warning: Known bugs
+- They might be some problems with timings between events, but only when running server in cluster mode. Cache sync was done with redis Pub/Sub, but i'm not 100% sure if it will work in every case. 
+- Let me know if there are any, I will resolve them fast as SpeedGoose is! 
+<p align="right">(<a href="#top">back to top</a>)</p>
+
 <!-- LICENSE -->
-## License
+## :heart: License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
 

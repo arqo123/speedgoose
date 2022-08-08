@@ -1,12 +1,13 @@
 import {Mongoose, Schema, Document} from "mongoose";
 import {clearCacheOnClientForKey, clearHydrationCache} from "../cacheClientUtils";
-import {CacheClients, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions} from "../types/types";
+import {publishRecordIdOnChannel} from "../redisUtils";
+import {CacheClients, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels} from "../types/types";
 import {generateCacheKeyForRecordAndModelName, getMongooseModelFromDocument} from "../utils";
 
 type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
 
 export default (mongoose: Mongoose, cacheClients: CacheClients): void => {
-    listenOnEvents(mongoose, cacheClients, [MongooseDocumentEvents.AFTER_SAVE], clearCacheForRecordCallback)
+    listenOnInternalEvents(mongoose, cacheClients, [MongooseDocumentEvents.BEFORE_SAVE, MongooseDocumentEvents.AFTER_REMOVE], clearCacheForRecordCallback)
 }
 
 const clearModelCache = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
@@ -25,7 +26,7 @@ const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContex
     }
 }
 
-const listenOnEvents = (
+const listenOnInternalEvents = (
     mongoose: Mongoose,
     cacheClients: CacheClients,
     eventsToListen: MongooseDocumentEvents[],
@@ -48,18 +49,19 @@ const wasRecordDeleted = <T>(record: Document<T>, options: SpeedGooseCacheAutoCl
 }
 
 const appendPreSaveListener = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
-    schema.pre('save', function (next) {
+    schema.pre('save', {document: true}, async function (next) {
         this.$locals.wasNew = this.isNew
         this.$locals.wasDeleted = wasRecordDeleted(this, options)
         const model = getMongooseModelFromDocument(this)
 
-        model.emit(MongooseDocumentEvents.BEFORE_SAVE, this)
+        await publishRecordIdOnChannel(SpeedGooseRedisChannels.SAVED_DOCUMENTS, String(this._id))
+        model.emit(MongooseDocumentEvents.BEFORE_SAVE, <MongooseDocumentEventsContext>{record: this, wasNew: this.isNew, wasDeleted: this.$locals.wasDeleted, modelName: model.modelName})
         next()
     })
 }
 
 const appendPostSaveListener = (schema: Schema): void => {
-    schema.post('save', function (record, next) {
+    schema.post('save', {document: true}, async function (record, next) {
         const wasNew = this.$locals.wasNew
         const wasDeleted = this.$locals.wasDeleted
         const model = getMongooseModelFromDocument(record)
@@ -70,9 +72,10 @@ const appendPostSaveListener = (schema: Schema): void => {
 }
 
 const appendPostRemoveListener = (schema: Schema): void => {
-    schema.post('remove', function (record, next) {
+    schema.post('remove', {document: true}, async function (record, next) {
         const model = getMongooseModelFromDocument(record)
 
+        await publishRecordIdOnChannel(SpeedGooseRedisChannels.REMOVED_DOCUMENTS, String(record._id))
         model.emit(MongooseDocumentEvents.AFTER_REMOVE, <MongooseDocumentEventsContext>{record, wasDeleted: true, modelName: model.modelName})
         next()
     })
@@ -83,3 +86,4 @@ export const SpeedGooseCacheAutoCleaner = (schema: Schema, options: SpeedGooseCa
     appendPostSaveListener(schema)
     appendPostRemoveListener(schema)
 }
+
