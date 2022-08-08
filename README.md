@@ -169,7 +169,6 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 - [X] Manual cache clearing for custom keys
 - [X] Support for clustered servers [BETA]
 - [ ] Flowchart of logic
-- [ ] Flowchart of logic
 - [ ] Tests
 - [X] Multitenancy (tenant field indicator) support
 
