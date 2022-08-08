@@ -2,11 +2,13 @@ import Keyv from "keyv";
 import {Container} from 'typedi'
 import KeyvRedis from "@keyv/redis"
 import {Mongoose, Document} from "mongoose"
+import Redis from 'ioredis'
 import {CacheClients, CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseConfig} from "./types/types"
 import listenForChanges from "./plugin/SpeedGooseCacheAutoCleaner";
 import {addCachingToQuery} from "./extendQuery";
 import {addCachingToAggregate} from "./extendAggregate";
 import {objectDeserializer, objectSerializer} from "./utils";
+import {getRedisInstance, registerRedisClient} from "./redisUtils";
 
 const registerGlobalCacheAccess = (cacheClients: CacheClients): void => {
     Container.set<CacheClients>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS, cacheClients)
@@ -27,7 +29,7 @@ const clearCacheOnClients = (cacheClients: CacheClients): Promise<void[]> =>
     Promise.all(Object.values(cacheClients).map(client => client.clear()))
 
 const prepareCacheClients = async (config: SpeedGooseConfig): Promise<CacheClients> => {
-    const keyvRedis = new KeyvRedis(config.redisUri);
+    const keyvRedis = new KeyvRedis(getRedisInstance());
 
     const clients: CacheClients = {
         resultsCache: new Keyv<CachedResult, any>({namespace: CacheNamespaces.RESULTS_NAMESPACE, store: keyvRedis}),
@@ -36,13 +38,14 @@ const prepareCacheClients = async (config: SpeedGooseConfig): Promise<CacheClien
         singleRecordsCache: new Keyv<Document, any>({namespace: CacheNamespaces.SINGLE_RECORDS_NAMESPACE, serialize: objectSerializer, deserialize: objectDeserializer}),
         singleRecordsKeyCache: new Keyv<string[], any>({namespace: CacheNamespaces.SINGLE_RECORDS_KEY_NAMESPACE})
     }
-
+ 
     await clearCacheOnClients(clients)
-
+    
     return clients
 }
 
 export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: SpeedGooseConfig): Promise<void> => {
+    await registerRedisClient(config.redisUri)
     const cacheClients = await prepareCacheClients(config)
     registerGlobalCacheAccess(cacheClients)
     registerGlobalConfigAccess(config)

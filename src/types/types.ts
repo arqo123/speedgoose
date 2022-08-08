@@ -11,22 +11,20 @@ export type CachedResult = CachedDocument | AggregationResult | number
 export type CacheOptions = {namespace: string, store: any}
 
 export type SpeedGooseCacheAutoCleanerOptions = {
-     /** Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true */
+    /** Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true */
     wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
 }
 
 export type SpeedGooseConfig = {
-  /** Connection string for redis containing url, credentials and port. */
-  redisUri: string;
-  /** Contains redis index. */
-  redisIndex?: string;
-  /** Config for multitenancy. */
-  multitenancyConfig?: {
-  /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
-    multitenantKey: string
-  },
-  /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
-  defaultTtl?: number
+    /** Connection string for redis containing url, credentials and port. */
+    redisUri: string;
+    /** Config for multitenancy. */
+    multitenancyConfig?: {
+        /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
+        multitenantKey: string;
+    },
+    /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
+    defaultTtl?: number;
 }
 
 export type SpeedGooseCacheOperationParams = {
@@ -34,7 +32,7 @@ export type SpeedGooseCacheOperationParams = {
     ttl?: number;
     /** Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
     multitenantValue?: string;
-     /** Your custom caching key.*/
+    /** Your custom caching key.*/
     cacheKey?: string;
 }
 
@@ -49,7 +47,7 @@ export type CacheClients = {
 export enum MongooseDocumentEvents {
     BEFORE_SAVE = 'beforeSave',
     AFTER_REMOVE = 'afterRemove',
-    AFTER_SAVE = 'afterSave'
+    AFTER_SAVE = 'afterSave',
 }
 
 export type MongooseDocumentEventsContext = {
@@ -70,5 +68,11 @@ export enum CacheNamespaces {
 export enum GlobalDiContainerRegistryNames {
     SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS = 'globalCacheAccess',
     SPEEDGOOSE_CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
-    MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess'
+    MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess',
+    REDIS_GLOBAL_ACCESS = 'redisAccess'
+}
+
+export enum SpeedGooseRedisChannels {
+    REMOVED_DOCUMENTS = 'speedgooseRemovedDocumentsChannel',
+    SAVED_DOCUMENTS = 'speedgooseSavedDocumentsChannel',
 }

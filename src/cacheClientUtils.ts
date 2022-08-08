@@ -17,8 +17,9 @@ const setKeyInSingleRecordsCache = async <T>(document: Document<T>, key: string,
 }
 
 const setKeyInSingleRecordsKeyCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams, cacheClients: CacheClients): Promise<void> => {
-    const existingCacheEntry = await cacheClients.singleRecordsKeyCache.get(String(document._id)) ?? []
-    await cacheClients.singleRecordsKeyCache.set(String(document._id), makeArrayUnique([...existingCacheEntry, key]), params.ttl * 1000)
+    const recordId  = String(document._id)
+    const existingCacheEntry = await cacheClients.singleRecordsKeyCache.get(recordId) ?? []
+    await cacheClients.singleRecordsKeyCache.set(recordId, makeArrayUnique([...existingCacheEntry, key]), params.ttl * 1000)
 }
 
 const setKeyInResultsCache = async <T extends CachedResult>(results: T, params: SpeedGooseCacheOperationParams, cacheClients: CacheClients): Promise<void> => {
