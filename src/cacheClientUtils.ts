@@ -42,10 +42,10 @@ const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCa
 }
 
 export const getCacheClients = (): CacheClients =>
-    Container.get<CacheClients>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS)
+    Container.get<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
 
 export const clearCacheForKey = async (key: string): Promise<void> => {
-    const cacheClients = Container.get<CacheClients>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS)
+    const cacheClients = Container.get<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
     await clearCacheOnClientForKey(key, cacheClients.recordsKeyCache, cacheClients)
 }
 

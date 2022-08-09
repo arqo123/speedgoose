@@ -12,7 +12,7 @@ const stringifyPopulatedPaths = (populatedPaths: string[]): string =>
 
 const isArrayOfObjectsWithIds = (value: unknown): boolean => {
     if (Array.isArray(value)) {
-        return value[0] && typeof value[0] === 'object' && value[0].hasOwnProperty('_id')
+        return value[0] && typeof value[0] === 'object' && value[0]['_id']
     } return false
 };
 
@@ -44,12 +44,12 @@ export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, pa
 }
 
 export const getConfig = (): SpeedGooseConfig =>
-    Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CONFIG_GLOBAL_ACCESS)
+    Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS)
 
 export const getMongooseInstance = (): Mongoose =>
     Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
 
-export const makeArrayUnique = <T extends any>(array: T[]) => [...new Set(array)]
+export const makeArrayUnique = <T>(array: T[]) => [...new Set(array)]
 
 export const isLeanQuery = <T>(query: Query<T, T>): boolean => query?._mongooseOptions.lean
 
@@ -85,7 +85,7 @@ export const generateCacheKeyForSingleDocument = <T extends CachedDocument>(quer
     return `${record._id}_${projectionFields}_${populationFields}`
 }
 
-export const generateCacheKeyForModelName = <T>(model: Model<T>, multitenantValue: string = ''): string =>
+export const generateCacheKeyForModelName = <T>(model: Model<T>, multitenantValue = ''): string =>
     `${model.modelName}_${String(multitenantValue)}`
 
 export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T>, modelName: string): string => {
@@ -95,7 +95,7 @@ export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T>, mo
     return multitenantKey ? `${modelName}_${String(record[multitenantKey])}` : modelName
 }
 
-//@ts-expect-error
+//@ts-expect-error from mongoose document constructor we can get modelName
 export const getMongooseModelName = <T>(record: Document<T>): string => record.constructor.modelName
 
 export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => getMongooseInstance().models[getMongooseModelName(record)]
@@ -103,7 +103,7 @@ export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => g
 export const getMongooseModelForName = <T>(mongooseModelName: string): Model<T> => getMongooseInstance().models[mongooseModelName]
 
 export const isResultWithId = (value: unknown): boolean => {
-    return value && typeof value === 'object' && value.hasOwnProperty('_id')
+    return value && typeof value === 'object' && value['_id']
 };
 
 export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isResultWithId(result)
