@@ -2,7 +2,6 @@ import Keyv from "keyv";
 import {Container} from 'typedi'
 import KeyvRedis from "@keyv/redis"
 import {Mongoose, Document} from "mongoose"
-import Redis from 'ioredis'
 import {CacheClients, CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseConfig} from "./types/types"
 import listenForChanges from "./plugin/SpeedGooseCacheAutoCleaner";
 import {addCachingToQuery} from "./extendQuery";
@@ -11,11 +10,11 @@ import {objectDeserializer, objectSerializer} from "./utils";
 import {getRedisInstance, registerRedisClient} from "./redisUtils";
 
 const registerGlobalCacheAccess = (cacheClients: CacheClients): void => {
-    Container.set<CacheClients>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS, cacheClients)
+    Container.set<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS, cacheClients)
 }
 
 const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
-    Container.set<SpeedGooseConfig>(GlobalDiContainerRegistryNames.SPEEDGOOSE_CONFIG_GLOBAL_ACCESS, {
+    Container.set<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, {
         ...config,
         defaultTtl: config.defaultTtl ?? 60
     })
@@ -28,7 +27,7 @@ const registerGlobalMongooseAccess = (mongoose: Mongoose): void => {
 const clearCacheOnClients = (cacheClients: CacheClients): Promise<void[]> =>
     Promise.all(Object.values(cacheClients).map(client => client.clear()))
 
-const prepareCacheClients = async (config: SpeedGooseConfig): Promise<CacheClients> => {
+const prepareCacheClients = async (): Promise<CacheClients> => {
     const keyvRedis = new KeyvRedis(getRedisInstance());
 
     const clients: CacheClients = {
@@ -46,7 +45,7 @@ const prepareCacheClients = async (config: SpeedGooseConfig): Promise<CacheClien
 
 export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: SpeedGooseConfig): Promise<void> => {
     await registerRedisClient(config.redisUri)
-    const cacheClients = await prepareCacheClients(config)
+    const cacheClients = await prepareCacheClients()
     registerGlobalCacheAccess(cacheClients)
     registerGlobalConfigAccess(config)
     registerGlobalMongooseAccess(mongoose)

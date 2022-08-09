@@ -66,8 +66,8 @@ export enum CacheNamespaces {
 }
 
 export enum GlobalDiContainerRegistryNames {
-    SPEEDGOOSE_CACHE_LAYER_GLOBAL_ACCESS = 'globalCacheAccess',
-    SPEEDGOOSE_CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
+    CACHE_CLIENT_GLOBAL_ACCESS = 'globalCacheAccess',
+    CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
     MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess',
     REDIS_GLOBAL_ACCESS = 'redisAccess'
 }
