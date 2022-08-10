@@ -1,3 +1,4 @@
+import 'jest-extended';
 import mongoose from 'mongoose'
 import Redis from 'ioredis-mock'
 import {applySpeedGooseCacheLayer} from "../src/wrapper";

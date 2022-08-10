@@ -17,7 +17,6 @@ export const cacheClientsTestCases: CacheClientsTestData[] = [
             namespace: CacheNamespaces.MODELS_KEY_NAMESPACE
         }
     },
-
     {
         clientName: 'recordsKeyCache',
         expected: {

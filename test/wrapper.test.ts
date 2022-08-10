@@ -1,9 +1,9 @@
-import './setupTestEnv'
 import Redis from 'ioredis-mock'
 import Container from 'typedi'
-import {CacheClients, GlobalDiContainerRegistryNames} from '../src/types/types'
+import {CacheClients, GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
 import Keyv from 'keyv'
 import {cacheClientsTestCases} from './assets.ts/wrapper'
+import {Mongoose} from 'mongoose'
 
 describe(`applySpeedGooseCacheLayer`, () => {
 
@@ -22,5 +22,29 @@ describe(`applySpeedGooseCacheLayer`, () => {
             expect(client.opts.store).toBeInstanceOf(testData.expected.store)
             expect(client.opts.namespace).toEqual(testData.expected.namespace)
         });
+    })
+
+    it(`should register new service in DiContainer with access to config`, async () => {
+        const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS)
+        expect(config).toBeInstanceOf(Object)
+        expect(config.redisUri).toEqual('redis://localhost:6379')
+        expect(config.defaultTtl).toEqual(60)
+    })
+
+    it(`should register new service in DiContainer with access to mongoose instance`, async () => {
+        const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
+        expect(mongoose).toBeInstanceOf(Object)
+        // Beacause we don't have registered any models - yet
+        expect(Object.keys(mongoose.models).length).toEqual(0)
+    })
+
+    it(`should extend mongoose query interfaces with cacheQuery() function`, async () => {
+        const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
+        expect(mongoose.Query.prototype.cacheQuery).toBeDefined()
+     })
+
+    it(`should extend mongoose aggregate interfaces with cachePipeline() function`, async () => {
+        const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
+        expect(mongoose.Aggregate.prototype.cachePipeline).toBeDefined()
     })
 })
