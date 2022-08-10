@@ -27,4 +27,3 @@ export const getRedisInstance = (): Redis => Container.get<Redis>(GlobalDiContai
 
 export const publishRecordIdOnChannel = (channel: SpeedGooseRedisChannels, recordId: string): Promise<number> =>
     getRedisInstance().publish(channel, recordId)
-
