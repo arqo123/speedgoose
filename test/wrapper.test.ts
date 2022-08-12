@@ -1,9 +1,12 @@
 import Redis from 'ioredis-mock'
 import Container from 'typedi'
-import {CacheClients, GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
-import Keyv from 'keyv'
-import {cacheClientsTestCases} from './assets.ts/wrapper'
 import {Mongoose} from 'mongoose'
+import Keyv from 'keyv'
+import {CacheClients, GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
+import {cacheClientsTestCases} from './assets.ts/wrapper'
+import * as mongooseModelEvents from '../src/mongooseModelEvents'
+
+const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents,  'registerListenerForInternalEvents')
 
 describe(`applySpeedGooseCacheLayer`, () => {
 
@@ -41,10 +44,14 @@ describe(`applySpeedGooseCacheLayer`, () => {
     it(`should extend mongoose query interfaces with cacheQuery() function`, async () => {
         const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
         expect(mongoose.Query.prototype.cacheQuery).toBeDefined()
-     })
+    })
 
     it(`should extend mongoose aggregate interfaces with cachePipeline() function`, async () => {
         const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
         expect(mongoose.Aggregate.prototype.cachePipeline).toBeDefined()
+    })
+
+    it(`should register internal mongoose events`, async () => {
+        expect(registerListenerForInternalEventsSpy).toHaveBeenCalled()
     })
 })

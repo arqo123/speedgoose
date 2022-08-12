@@ -1,52 +1,8 @@
-import {Mongoose, Schema, Document} from "mongoose";
-import {clearCacheOnClientForKey, clearHydrationCache} from "../cacheClientUtils";
+import {Schema} from "mongoose";
 import {publishRecordIdOnChannel} from "../redisUtils";
-import {CacheClients, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels} from "../types/types";
-import {generateCacheKeyForRecordAndModelName, getMongooseModelFromDocument} from "../utils";
-
-type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
-
-export default (mongoose: Mongoose, cacheClients: CacheClients): void => {
-    listenOnInternalEvents(mongoose, cacheClients, [MongooseDocumentEvents.BEFORE_SAVE, MongooseDocumentEvents.AFTER_REMOVE], clearCacheForRecordCallback)
-}
-
-const clearModelCache = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
-    const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName)
-
-    await clearCacheOnClientForKey(modelCacheKey, cacheClients.modelsKeyCache, cacheClients)
-}
-
-const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
-    const recordId = String(context.record._id)
-    await clearCacheOnClientForKey(recordId, cacheClients.recordsKeyCache, cacheClients)
-    await clearHydrationCache(recordId, cacheClients)
-
-    if (context.wasNew || context.wasDeleted) {
-        await clearModelCache(context, cacheClients)
-    }
-}
-
-const listenOnInternalEvents = (
-    mongoose: Mongoose,
-    cacheClients: CacheClients,
-    eventsToListen: MongooseDocumentEvents[],
-    callback: MongooseDocumentEventCallback): void => {
-    eventsToListen.forEach(event => {
-        Object.values(mongoose?.models ?? {}).forEach(model => {
-            model.on(event, async (context: MongooseDocumentEventsContext) => {
-                await callback(context, cacheClients)
-            })
-        })
-    })
-}
-
-const wasRecordDeleted = <T>(record: Document<T>, options: SpeedGooseCacheAutoCleanerOptions): boolean => {
-    if (record && options?.wasRecordDeletedCallback) {
-        return options.wasRecordDeletedCallback(record)
-    }
-
-    return false
-}
+import {MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels} from "../types/types";
+import {getMongooseModelFromDocument} from "../utils";
+import {wasRecordDeleted} from "./utils";
 
 const appendPreSaveListener = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     schema.pre('save', {document: true}, async function (next) {
@@ -81,9 +37,18 @@ const appendPostRemoveListener = (schema: Schema): void => {
     })
 }
 
-export const SpeedGooseCacheAutoCleaner = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
+const speedGooseEventListeners = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     appendPreSaveListener(schema, options)
     appendPostSaveListener(schema)
     appendPostRemoveListener(schema)
 }
 
+const isListenerPluginRegisteredForSchema = (schema: Schema): boolean =>
+    schema.plugins.some(plugin => plugin?.fn.name === speedGooseEventListeners.name)
+
+export const SpeedGooseCacheAutoCleaner = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
+    //* Note: This is special logic to avoid duplicating listeners for given events */
+    if (!isListenerPluginRegisteredForSchema(schema)) {
+        schema.plugin(speedGooseEventListeners, options)
+    }
+}

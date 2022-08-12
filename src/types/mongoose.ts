@@ -19,4 +19,8 @@ declare module 'mongoose' {
     interface SchemaType extends SchemaType {
         options: SchemaTypeOptions<any>
     }
+    //@ts-expect-error overwriting of mongoose SchemaType interface
+    interface Schema extends Schema {
+        plugins: {fn: typeof Function, opts:Record<string,never>}[]
+    }
 }

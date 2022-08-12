@@ -85,8 +85,8 @@ export const generateCacheKeyForSingleDocument = <T extends CachedDocument>(quer
     return `${record._id}_${projectionFields}_${populationFields}`
 }
 
-export const generateCacheKeyForModelName = <T>(model: Model<T>, multitenantValue = ''): string =>
-    `${model.modelName}_${String(multitenantValue)}`
+export const generateCacheKeyForModelName = (modelName: string, multitenantValue = ''): string =>
+    `${modelName}_${String(multitenantValue)}`
 
 export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T>, modelName: string): string => {
     const config = getConfig()
@@ -111,6 +111,5 @@ export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWit
 export const getValueFromDocument = <T>(pathToValue: string, record: Document<T>): unknown =>
     mpath.get(pathToValue, record)
 
-
-export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, record: Document<T>): void =>  
+export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, record: Document<T>): void =>
     mpath.set(pathToValue, valueToSet, record)

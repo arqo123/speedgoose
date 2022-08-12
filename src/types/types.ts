@@ -11,7 +11,10 @@ export type CachedResult = CachedDocument | AggregationResult | number
 export type CacheOptions = {namespace: string, store: any}
 
 export type SpeedGooseCacheAutoCleanerOptions = {
-    /** Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true */
+    /**
+     *  Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true 
+     * @param {Document} record mongoose document for which event was triggered
+    **/
     wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
 }
 
@@ -76,3 +79,5 @@ export enum SpeedGooseRedisChannels {
     REMOVED_DOCUMENTS = 'speedgooseRemovedDocumentsChannel',
     SAVED_DOCUMENTS = 'speedgooseSavedDocumentsChannel',
 }
+
+export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
