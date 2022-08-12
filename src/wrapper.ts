@@ -3,11 +3,11 @@ import {Container} from 'typedi'
 import KeyvRedis from "@keyv/redis"
 import {Mongoose, Document} from "mongoose"
 import {CacheClients, CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseConfig} from "./types/types"
-import listenForChanges from "./plugin/SpeedGooseCacheAutoCleaner";
 import {addCachingToQuery} from "./extendQuery";
 import {addCachingToAggregate} from "./extendAggregate";
 import {objectDeserializer, objectSerializer} from "./utils";
 import {getRedisInstance, registerRedisClient} from "./redisUtils";
+import {registerListenerForInternalEvents} from "./mongooseModelEvents";
 
 const registerGlobalCacheAccess = (cacheClients: CacheClients): void => {
     Container.set<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS, cacheClients)
@@ -49,7 +49,7 @@ export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: Spee
     registerGlobalCacheAccess(cacheClients)
     registerGlobalConfigAccess(config)
     registerGlobalMongooseAccess(mongoose)
-    listenForChanges(mongoose, cacheClients)
+    registerListenerForInternalEvents(mongoose, cacheClients)
     addCachingToQuery(mongoose, cacheClients)
     addCachingToAggregate(mongoose, cacheClients)
 }

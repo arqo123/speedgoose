@@ -17,7 +17,7 @@ const setKeyInSingleRecordsCache = async <T>(document: Document<T>, key: string,
 }
 
 const setKeyInSingleRecordsKeyCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams, cacheClients: CacheClients): Promise<void> => {
-    const recordId  = String(document._id)
+    const recordId = String(document._id)
     const existingCacheEntry = await cacheClients.singleRecordsKeyCache.get(recordId) ?? []
     await cacheClients.singleRecordsKeyCache.set(recordId, makeArrayUnique([...existingCacheEntry, key]), params.ttl * 1000)
 }
@@ -27,33 +27,47 @@ const setKeyInResultsCache = async <T extends CachedResult>(results: T, params: 
 }
 
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams, cacheClients: CacheClients): Promise<void> => {
-    const modelCacheKey = generateCacheKeyForModelName(model, params.multitenantValue)
+    const modelCacheKey = generateCacheKeyForModelName(model.name, params.multitenantValue)
     const existingCacheEntry = await cacheClients.modelsKeyCache.get(modelCacheKey) ?? []
     await cacheClients.modelsKeyCache.set(modelCacheKey, makeArrayUnique([...existingCacheEntry, params.cacheKey]), params.ttl * 1000)
 }
 
 const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCacheOperationParams, cacheClients: CacheClients): Promise<void> => {
-    const resultsIds = Array.isArray(result) ? result.map(record => record._id) : [result._id]
+    const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)]
 
-    for (const id of resultsIds) {
-        const existingCacheEntry = await cacheClients.recordsKeyCache.get(String(id)) ?? []
-        await cacheClients.recordsKeyCache.set(String(id), makeArrayUnique([...existingCacheEntry, params.cacheKey]), params.ttl * 1000)
+    for (const recordId of resultsIds) {
+        const existingCacheEntry = await cacheClients.recordsKeyCache.get(recordId) ?? []
+        await cacheClients.recordsKeyCache.set(recordId, makeArrayUnique([...existingCacheEntry, params.cacheKey]), params.ttl * 1000)
     }
 }
 
 export const getCacheClients = (): CacheClients =>
     Container.get<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
 
+/** 
+ * Can be used for manually clearing cache for given cache key
+ * @param {string} key cache key
+*/
 export const clearCacheForKey = async (key: string): Promise<void> => {
     const cacheClients = Container.get<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
-    await clearCacheOnClientForKey(key, cacheClients.recordsKeyCache, cacheClients)
+    await clearResultsCacheOnClientForKey(key, cacheClients.recordsKeyCache, cacheClients)
 }
 
-export const clearCacheOnClientForKey = async <T extends string[]>(key: string, contextCacheClient: Keyv<T>, cacheClients: CacheClients): Promise<void> => {
+/** 
+ * Can be used for manually clearing cache for given modelName. 
+ * @param {string} modelName name of registerd mongoose model
+ * @param {string} multitenantValue [optional] unique value of your tenant
+*/
+export const clearCachedResultsForModel = async (modelName: string, multitenantValue?: string): Promise<void> => {
+    const cacheClients = Container.get<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
+    const modelKey = generateCacheKeyForModelName(modelName, multitenantValue)
+    await clearResultsCacheOnClientForKey(modelKey, cacheClients.modelsKeyCache, cacheClients)
+}
+
+export const clearResultsCacheOnClientForKey = async <T extends string[]>(key: string, contextCacheClient: Keyv<T>, cacheClients: CacheClients): Promise<void> => {
     const keysToClean = await contextCacheClient.get(key)
 
     await clearKeysInCache(keysToClean, cacheClients.resultsCache)
-    await cacheClients.modelsKeyCache.delete(key)
     await contextCacheClient.delete(key)
 }
 

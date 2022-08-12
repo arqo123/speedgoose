@@ -150,15 +150,31 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline({m
 #### ```SpeedGooseCacheAutoCleaner(...)``` 
 ```ts
 {
-    /** Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true */
+    /**
+     * Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true 
+     * @param {Document} record mongoose document for which event was triggered
+    **/
     wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
 }
 ```
 #### ```clearCacheForKeys(cacheKey)``` 
 ```ts
-/** This method can be used for manually clearing cache for given key. */
+/** 
+ * Can be used for manually clearing cache for given cache key
+ * @param {string} key cache key
+*/
 clearCacheForKeys(cacheKey: string) : Promise<void>
 ```
+#### ```clearCachedResultsForModel(modelName,tenantId)``` 
+```ts
+/** 
+ * Can be used for manually clearing cache for given modelName. 
+ * @param {string} modelName name of registerd mongoose model
+ * @param {string} multitenantValue [optional] unique value of your tenant
+*/
+clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promise<void>
+```
+
 
 <!-- ROADMAP -->
 ## :dart: Roadmap
