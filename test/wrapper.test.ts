@@ -3,8 +3,8 @@ import Container from 'typedi'
 import {Mongoose} from 'mongoose'
 import Keyv from 'keyv'
 import {CacheClients, GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
-import {cacheClientsTestCases} from './assets.ts/wrapper'
 import * as mongooseModelEvents from '../src/mongooseModelEvents'
+import {cacheClientsTestCases} from './assets/wrapper'
 
 const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents,  'registerListenerForInternalEvents')
 
@@ -37,8 +37,8 @@ describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register new service in DiContainer with access to mongoose instance`, async () => {
         const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
         expect(mongoose).toBeInstanceOf(Object)
-        // Beacause we don't have registered any models - yet
-        expect(Object.keys(mongoose.models).length).toEqual(0)
+        // We have one test model registered
+        expect(Object.keys(mongoose.models).length).toEqual(1)
     })
 
     it(`should extend mongoose query interfaces with cacheQuery() function`, async () => {
