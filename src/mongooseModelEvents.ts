@@ -1,7 +1,7 @@
 import {Mongoose} from "mongoose"
-import {clearResultsCacheOnClientForKey, clearHydrationCache} from "./cacheClientUtils"
 import {CacheClients, MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext} from "./types/types"
-import {generateCacheKeyForRecordAndModelName} from "./utils"
+import {clearHydrationCache, clearResultsCacheOnClientForKey} from "./utils/cacheClientUtils"
+import {generateCacheKeyForRecordAndModelName} from "./utils/cacheKeyUtils"
 
 const clearModelCache = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
     const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName)

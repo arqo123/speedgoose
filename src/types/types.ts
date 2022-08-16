@@ -81,3 +81,9 @@ export enum SpeedGooseRedisChannels {
 }
 
 export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
+
+export enum MongooseCountQueries {
+    COUNT = 'count',
+    COUNT_DOCUMENTS = 'countDocuments',
+    ESTIMATED_DOCUMENTS_COUNT ='estimatedDocumentCount'
+}

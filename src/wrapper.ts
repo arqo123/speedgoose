@@ -5,8 +5,8 @@ import {Mongoose, Document} from "mongoose"
 import {CacheClients, CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseConfig} from "./types/types"
 import {addCachingToQuery} from "./extendQuery";
 import {addCachingToAggregate} from "./extendAggregate";
-import {objectDeserializer, objectSerializer} from "./utils";
-import {getRedisInstance, registerRedisClient} from "./redisUtils";
+import {objectDeserializer, objectSerializer} from "./utils/commonUtils";
+import {getRedisInstance, registerRedisClient} from "./utils/redisUtils";
 import {registerListenerForInternalEvents} from "./mongooseModelEvents";
 
 const registerGlobalCacheAccess = (cacheClients: CacheClients): void => {

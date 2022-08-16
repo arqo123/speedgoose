@@ -1,7 +1,7 @@
 import {Schema} from "mongoose";
-import {publishRecordIdOnChannel} from "../redisUtils";
+import {publishRecordIdOnChannel} from "../utils/redisUtils";
 import {MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels} from "../types/types";
-import {getMongooseModelFromDocument} from "../utils";
+import {getMongooseModelFromDocument} from "../utils/mongooseUtils";
 import {wasRecordDeleted} from "./utils";
 
 const appendPreSaveListener = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {

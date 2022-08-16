@@ -1,8 +1,10 @@
 import Keyv from "keyv"
 import {Document, Model} from 'mongoose'
-import {Container} from 'typedi'
-import {CacheClients, CachedDocument, CachedResult, GlobalDiContainerRegistryNames, SpeedGooseCacheOperationParams} from "./types/types"
-import {generateCacheKeyForModelName, isResultWithIds, makeArrayUnique} from "./utils"
+import {Container} from 'typedi' 
+import {CacheClients, CachedDocument, CachedResult, GlobalDiContainerRegistryNames, SpeedGooseCacheOperationParams} from "../types/types"
+import {generateCacheKeyForModelName} from "./cacheKeyUtils"
+import {makeArrayUnique} from "./commonUtils"
+import {isResultWithIds} from "./mongooseUtils"
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
     if (keysToClean && Array.isArray(keysToClean)) {
