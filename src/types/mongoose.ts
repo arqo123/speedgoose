@@ -4,8 +4,8 @@ declare module 'mongoose' {
     //@ts-expect-error overwriting of mongoose Query interface
     // eslint-disable-next-line @typescript-eslint/ban-types
     interface Query<ResultType, DocType, THelpers = {}, RawDocType = DocType>
-        extends DocumentQuery<any, any> {
-        cacheQuery(params?: SpeedGooseCacheOperationParams): Promise<DocumentQuery<ResultType, Document>>;
+        extends Query<any, any> {
+        cacheQuery(params?: SpeedGooseCacheOperationParams): Promise<Query<ResultType, Document>>;
         mongooseCollection: Collection,
         //add proper types for operations
         op: string
@@ -15,10 +15,10 @@ declare module 'mongoose' {
         cachePipeline(params?: SpeedGooseCacheOperationParams): Promise<R>;
         _model: Model<any>
     }
-    //@ts-expect-error overwriting of mongoose SchemaType interface
-    interface SchemaType extends SchemaType {
-        options: SchemaTypeOptions<any>
-    }
+    // //@ts-expect-error overwriting of mongoose SchemaType interface
+    // interface SchemaType extends SchemaType {
+    //     //options: SchemaTypeOptions<any>
+    // }
     //@ts-expect-error overwriting of mongoose SchemaType interface
     interface Schema extends Schema {
         plugins: {fn: typeof Function, opts:Record<string,never>}[]

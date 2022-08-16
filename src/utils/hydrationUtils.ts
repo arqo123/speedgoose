@@ -1,9 +1,10 @@
 import {Query} from "mongoose"
 import {Document, Model, SchemaType} from "mongoose"
+import {CacheClients, CachedDocument, CachedResult, SpeedGooseCacheOperationParams} from "../types/types"
 import {setKeyInHydrationCaches} from "./cacheClientUtils"
-import {CacheClients, CachedDocument, CachedResult, SpeedGooseCacheOperationParams} from "./types/types"
-import {generateCacheKeyForSingleDocument, getMongooseModelForName, getValueFromDocument, isResultWithIds, setValueOnDocument} from "./utils"
-
+import {generateCacheKeyForSingleDocument} from "./cacheKeyUtils"
+import {getValueFromDocument, isResultWithIds, getMongooseModelForName, setValueOnDocument} from "./mongooseUtils"
+ 
 type FieldWithRefferenceModel = {
     path: string,
     referenceModelName: string
@@ -46,7 +47,7 @@ const hydrateDocument = <T>(query: Query<T, T>, record: Document<T>): Document<T
 const deepHydrate = <T>(
     model: Model<T>, record: Document<T>
 ): Document<T> => {
-    const hydratedRootDocument = model.hydrate(record);
+    const hydratedRootDocument = model.hydrate(record) as Document<T>;
 
     for (const field of getFieldsToHydrate(model)) {
 

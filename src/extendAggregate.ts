@@ -1,7 +1,7 @@
 import {Aggregate, Mongoose} from "mongoose";
-import {setKeyInResultsCaches} from "./cacheClientUtils";
 import {CacheClients, SpeedGooseCacheOperationParams} from "./types/types";
-import {prepareAggregateOperationParams} from "./utils";
+import {setKeyInResultsCaches} from "./utils/cacheClientUtils";
+import {prepareAggregateOperationParams} from "./utils/queryUtis";
 
 export const addCachingToAggregate = (mongoose: Mongoose, cacheClients: CacheClients): void => {
     /** 
