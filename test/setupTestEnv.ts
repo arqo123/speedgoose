@@ -1,28 +1,26 @@
 import 'jest-extended';
-import mongoose from 'mongoose'
+import mongoose, {Schema} from 'mongoose'
 import Redis from 'ioredis-mock'
 import {applySpeedGooseCacheLayer} from "../src/wrapper";
-import {TEST_MODEL_NAME} from './constants';
-
-const config = {
-    redisUri: 'redis://localhost:6379'
-}
+import {TEST_MODEL_NAME, TEST_SPEEDGOOSE_CONFIG} from './constants';
 
 jest.mock('ioredis', () => {
     return function () {
-        return new Redis(config)
+        return new Redis(TEST_SPEEDGOOSE_CONFIG)
     };
 });
 
 const registerMongooseTestModel = () => {
     const schema = new mongoose.Schema({
-        name: {type: String}
+        name: {type: String},
+        fieldA: {type: Schema.Types.Mixed},
+        fieldB: {type: Schema.Types.Mixed}
     });
 
     return mongoose.model(TEST_MODEL_NAME, schema);
 }
 
 beforeAll(async () => {
-    await applySpeedGooseCacheLayer(mongoose, config)
+    await applySpeedGooseCacheLayer(mongoose, TEST_SPEEDGOOSE_CONFIG)
     await registerMongooseTestModel()
-});
+ });
