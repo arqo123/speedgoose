@@ -3,7 +3,7 @@ import {Document, Model, SchemaType} from "mongoose"
 import {CacheClients, CachedDocument, CachedResult, SpeedGooseCacheOperationParams} from "../types/types"
 import {setKeyInHydrationCaches} from "./cacheClientUtils"
 import {generateCacheKeyForSingleDocument} from "./cacheKeyUtils"
-import {getValueFromDocument, isResultWithIds, getMongooseModelForName, setValueOnDocument} from "./mongooseUtils"
+import {getValueFromDocument, isResultWithIds, getMongooseModelByName, setValueOnDocument} from "./mongooseUtils"
  
 type FieldWithRefferenceModel = {
     path: string,
@@ -57,10 +57,10 @@ const deepHydrate = <T>(
             if (!isResultWithIds(value)) continue;
 
             if (!Array.isArray(value)) {
-                const hydratedValue = deepHydrate(getMongooseModelForName(field.referenceModelName), value as Document);
+                const hydratedValue = deepHydrate(getMongooseModelByName(field.referenceModelName), value as Document);
                 setValueOnDocument(field.path, hydratedValue, hydratedRootDocument);
             } else {
-                const hydratedValue = value.map(valueToHydrate => deepHydrate(getMongooseModelForName(field.referenceModelName), valueToHydrate), hydratedRootDocument);
+                const hydratedValue = value.map(valueToHydrate => deepHydrate(getMongooseModelByName(field.referenceModelName), valueToHydrate), hydratedRootDocument);
                 setValueOnDocument(field.path, hydratedValue, hydratedRootDocument);
             }
         }

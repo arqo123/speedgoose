@@ -1,4 +1,4 @@
-import mongoose, {Aggregate, PipelineStage, Query} from 'mongoose'
+import mongoose, {Aggregate, PipelineStage, Query, Document} from 'mongoose'
 import {getMongooseInstance} from '../src/utils/mongooseUtils'
 import {TEST_MODEL_NAME} from './constants'
 import {TestModel} from './types'
@@ -13,3 +13,9 @@ export const generateTestFindQuery = (query: Record<string, unknown>): Query<any
 
 export const generateTestFindOneQuery = (query: Record<string, unknown>): Query<any, any> =>
     getMongooseTestModel().findOne(query)
+
+export const generateTestDocument = (value: Record<string, unknown>): Document<any, any> => {
+    const testModel = getMongooseTestModel()
+
+    return new testModel(value)
+}
