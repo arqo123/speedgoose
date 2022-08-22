@@ -1,39 +1,39 @@
 import {Mongoose} from "mongoose"
-import {CacheClients, MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext} from "./types/types"
-import {clearHydrationCache, clearResultsCacheOnClientForKey} from "./utils/cacheClientUtils"
+import {  MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext} from "./types/types"
+import {clearHydrationCache} from "./utils/cacheClientUtils"
 import {generateCacheKeyForRecordAndModelName} from "./utils/cacheKeyUtils"
+import {clearResultsCacheWithSet} from "./utils/redisUtils"
 
-const clearModelCache = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
+const clearModelCache = async (context: MongooseDocumentEventsContext): Promise<void> => {
     const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName)
 
-    await clearResultsCacheOnClientForKey(modelCacheKey, cacheClients.modelsKeyCache, cacheClients)
+    await clearResultsCacheWithSet(modelCacheKey)
 }
 
-const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext, cacheClients: CacheClients): Promise<void> => {
+const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext): Promise<void> => {
     const recordId = String(context.record._id)
-    await clearResultsCacheOnClientForKey(recordId, cacheClients.recordsKeyCache, cacheClients)
-    await clearHydrationCache(recordId, cacheClients)
+    await clearResultsCacheWithSet(recordId)
+    await clearHydrationCache(recordId)
 
     if (context.wasNew || context.wasDeleted) {
-        await clearModelCache(context, cacheClients)
+        await clearModelCache(context)
     }
 }
 
 const listenOnInternalEvents = (
     mongoose: Mongoose,
-    cacheClients: CacheClients,
     eventsToListen: MongooseDocumentEvents[],
     callback: MongooseDocumentEventCallback): void => {
     eventsToListen.forEach(event => {
         Object.values(mongoose?.models ?? {}).forEach(model => {
             model.on(event, async (context: MongooseDocumentEventsContext) => {
-                await callback(context, cacheClients)
+                await callback(context)
             })
         })
     })
 }
 
 
-export const registerListenerForInternalEvents = (mongoose: Mongoose, cacheClients: CacheClients): void => {
-    listenOnInternalEvents(mongoose, cacheClients, [MongooseDocumentEvents.BEFORE_SAVE, MongooseDocumentEvents.AFTER_REMOVE], clearCacheForRecordCallback)
+export const registerListenerForInternalEvents = (mongoose: Mongoose): void => {
+    listenOnInternalEvents(mongoose, [MongooseDocumentEvents.BEFORE_SAVE, MongooseDocumentEvents.AFTER_REMOVE], clearCacheForRecordCallback)
 }

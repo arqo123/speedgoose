@@ -1,23 +1,24 @@
 import {Query} from "mongoose"
 import {Document, Model, SchemaType} from "mongoose"
-import {CacheClients, CachedDocument, CachedResult, SpeedGooseCacheOperationParams} from "../types/types"
+import {CachedDocument, CachedResult, SpeedGooseCacheOperationParams} from "../types/types"
 import {setKeyInHydrationCaches} from "./cacheClientUtils"
 import {generateCacheKeyForSingleDocument} from "./cacheKeyUtils"
+import {getHydrationCache} from "./commonUtils"
 import {getValueFromDocument, isResultWithIds, getMongooseModelByName, setValueOnDocument} from "./mongooseUtils"
- 
+
 type FieldWithRefferenceModel = {
     path: string,
     referenceModelName: string
 }
 
 const getReferenceModelNameFromSchema = (schema: SchemaType): string => {
-        if (schema.options.ref) {
-            return schema.options.ref as string 
-        }
-        if (Array.isArray(schema?.options?.type)) {
-            return schema?.options?.type[0].ref
-        }
+    if (schema.options.ref) {
+        return schema.options.ref as string
     }
+    if (Array.isArray(schema?.options?.type)) {
+        return schema?.options?.type[0].ref
+    }
+}
 
 const getFieldsToHydrate = <T>(model: Model<T>): FieldWithRefferenceModel[] =>
     Object.entries<SchemaType>({
@@ -27,22 +28,22 @@ const getFieldsToHydrate = <T>(model: Model<T>): FieldWithRefferenceModel[] =>
     }).map(([path, schemaFieldType]) => ({path, referenceModelName: getReferenceModelNameFromSchema(schemaFieldType)}))
         .filter(schemaPaths => schemaPaths.referenceModelName)
 
-const getHydratedDocuments = <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams, results: Document<T>[], cacheClients: CacheClients): Promise<Document<T>[]> =>
-    Promise.all(results.map(record => getHydratedDocument(query, params, record, cacheClients)))
+const getHydratedDocuments = <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams, results: Document<T>[]): Promise<Document<T>[]> =>
+    Promise.all(results.map(record => getHydratedDocument(query, params, record)))
 
-const getHydratedDocument = async <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams, result: Document, cacheClients: CacheClients): Promise<Document<T>> => {
+const getHydratedDocument = async <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams, result: Document): Promise<Document<T>> => {
     const cacheKey = generateCacheKeyForSingleDocument(query, result)
-    const cachedValue = await cacheClients.singleRecordsCache.get(cacheKey)
+    const cachedValue = await getHydrationCache().get(cacheKey)
 
-    if (cachedValue) return cachedValue
+    if (cachedValue && cachedValue?._id) return cachedValue
 
     const hydratedDocument = hydrateDocument(query, result)
-    await setKeyInHydrationCaches(cacheKey, hydratedDocument, params, cacheClients)
+    await setKeyInHydrationCaches(cacheKey, hydratedDocument, params)
 
     return hydratedDocument
 }
 
-const hydrateDocument = <T>(query: Query<T, T>, record: Document<T>): Document<T> => deepHydrate(query.model, record)       
+const hydrateDocument = <T>(query: Query<T, T>, record: Document<T>): Document<T> => deepHydrate(query.model, record)
 
 const deepHydrate = <T>(
     model: Model<T>, record: Document<T>
@@ -72,7 +73,6 @@ const deepHydrate = <T>(
 export const hydrateResults = <T extends CachedResult>(
     query: Query<T, T>,
     params: SpeedGooseCacheOperationParams,
-    result: CachedDocument,
-    cacheClients: CacheClients
+    result: CachedDocument
 ): Promise<CachedDocument | CachedDocument[]> =>
-    Array.isArray(result) ? getHydratedDocuments(query, params, result, cacheClients) : getHydratedDocument(query, params, result, cacheClients);
+    Array.isArray(result) ? getHydratedDocuments(query, params, result) : getHydratedDocument(query, params, result);
