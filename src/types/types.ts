@@ -1,14 +1,11 @@
 import './mongoose'
 import {Document} from "mongoose";
-import Keyv from "keyv";
 
 export type AggregationResult = unknown
 
 export type CachedDocument = Document | Document[]
 
 export type CachedResult = CachedDocument | AggregationResult | number
-
-export type CacheOptions = {namespace: string, store: any}
 
 export type SpeedGooseCacheAutoCleanerOptions = {
     /**
@@ -39,14 +36,6 @@ export type SpeedGooseCacheOperationParams = {
     cacheKey?: string;
 }
 
-export type CacheClients = {
-    resultsCache: Keyv<CachedResult>;
-    recordsKeyCache: Keyv<string[]>;
-    modelsKeyCache: Keyv<string[]>;
-    singleRecordsCache: Keyv<Document>;
-    singleRecordsKeyCache: Keyv<string[]>;
-}
-
 export enum MongooseDocumentEvents {
     BEFORE_SAVE = 'beforeSave',
     AFTER_REMOVE = 'afterRemove',
@@ -62,17 +51,18 @@ export type MongooseDocumentEventsContext = {
 
 export enum CacheNamespaces {
     RESULTS_NAMESPACE = 'resultsNamespace',
-    SINGLE_RECORDS_NAMESPACE = 'singleRecordsNamespace',
-    KEY_RELATIONS_NAMESPACE = 'keyRelationsNamespace',
-    MODELS_KEY_NAMESPACE = 'modelsKeyNamespace',
-    SINGLE_RECORDS_KEY_NAMESPACE = 'singleRecordsKeyNamespace',
-}
+    HYDRATED_DOCUMENTS_NAMESPACE = 'hydratedDOcumentsNamespace',
+    HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE = 'hydratedDocumentsVariationsKeyNamespace',
+ }
 
 export enum GlobalDiContainerRegistryNames {
     CACHE_CLIENT_GLOBAL_ACCESS = 'globalCacheAccess',
     CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
     MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess',
-    REDIS_GLOBAL_ACCESS = 'redisAccess'
+    REDIS_GLOBAL_ACCESS = 'redisAccess',
+    KEYV_REDIS_GLOBAL_ACCESS = 'keyvRedisAccess',
+    HYDRATED_DOCUMENTS_CACHE_ACCESS = 'hydratedDocumentsCacheAccess',
+    HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS = 'hydratedDocumentsVariationsCacheAccess',
 }
 
 export enum SpeedGooseRedisChannels {
@@ -80,7 +70,7 @@ export enum SpeedGooseRedisChannels {
     SAVED_DOCUMENTS = 'speedgooseSavedDocumentsChannel',
 }
 
-export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext, cacheClients: CacheClients) => void
+export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext) => void
 
 export enum MongooseCountQueries {
     COUNT = 'count',

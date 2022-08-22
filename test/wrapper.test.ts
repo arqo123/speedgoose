@@ -2,9 +2,8 @@ import Redis from 'ioredis-mock'
 import Container from 'typedi'
 import {Mongoose} from 'mongoose'
 import Keyv from 'keyv'
-import {CacheClients, GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
+import {GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
 import * as mongooseModelEvents from '../src/mongooseModelEvents'
-import {cacheClientsTestCases} from './assets/wrapper'
 
 const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents,  'registerListenerForInternalEvents')
 
@@ -15,16 +14,12 @@ describe(`applySpeedGooseCacheLayer`, () => {
         expect(redisInstance).toBeInstanceOf(Redis)
     })
 
-    it(`should register new service in DiContainer with access to client access`, async () => {
-        const cacheClients = Container.get<CacheClients>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
-        expect(Object.keys(cacheClients).length).toEqual(5)
-        Object.values(cacheClients).forEach(client => expect(client).toBeInstanceOf(Keyv))
-
-        cacheClientsTestCases.forEach(testData => {
-            const client = cacheClients[testData.clientName]
-            expect(client.opts.store).toBeInstanceOf(testData.expected.store)
-            expect(client.opts.namespace).toEqual(testData.expected.namespace)
-        });
+    it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {
+        const hydratedDocumnetsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS)
+        const hydratedDocumentVariationsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS)
+    
+        expect(hydratedDocumnetsCache).toBeInstanceOf(Keyv)
+        expect(hydratedDocumentVariationsCache).toBeInstanceOf(Keyv)
     })
 
     it(`should register new service in DiContainer with access to config`, async () => {
