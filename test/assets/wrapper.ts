@@ -25,7 +25,7 @@ export const cacheClientsTestCases: CacheClientsTestData[] = [
         }
     },
     {
-        clientName: 'singleRecordsCache',
+        clientName: 'hydratedDocumentsCache',
         expected: {
             store: Map,
             namespace: CacheNamespaces.SINGLE_RECORDS_NAMESPACE

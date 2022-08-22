@@ -1,15 +1,9 @@
-import {getConfig, makeArrayUnique, objectDeserializer, objectSerializer} from '../../src/utils/commonUtils'
+import {getConfig, objectDeserializer, objectSerializer} from '../../src/utils/commonUtils'
 import {TEST_SPEEDGOOSE_CONFIG} from '../constants'
 
 describe(`getConfig`, () => {
     test(`should return test config registered in DiContainer`, () => {
         expect(getConfig()).toMatchObject(TEST_SPEEDGOOSE_CONFIG)
-    })
-})
-
-describe(`makeArrayUnique`, () => {
-    test(`should return unique elements from array of strings and numbers`, () => {
-        expect(makeArrayUnique(['a', 'b', 'c', 'abc', 'a', 'c', '1', '2', 1, 2]).sort()).toEqual(['a', 'b', 'c', 'abc', '1', '2', 1, 2].sort())
     })
 })
 

@@ -16,7 +16,6 @@
     "cache",
     "mongodb",
     "redis",
-    "keyv",
     "ttl"
   ],
   "files": [
@@ -35,9 +34,8 @@
     "version": "auto-changelog -p && git add CHANGELOG.md"
   },
   "dependencies": {
-    "@keyv/redis": "2.3.7",
     "ioredis": "^5.2.2",
-    "keyv": "^4.1.1",
+    "keyv": "^4.4.1",
     "mongoose": "^6.5.2",
     "mpath": "^0.9.0",
     "typedi": "^0.10.0"
