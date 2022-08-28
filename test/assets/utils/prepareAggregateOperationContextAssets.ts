@@ -32,7 +32,8 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         expected: {
             ttl: 120,
             cacheKey: "{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\"}}],\"collection\":\"testmodels\"}",
-            multitenantValue: 'tenantTestValue'
+            multitenantValue: 'tenantTestValue',
+            debug: expect.any(Function)
         }
     },
     // t02 - multitenancy disable but multitenantValue is set in params  
@@ -50,7 +51,8 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         expected: {
             ttl: 30,
             cacheKey: "{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\"}}],\"collection\":\"testmodels\"}",
-            multitenantValue: 'tenantTestValue'
+            multitenantValue: 'tenantTestValue',
+            debug: expect.any(Function)
         }
     },
     // t03 - multitenancy disable, cacheKey set in params right with ttl, debug enabled

@@ -32,6 +32,7 @@ export const getDebugger = (modelName: string, debuggerOperation: SpeedGooseDebu
 
       return (label: string, ...dataToLog: unknown[]) => debug(getLabelBackgroundColor(debug), label, '\x1b[0m', ...dataToLog)
    }
+   return () => ({})
 }
 
 export const logCacheClear = (label: string, cacheKey: string): void => {
