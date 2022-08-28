@@ -1,10 +1,11 @@
 import Keyv from "keyv"
 import {Document, Model} from 'mongoose'
-import {CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationParams} from "../types/types"
+import {CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "../types/types"
 import {generateCacheKeyForModelName} from "./cacheKeyUtils"
 import {getHydrationCache, getHydrationVariationsCache} from "./commonUtils"
+import {logCacheClear} from "./debugUtils"
 import {isResultWithIds} from "./mongooseUtils"
-import {addValueToCache, addValueToCacheSet, addValueToManyCachedSets, clearResultsCacheWithSet, removeKeyFromCache} from "./redisUtils"
+import {addValueToCache, addValueToCacheSet, addValueToManyCachedSets, clearResultsCacheWithSet, removeKeyForCache} from "./redisUtils"
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
     if (keysToClean && Array.isArray(keysToClean)) {
@@ -49,7 +50,8 @@ const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCa
  * @param {string} key cache key
 */
 export const clearCacheForKey = async (key: string): Promise<void> => {
-    await removeKeyFromCache(CacheNamespaces.RESULTS_NAMESPACE, key)
+    logCacheClear(`Clearing results cache for key`, key)
+    await removeKeyForCache(CacheNamespaces.RESULTS_NAMESPACE, key)
 }
 
 /** 
@@ -59,10 +61,14 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
 */
 export const clearCachedResultsForModel = async (modelName: string, multitenantValue?: string): Promise<void> => {
     const modelCacheKey = generateCacheKeyForModelName(modelName, multitenantValue)
+    logCacheClear(`Clearing model cache for key`, modelCacheKey)
+
     await clearResultsCacheWithSet(modelCacheKey)
 }
 
 export const clearHydrationCache = async (recordId: string): Promise<void> => {
+    logCacheClear(`Clearing hydration cache for recordId`, recordId)
+
     const hydratedDocumentVariations = await getHydrationVariationsCache().get(recordId)
     if (hydratedDocumentVariations?.size > 0) {
         await clearKeysInCache(Array.from(hydratedDocumentVariations), getHydrationCache())
@@ -70,13 +76,16 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
     }
 }
 
-export const setKeyInResultsCaches = async <T extends CachedResult, M>(params: SpeedGooseCacheOperationParams, result: T, model: Model<M>): Promise<void> => {
-    await setKeyInResultsCache(result, params)
-    await setKeyInModelCache(model, params)
+export const setKeyInResultsCaches = async <T extends CachedResult, M>(context: SpeedGooseCacheOperationContext, result: T, model: Model<M>): Promise<void> => {
+    context?.debug(`Setting key in cache`, context.cacheKey)
+    await setKeyInResultsCache(result, context)
+    await setKeyInModelCache(model, context)
 
     if (isResultWithIds(result)) {
-        await setKeyInRecordsCache(result as CachedDocument, params)
+        await setKeyInRecordsCache(result as CachedDocument, context)
     }
+
+    context?.debug(`Cache key set`, context.cacheKey)
 }
 
 export const setKeyInHydrationCaches = async <T>(key: string, document: Document<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {

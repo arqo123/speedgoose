@@ -1,11 +1,13 @@
 import {Mongoose} from "mongoose"
-import {  MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext} from "./types/types"
+import {MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseDebuggerOperations} from "./types/types"
 import {clearHydrationCache} from "./utils/cacheClientUtils"
 import {generateCacheKeyForRecordAndModelName} from "./utils/cacheKeyUtils"
+import {getDebugger} from "./utils/debugUtils"
 import {clearResultsCacheWithSet} from "./utils/redisUtils"
 
 const clearModelCache = async (context: MongooseDocumentEventsContext): Promise<void> => {
     const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName)
+    context?.debug(`Clearing model cache for key`, modelCacheKey)
 
     await clearResultsCacheWithSet(modelCacheKey)
 }
@@ -20,6 +22,10 @@ const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContex
     }
 }
 
+const prepareDocumentEventContext = (context: MongooseDocumentEventsContext): void => {
+    context.debug = getDebugger(context.modelName, SpeedGooseDebuggerOperations.EVENTS)
+}
+
 const listenOnInternalEvents = (
     mongoose: Mongoose,
     eventsToListen: MongooseDocumentEvents[],
@@ -27,6 +33,7 @@ const listenOnInternalEvents = (
     eventsToListen.forEach(event => {
         Object.values(mongoose?.models ?? {}).forEach(model => {
             model.on(event, async (context: MongooseDocumentEventsContext) => {
+                prepareDocumentEventContext(context)
                 await callback(context)
             })
         })

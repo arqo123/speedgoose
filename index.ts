@@ -1,3 +1,5 @@
 export {applySpeedGooseCacheLayer} from './src/wrapper'
 export {SpeedGooseCacheAutoCleaner} from './src/plugin/SpeedGooseCacheAutoCleaner'
 export {clearCacheForKey, clearCachedResultsForModel} from './src/utils/cacheClientUtils'
+export type {SpeedGooseConfig, SpeedGooseCacheOperationParams} from './src/types/types'
+export {SpeedGooseDebuggerOperations} from './src/types/types'

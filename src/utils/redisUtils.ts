@@ -1,7 +1,7 @@
 import Redis from 'ioredis'
 import {Container} from 'typedi'
 import {clearHydrationCache} from './cacheClientUtils'
-import {CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseRedisChannels} from '../types/types'
+import {CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseDebuggerOperations, SpeedGooseRedisChannels} from '../types/types'
 
 const listenOnMessages = async (uri: string): Promise<void> => {
     const redisClient = new Redis(uri)
@@ -42,7 +42,7 @@ export const getValueFromCache = async (namespace: string, key: string): Promise
     return result ? JSON.parse(result) : null
 }
 
-export const removeKeyFromCache = async (namespace: string, key: string): Promise<number> =>
+export const removeKeyForCache = async (namespace: string, key: string): Promise<number> =>
     getRedisInstance().del(`${namespace}:${key}`)
 
 export const addValueToCacheSet = async (setNamespace: string, value: string): Promise<number> =>

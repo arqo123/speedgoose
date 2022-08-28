@@ -15,6 +15,15 @@ export type SpeedGooseCacheAutoCleanerOptions = {
     wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
 }
 
+export type CustomDebugger = (label: string, ...dataToLog: unknown[]) => void
+
+export enum SpeedGooseDebuggerOperations {
+    EVENTS = 'event',
+    CACHE_QUERY = 'cacheQuery',
+    CACHE_PIPELINE = 'cachePipeline',
+    CACHE_CLEAR = 'cacheClear'
+}
+
 export type SpeedGooseConfig = {
     /** Connection string for redis containing url, credentials and port. */
     redisUri: string;
@@ -25,6 +34,15 @@ export type SpeedGooseConfig = {
     },
     /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
     defaultTtl?: number;
+    // * Config for debugging mode supported with debug-js *//
+    debugConfig?: {
+        /** When set to true, it will log all operations or operations only for enabled namespaces*/
+        enabled?: boolean,
+        /** An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
+        debugModels?: string[],
+        /** An array of operations to debug, if not set then debugger will log all operations */
+        debugOperations?: SpeedGooseDebuggerOperations[],
+    }
 }
 
 export type SpeedGooseCacheOperationParams = {
@@ -34,6 +52,10 @@ export type SpeedGooseCacheOperationParams = {
     multitenantValue?: string;
     /** Your custom caching key.*/
     cacheKey?: string;
+}
+
+export type SpeedGooseCacheOperationContext = SpeedGooseCacheOperationParams & {
+    debug?: CustomDebugger
 }
 
 export enum MongooseDocumentEvents {
@@ -47,13 +69,14 @@ export type MongooseDocumentEventsContext = {
     wasNew?: boolean;
     wasDeleted?: boolean;
     modelName?: string;
+    debug?: CustomDebugger
 }
 
 export enum CacheNamespaces {
     RESULTS_NAMESPACE = 'resultsNamespace',
     HYDRATED_DOCUMENTS_NAMESPACE = 'hydratedDOcumentsNamespace',
     HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE = 'hydratedDocumentsVariationsKeyNamespace',
- }
+}
 
 export enum GlobalDiContainerRegistryNames {
     CACHE_CLIENT_GLOBAL_ACCESS = 'globalCacheAccess',
@@ -75,5 +98,5 @@ export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsCont
 export enum MongooseCountQueries {
     COUNT = 'count',
     COUNT_DOCUMENTS = 'countDocuments',
-    ESTIMATED_DOCUMENTS_COUNT ='estimatedDocumentCount'
+    ESTIMATED_DOCUMENTS_COUNT = 'estimatedDocumentCount'
 }

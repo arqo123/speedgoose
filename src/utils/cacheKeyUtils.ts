@@ -1,7 +1,7 @@
 import {Document, Aggregate, Query} from "mongoose"
 import {CachedDocument} from "../types/types"
 import {getConfig} from "./commonUtils"
-import {stringifyPopulatedPaths, stringifyQueryParam} from "./queryUtis"
+import {stringifyPopulatedPaths, stringifyQueryParam} from "./queryUtils"
 
 export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string => JSON.stringify(
     {

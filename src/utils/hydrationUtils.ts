@@ -1,6 +1,6 @@
 import {Query} from "mongoose"
 import {Document, Model, SchemaType} from "mongoose"
-import {CachedDocument, CachedResult, SpeedGooseCacheOperationParams} from "../types/types"
+import {CachedDocument, CachedResult, SpeedGooseCacheOperationContext} from "../types/types"
 import {setKeyInHydrationCaches} from "./cacheClientUtils"
 import {generateCacheKeyForSingleDocument} from "./cacheKeyUtils"
 import {getHydrationCache} from "./commonUtils"
@@ -28,17 +28,17 @@ const getFieldsToHydrate = <T>(model: Model<T>): FieldWithRefferenceModel[] =>
     }).map(([path, schemaFieldType]) => ({path, referenceModelName: getReferenceModelNameFromSchema(schemaFieldType)}))
         .filter(schemaPaths => schemaPaths.referenceModelName)
 
-const getHydratedDocuments = <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams, results: Document<T>[]): Promise<Document<T>[]> =>
-    Promise.all(results.map(record => getHydratedDocument(query, params, record)))
+const getHydratedDocuments = <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, results: Document<T>[]): Promise<Document<T>[]> =>
+    Promise.all(results.map(record => getHydratedDocument(query, context, record)))
 
-const getHydratedDocument = async <T>(query: Query<T, T>, params: SpeedGooseCacheOperationParams, result: Document): Promise<Document<T>> => {
+const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, result: Document): Promise<Document<T>> => {
     const cacheKey = generateCacheKeyForSingleDocument(query, result)
     const cachedValue = await getHydrationCache().get(cacheKey)
 
     if (cachedValue && cachedValue?._id) return cachedValue
 
     const hydratedDocument = hydrateDocument(query, result)
-    await setKeyInHydrationCaches(cacheKey, hydratedDocument, params)
+    await setKeyInHydrationCaches(cacheKey, hydratedDocument, context)
 
     return hydratedDocument
 }
@@ -72,7 +72,7 @@ const deepHydrate = <T>(
 
 export const hydrateResults = <T extends CachedResult>(
     query: Query<T, T>,
-    params: SpeedGooseCacheOperationParams,
+    context: SpeedGooseCacheOperationContext,
     result: CachedDocument
 ): Promise<CachedDocument | CachedDocument[]> =>
-    Array.isArray(result) ? getHydratedDocuments(query, params, result) : getHydratedDocument(query, params, result);
+    Array.isArray(result) ? getHydratedDocuments(query, context, result) : getHydratedDocument(query, context, result);

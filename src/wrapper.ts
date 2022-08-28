@@ -7,12 +7,20 @@ import {addCachingToAggregate} from "./extendAggregate";
 import {registerRedisClient} from "./utils/redisUtils";
 import {registerListenerForInternalEvents} from "./mongooseModelEvents";
 import {objectDeserializer, objectSerializer} from './utils/commonUtils';
+import {setupDebugger} from './utils/debugUtils';
+
+const prepareConfig = (config: SpeedGooseConfig): void => {
+    config.debugConfig = {
+        enabled: config?.debugConfig?.enabled ?? false,
+        debugModels: config?.debugConfig?.debugModels ?? undefined,
+        debugOperations: config?.debugConfig?.debugOperations ?? undefined,
+    }
+
+    config.defaultTtl = config.defaultTtl ?? 60
+}
 
 const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
-    Container.set<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, {
-        ...config,
-        defaultTtl: config.defaultTtl ?? 60
-    })
+    Container.set<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, config)
 }
 
 const createCacheWithNamespace = <T>(namespace) => new Keyv<T, any>((
@@ -39,8 +47,10 @@ const registerGlobalMongooseAccess = (mongoose: Mongoose): void => {
 }
 
 export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: SpeedGooseConfig): Promise<void> => {
-    await registerRedisClient(config.redisUri)
+    prepareConfig(config)
+    setupDebugger(config)
     registerGlobalConfigAccess(config)
+    await registerRedisClient(config.redisUri)
     registerGlobalMongooseAccess(mongoose)
     registerHydrationCaches()
     registerListenerForInternalEvents(mongoose)
