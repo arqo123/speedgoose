@@ -30,7 +30,8 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         expected: {
             ttl: 120,
             cacheKey: "{\"tenantId\":\"tenantTestValue\",\"collection\":\"testmodels\",\"op\":\"find\",\"options\":{}}",
-            multitenantValue: 'tenantTestValue'
+            multitenantValue: 'tenantTestValue',
+            debug: expect.any(Function)
         }
     },
     // t02 - multitenancy without tenant key in query and with default ttl
@@ -49,7 +50,8 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: "{\"collection\":\"testmodels\",\"op\":\"find\",\"options\":{}}"
+            cacheKey: "{\"collection\":\"testmodels\",\"op\":\"find\",\"options\":{}}",
+            debug: expect.any(Function)
         }
     },
     // t03 - multitenancy disabled, tenant key in query and custom key set, debug enabled
