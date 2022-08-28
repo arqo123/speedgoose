@@ -1,17 +1,17 @@
 import {Query} from "mongoose"
-import {SpeedGooseCacheOperationParams, SpeedGooseConfig} from "../../../src/types/types"
+import {SpeedGooseCacheOperationContext, SpeedGooseConfig} from "../../../src/types/types"
 import {generateTestFindQuery} from "../../testUtils"
 
 type AggregateParamsOperationTestData = {
     given: {
         query: Query<any, any>
         config: SpeedGooseConfig,
-        params: SpeedGooseCacheOperationParams
+        params: SpeedGooseCacheOperationContext
     },
-    expected: SpeedGooseCacheOperationParams
+    expected: SpeedGooseCacheOperationContext
 }
 
-export const generateQueryParamsOperationTestData= () : AggregateParamsOperationTestData[] => [
+export const generateQueryParamsOperationTestData = (): AggregateParamsOperationTestData[] => [
     // t01 - multitenancy with tenant key in query and ttl in params
     {
         given: {
@@ -33,7 +33,7 @@ export const generateQueryParamsOperationTestData= () : AggregateParamsOperation
             multitenantValue: 'tenantTestValue'
         }
     },
-   // t02 - multitenancy without tenant key in query and with default ttl
+    // t02 - multitenancy without tenant key in query and with default ttl
     {
         given: {
             query: generateTestFindQuery({}),
@@ -52,7 +52,7 @@ export const generateQueryParamsOperationTestData= () : AggregateParamsOperation
             cacheKey: "{\"collection\":\"testmodels\",\"op\":\"find\",\"options\":{}}"
         }
     },
-    // t03 - multitenancy disabled, tenant key in query and custom key set
+    // t03 - multitenancy disabled, tenant key in query and custom key set, debug enabled
     {
         given: {
             query: generateTestFindQuery({}),
@@ -61,15 +61,19 @@ export const generateQueryParamsOperationTestData= () : AggregateParamsOperation
                 multitenancyConfig: {
                     multitenantKey: 'tenantId'
                 },
+                debugConfig: {
+                    enabled: true
+                },
                 defaultTtl: 30
             },
             params: {
-                cacheKey : 'testCacheKey'
+                cacheKey: 'testCacheKey'
             },
         },
         expected: {
             ttl: 30,
-            cacheKey: "testCacheKey"
+            cacheKey: "testCacheKey",
+            debug: expect.any(Function)
         }
     },
 ]

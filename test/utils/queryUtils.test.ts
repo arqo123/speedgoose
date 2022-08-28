@@ -1,16 +1,16 @@
 import * as commonUtils from "../../src/utils/commonUtils"
-import {isCountQuery, isLeanQuery, prepareAggregateOperationParams, prepareQueryOperationParams, stringifyPopulatedPaths, stringifyQueryParam} from "../../src/utils/queryUtis"
-import {generateAggregateParamsOperationTestData} from "../assets/utils/prepareAggregateOperationParamsAssets"
-import {generateQueryParamsOperationTestData} from "../assets/utils/prepareQueryOperationParamsAssets"
+import {isCountQuery, isLeanQuery, prepareAggregateOperationParams, prepareQueryOperationContext, stringifyPopulatedPaths, stringifyQueryParam} from "../../src/utils/queryUtils"
+import {generateAggregateParamsOperationTestData} from "../assets/utils/prepareAggregateOperationContextAssets"
+import {generateQueryParamsOperationTestData} from "../assets/utils/prepareQueryOperationContextAssets"
 import {generateTestFindOneQuery, generateTestFindQuery, getMongooseTestModel} from "../testUtils"
 
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig')
 
-describe(`prepareQueryOperationParams`, () => {
+describe(`prepareQueryOperationContext`, () => {
     test(`should properly overwrite operationParams, according to query and speedGoose config`, () => {
         generateQueryParamsOperationTestData().forEach(testCase => {
             mockedGetConfig.mockReturnValue(testCase.given.config)
-            prepareQueryOperationParams(testCase.given.query, testCase.given.params)
+            prepareQueryOperationContext(testCase.given.query, testCase.given.params)
 
             expect(testCase.given.params).toMatchObject(testCase.expected)
         })
