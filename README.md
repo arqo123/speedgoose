@@ -94,6 +94,22 @@ applySpeedGooseCacheLayer(mongoose, {
 })
 ```
 
+<!-- Debugging -->
+## :bug: Debugging
+  For enabling debug mode, you have to pass multitenantKey into wrapper config, so it will looks like
+```ts
+applySpeedGooseCacheLayer(mongoose, {
+  redisUri: process.env.REDIS_URI,
+  debugConfig?: {
+        enabled?: true,
+        /** Optional: An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
+        debugModels?: ['yourModelName'],
+        /** Optional: An array of operations to debug, if not set then debugger will log all operations */
+        debugOperations?: SpeedGooseDebuggerOperations[],
+    }
+})
+```
+
  
 SpeedGooseCacheAutoCleaner plugin clears cache for given model each time when new record appears, or some record was deleted. In multitenancy we wan't clear cache for all of the clients - as the change appear only for one tenant. 
 SpeeGoose will handle it for You! But to make it work, you have to follow the rules:
@@ -124,26 +140,33 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline({m
 
 #### applySpeedGooseCacheLayer(mongoose, speedgooseConfig)
 ```ts
-{
-    // required: Connection string for redis containing url, credentials and port.
+    /** Connection string for redis containing url, credentials and port. */
     redisUri: string;
-    // optional: Config for multitenancy.
+    /** Config for multitenancy. */
     multitenancyConfig?: {
-    // optional: If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record.
-    multitenantKey: string
+        /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
+        multitenantKey: string;
     },
-    // optional: You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds. Set 0 to make it disable. 
-    defaultTtl?: number
-}
+    /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
+    defaultTtl?: number;
+    // * Config for debugging mode supported with debug-js *//
+    debugConfig?: {
+        /** When set to true, it will log all operations or operations only for enabled namespaces*/
+        enabled?: boolean,
+        /** An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
+        debugModels?: string[],
+        /** An array of operations to debug, if not set then debugger will log all operations */
+        debugOperations?: SpeedGooseDebuggerOperations[],
+    }
 ```
 #### ```cacheQuery(operationParams)``` and ```cachePipeline(operationParams)```
 ```ts
 { 
-    // optional: It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. 
+    /** It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. */
     ttl?: number;
-    // optional: Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.
+    /** Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
     multitenantValue?: string;
-    // optional: Your custom caching key.
+    /** Your custom caching key.*/
     cacheKey?: string;
 }
 ```
@@ -186,8 +209,20 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
 - [X] Support for clustered servers [BETA]
 - [ ] Flowchart of logic
 - [ ] Tests
+     - [X] commonUtils
+     - [X] debuggerUtils
+     - [X] mongooseUtils
+     - [X] queryUtils
+     - [ ] cacheClientUtils
+     - [ ] cacheKeyUtils
+     - [ ] hydrationUtils
+     - [ ] redisUtils
+     - [ ] extendAggregate
+     - [ ] extendQuery
+     - [ ] mongooseModelEvents
+     - [X] wrapper
 - [X] Multitenancy (tenant field indicator) support
-- [ ] Debugging mode
+- [X] Debugging mode
 - [ ] Support for more cache storages
 
 
