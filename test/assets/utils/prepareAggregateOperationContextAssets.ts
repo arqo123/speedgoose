@@ -1,14 +1,15 @@
 import {Aggregate} from "mongoose"
-import {SpeedGooseCacheOperationParams, SpeedGooseConfig} from "../../../src/types/types"
+import {SpeedGooseCacheOperationContext, SpeedGooseConfig, SpeedGooseDebuggerOperations} from "../../../src/types/types"
+import {getDebugger} from "../../../src/utils/debugUtils"
 import {generateTestAggregate} from "../../testUtils"
 
 type AggregateParamsOperationTestData = {
     given: {
         aggregationPipeline: Aggregate<any>
         config: SpeedGooseConfig,
-        params: SpeedGooseCacheOperationParams
+        params: SpeedGooseCacheOperationContext
     },
-    expected: SpeedGooseCacheOperationParams
+    expected: SpeedGooseCacheOperationContext
 }
 
 export const generateAggregateParamsOperationTestData = (): AggregateParamsOperationTestData[] => [
@@ -52,22 +53,27 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             multitenantValue: 'tenantTestValue'
         }
     },
-    // t03 - multitenancy disable, cacheKey set in params right with ttl
+    // t03 - multitenancy disable, cacheKey set in params right with ttl, debug enabled
     {
         given: {
             aggregationPipeline: generateTestAggregate([{$match: {someField: 'someValue'}}]),
             config: {
                 redisUri: 'redisUri',
-                defaultTtl: 30
+                defaultTtl: 30,
+                debugConfig: {
+                    enabled: true
+                }
             },
             params: {
                 ttl: 90,
-                cacheKey: 'aggregateTestKey'
+                cacheKey: 'aggregateTestKey',
+                debug: getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY)
             },
         },
         expected: {
             ttl: 90,
             cacheKey: "aggregateTestKey",
+            debug: expect.any(Function)
         }
     },
 ]
