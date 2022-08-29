@@ -55,6 +55,17 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
 }
 
 /** 
+ * Can be used for manually clearing cache for given recordId, 
+ * usefull when performing silent updates of record
+ * @param {string} key cache key
+*/
+export const clearCacheForRecordId = async (recordId: string): Promise<void> => {
+    recordId = String(recordId)
+    logCacheClear(`Clearing results and hydration cache for recordId`, recordId)
+    await Promise.all([clearResultsCacheWithSet(recordId), clearHydrationCache(recordId)])
+}
+
+/** 
  * Can be used for manually clearing cache for given modelName. 
  * @param {string} modelName name of registerd mongoose model
  * @param {string} multitenantValue [optional] unique value of your tenant

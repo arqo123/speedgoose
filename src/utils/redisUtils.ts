@@ -1,7 +1,7 @@
 import Redis from 'ioredis'
 import {Container} from 'typedi'
 import {clearHydrationCache} from './cacheClientUtils'
-import {CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseDebuggerOperations, SpeedGooseRedisChannels} from '../types/types'
+import {CacheNamespaces, GlobalDiContainerRegistryNames, SpeedGooseRedisChannels} from '../types/types'
 
 const listenOnMessages = async (uri: string): Promise<void> => {
     const redisClient = new Redis(uri)
