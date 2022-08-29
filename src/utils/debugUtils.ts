@@ -23,7 +23,7 @@ const isDebuggingEnabled = (modelName: string, debuggerOperation: SpeedGooseDebu
    return true
 }
 
-const getLabelBackgroundColor = (debug: DebuggerUtils.Debugger) =>
+const getLabelBackgroundColor = (debug: DebuggerUtils.Debugger) : string =>
    '\u001B[4' + (Number(debug.color) < 8 ? Number(debug.color) : '8;5;' + Number(debug.color)) + 'm';
 
 export const getDebugger = (modelName: string, debuggerOperation: SpeedGooseDebuggerOperations): CustomDebugger => {

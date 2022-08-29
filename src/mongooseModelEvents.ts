@@ -1,6 +1,6 @@
 import {Mongoose} from "mongoose"
 import {MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseDebuggerOperations} from "./types/types"
-import {clearHydrationCache} from "./utils/cacheClientUtils"
+import {clearCacheForRecordId} from "./utils/cacheClientUtils"
 import {generateCacheKeyForRecordAndModelName} from "./utils/cacheKeyUtils"
 import {getDebugger} from "./utils/debugUtils"
 import {clearResultsCacheWithSet} from "./utils/redisUtils"
@@ -13,10 +13,7 @@ const clearModelCache = async (context: MongooseDocumentEventsContext): Promise<
 }
 
 const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext): Promise<void> => {
-    const recordId = String(context.record._id)
-    await clearResultsCacheWithSet(recordId)
-    await clearHydrationCache(recordId)
-
+    await clearCacheForRecordId(context.record._id)
     if (context.wasNew || context.wasDeleted) {
         await clearModelCache(context)
     }
