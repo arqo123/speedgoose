@@ -47,7 +47,7 @@ export const setupDebugger = (config: SpeedGooseConfig): void => {
       return
    }
 
-   const modelsToDebug = config?.debugConfig?.debugModels ? [config.debugConfig.debugModels, CACHE_CLEAR] : ['*']
+   const modelsToDebug = config?.debugConfig?.debugModels ? [...config.debugConfig.debugModels, CACHE_CLEAR] : ['*']
    const operationsToDebug = config?.debugConfig?.debugOperations ?? ['*']
 
    const nameSpacesToEnable = modelsToDebug.flatMap(model =>
