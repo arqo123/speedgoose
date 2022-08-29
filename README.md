@@ -93,23 +93,6 @@ applySpeedGooseCacheLayer(mongoose, {
 }
 })
 ```
-
-<!-- Debugging -->
-## :bug: Debugging
-  For enabling debug mode, you have to pass multitenantKey into wrapper config, so it will looks like
-```ts
-applySpeedGooseCacheLayer(mongoose, {
-  redisUri: process.env.REDIS_URI,
-  debugConfig?: {
-        enabled?: true,
-        /** Optional: An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
-        debugModels?: ['yourModelName'],
-        /** Optional: An array of operations to debug, if not set then debugger will log all operations */
-        debugOperations?: SpeedGooseDebuggerOperations[],
-    }
-})
-```
-
  
 SpeedGooseCacheAutoCleaner plugin clears cache for given model each time when new record appears, or some record was deleted. In multitenancy we wan't clear cache for all of the clients - as the change appear only for one tenant. 
 SpeeGoose will handle it for You! But to make it work, you have to follow the rules:
@@ -134,6 +117,23 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline({m
  /// with cacheQuery()
  const result = await model<SomeModelType>.find({}).cacheQuery({multitenantValue : 'someTenantUniqueValue'})
  ```
+
+<!-- Debugging -->
+## :bug: Debugging
+  For enabling debug mode, you have to pass multitenantKey into wrapper config, so it will looks like
+```ts
+applySpeedGooseCacheLayer(mongoose, {
+  redisUri: process.env.REDIS_URI,
+  debugConfig?: {
+        enabled?: true,
+        /** Optional: An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
+        debugModels?: ['yourModelName'],
+        /** Optional: An array of operations to debug, if not set then debugger will log all operations */
+        debugOperations?: SpeedGooseDebuggerOperations[],
+    }
+})
+```
+
 
  <!-- Options -->
 ## :wrench: Configuration and method options
