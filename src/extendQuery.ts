@@ -1,15 +1,14 @@
 import {Mongoose, Query} from "mongoose"
-import {CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "./types/types"
-import {setKeyInResultsCaches} from "./utils/cacheClientUtils"
+import {CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "./types/types"
+import {getResultsFromCache, setKeyInResultsCaches} from "./utils/cacheClientUtils"
 import {hydrateResults} from "./utils/hydrationUtils"
 import {isCountQuery, isLeanQuery, prepareQueryOperationContext} from "./utils/queryUtils"
-import {getValueFromCache} from "./utils/redisUtils"
 
 export const addCachingToQuery = (mongoose: Mongoose): void => {
     /** 
      * Caches given query based operation. 
     */
-    mongoose.Query.prototype.cacheQuery = function <T>(params: SpeedGooseCacheOperationParams = {}): Promise<Query<CachedResult | CachedResult[], any>> {
+    mongoose.Query.prototype.cacheQuery = function <T extends CachedResult>(params: SpeedGooseCacheOperationParams = {}): Promise<Query<CachedResult | CachedResult[], any>> {
         return execQueryWithCache<T>(this, params)
     }
 }
@@ -27,9 +26,9 @@ const execQueryWithCache = async <T extends CachedResult>(
     context: SpeedGooseCacheOperationContext
 ): Promise<Query<CachedResult | CachedResult[], any>> => {
     prepareQueryOperationContext(query, context)
-    
+
     context?.debug(`Reading cache for key`, context.cacheKey)
-    const cachedValue = await getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, context.cacheKey)
+    const cachedValue = await getResultsFromCache(context.cacheKey) as CachedResult
 
     if (cachedValue) {
         context?.debug(`Returning cache for key`, context.cacheKey)

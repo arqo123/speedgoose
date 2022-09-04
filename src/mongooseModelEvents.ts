@@ -2,14 +2,14 @@ import {Mongoose} from "mongoose"
 import {MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseDebuggerOperations} from "./types/types"
 import {clearCacheForRecordId} from "./utils/cacheClientUtils"
 import {generateCacheKeyForRecordAndModelName} from "./utils/cacheKeyUtils"
+import {getCacheStrategyInstance} from "./utils/commonUtils"
 import {getDebugger} from "./utils/debugUtils"
-import {clearResultsCacheWithSet} from "./utils/redisUtils"
 
 const clearModelCache = async (context: MongooseDocumentEventsContext): Promise<void> => {
     const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName)
     context?.debug(`Clearing model cache for key`, modelCacheKey)
 
-    await clearResultsCacheWithSet(modelCacheKey)
+    await getCacheStrategyInstance().clearResultsCacheWithSet(modelCacheKey)
 }
 
 const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext): Promise<void> => {
@@ -36,7 +36,6 @@ const listenOnInternalEvents = (
         })
     })
 }
-
 
 export const registerListenerForInternalEvents = (mongoose: Mongoose): void => {
     listenOnInternalEvents(mongoose, [MongooseDocumentEvents.BEFORE_SAVE, MongooseDocumentEvents.AFTER_REMOVE], clearCacheForRecordCallback)

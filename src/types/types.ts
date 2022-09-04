@@ -1,9 +1,11 @@
 import './mongoose'
-import {Document} from "mongoose";
+import {Aggregate, Document, LeanDocument} from "mongoose";
+import {RedisStrategy} from '../cachingStrategies/redisStrategy';
+import {InMemoryStrategy} from '../cachingStrategies/inMemoryStrategy';
 
-export type AggregationResult = unknown
+export type AggregationResult = Aggregate<any>
 
-export type CachedDocument = Document | Document[]
+export type CachedDocument = Document | Document[] | LeanDocument<any> | LeanDocument<any>[]
 
 export type CachedResult = CachedDocument | AggregationResult | number
 
@@ -26,7 +28,7 @@ export enum SpeedGooseDebuggerOperations {
 
 export type SpeedGooseConfig = {
     /** Connection string for redis containing url, credentials and port. */
-    redisUri: string;
+    redisUri?: string;
     /** Config for multitenancy. */
     multitenancyConfig?: {
         /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
@@ -34,7 +36,7 @@ export type SpeedGooseConfig = {
     },
     /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
     defaultTtl?: number;
-    // * Config for debugging mode supported with debug-js *//
+    /** Config for debugging mode supported with debug-js */
     debugConfig?: {
         /** When set to true, it will log all operations or operations only for enabled namespaces*/
         enabled?: boolean,
@@ -42,7 +44,9 @@ export type SpeedGooseConfig = {
         debugModels?: string[],
         /** An array of operations to debug, if not set then debugger will log all operations */
         debugOperations?: SpeedGooseDebuggerOperations[],
-    }
+    },
+    /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS */
+    sharedCacheStrategy?: SharedCacheStrategies
 }
 
 export type SpeedGooseCacheOperationParams = {
@@ -74,8 +78,9 @@ export type MongooseDocumentEventsContext = {
 
 export enum CacheNamespaces {
     RESULTS_NAMESPACE = 'resultsNamespace',
-    HYDRATED_DOCUMENTS_NAMESPACE = 'hydratedDOcumentsNamespace',
+    HYDRATED_DOCUMENTS_NAMESPACE = 'hydratedDocumentsNamespace',
     HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE = 'hydratedDocumentsVariationsKeyNamespace',
+    RECORD_RESULTS_SETS = 'recordResultsSets',
 }
 
 export enum GlobalDiContainerRegistryNames {
@@ -100,3 +105,10 @@ export enum MongooseCountQueries {
     COUNT_DOCUMENTS = 'countDocuments',
     ESTIMATED_DOCUMENTS_COUNT = 'estimatedDocumentCount'
 }
+
+export enum SharedCacheStrategies {
+    REDIS = 'redis',
+    IN_MEMORY = 'inMemory'
+}
+
+export type CacheStrategieTypes = RedisStrategy | InMemoryStrategy

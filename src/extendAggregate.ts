@@ -1,8 +1,7 @@
 import {Aggregate, Mongoose} from "mongoose";
-import {CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "./types/types";
-import {setKeyInResultsCaches} from "./utils/cacheClientUtils";
+import {AggregationResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "./types/types";
+import {getResultsFromCache, setKeyInResultsCaches} from "./utils/cacheClientUtils";
 import {prepareAggregateOperationParams} from "./utils/queryUtils";
-import {getValueFromCache} from "./utils/redisUtils";
 
 export const addCachingToAggregate = (mongoose: Mongoose): void => {
     /** 
@@ -18,9 +17,9 @@ const execAggregationWithCache = async <R>(
     context: SpeedGooseCacheOperationContext,
 ): Promise<Aggregate<R>> => {
     prepareAggregateOperationParams(aggregation, context)
+
     context?.debug(`Reading cache for key`, context.cacheKey)
-    
-    const cachedValue = await getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, context.cacheKey) as R
+    const cachedValue = await getResultsFromCache(context.cacheKey) as  AggregationResult
 
     if (cachedValue) {
         context?.debug(`Returning cache for key`, context.cacheKey)
@@ -28,7 +27,7 @@ const execAggregationWithCache = async <R>(
     }
     
     context?.debug(`Key didn't exists in cache, retreaving value from database`, context.cacheKey)
-    const result = await aggregation.exec() as R
+    const result = await aggregation.exec() as AggregationResult
 
     if (result) {
         await setKeyInResultsCaches(context, result, aggregation._model)

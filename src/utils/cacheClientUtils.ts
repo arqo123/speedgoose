@@ -2,10 +2,9 @@ import Keyv from "keyv"
 import {Document, Model} from 'mongoose'
 import {CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "../types/types"
 import {generateCacheKeyForModelName} from "./cacheKeyUtils"
-import {getHydrationCache, getHydrationVariationsCache} from "./commonUtils"
+import {getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer} from "./commonUtils"
 import {logCacheClear} from "./debugUtils"
 import {isResultWithIds} from "./mongooseUtils"
-import {addValueToCache, addValueToCacheSet, addValueToManyCachedSets, clearResultsCacheWithSet, removeKeyForCache} from "./redisUtils"
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
     if (keysToClean && Array.isArray(keysToClean)) {
@@ -19,30 +18,28 @@ const setKeyInHydratedDocumentsCache = async <T>(document: Document<T>, key: str
     await getHydrationCache().set(key, document, params.ttl * 1000)
 }
 
-// Todo -> Try to prevent corner case with overwriting of this set
-const setKeyInHydatedDocumentsVariationsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    const recordId = String(document._id)
-    const recordVariationsSet = await getHydrationVariationsCache().get(recordId) ?? new Set()
-
-    recordVariationsSet.add(params.cacheKey)
-    await getHydrationVariationsCache().set(recordId, recordVariationsSet)
-}
-
 const setKeyInResultsCache = async <T extends CachedResult>(results: T, params: SpeedGooseCacheOperationParams): Promise<void> =>
-    addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results)
+    getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results)
 
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const modelCacheKey = generateCacheKeyForModelName(model.modelName, params.multitenantValue)
 
-    await addValueToCacheSet(modelCacheKey, params.cacheKey)
+    await getCacheStrategyInstance().addValueToCacheSet(modelCacheKey, params.cacheKey)
 }
 
 const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)]
     // Todo -> replace this logic with redis pipeline call
     if (resultsIds) {
-        addValueToManyCachedSets(resultsIds, params.cacheKey)
+        getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey)
     }
+}
+// Todo -> Try to prevent corner case with overwriting of this set
+export const addValueToInternalCachedSet = async <T extends string | number>(client: Keyv<Set<string | number>>, setNamespace: string, value: T): Promise<void> => {
+    const cachedSet = await client.get(setNamespace) ?? new Set()
+
+    cachedSet.add(value)
+    await client.set(setNamespace, cachedSet)
 }
 
 /** 
@@ -51,7 +48,7 @@ const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCa
 */
 export const clearCacheForKey = async (key: string): Promise<void> => {
     logCacheClear(`Clearing results cache for key`, key)
-    await removeKeyForCache(CacheNamespaces.RESULTS_NAMESPACE, key)
+    await getCacheStrategyInstance().removeKeyForCache(CacheNamespaces.RESULTS_NAMESPACE, key)
 }
 
 /** 
@@ -62,7 +59,7 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
 export const clearCacheForRecordId = async (recordId: string): Promise<void> => {
     recordId = String(recordId)
     logCacheClear(`Clearing results and hydration cache for recordId`, recordId)
-    await Promise.all([clearResultsCacheWithSet(recordId), clearHydrationCache(recordId)])
+    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), clearHydrationCache(recordId)])
 }
 
 /** 
@@ -74,7 +71,7 @@ export const clearCachedResultsForModel = async (modelName: string, multitenantV
     const modelCacheKey = generateCacheKeyForModelName(modelName, multitenantValue)
     logCacheClear(`Clearing model cache for key`, modelCacheKey)
 
-    await clearResultsCacheWithSet(modelCacheKey)
+    await getCacheStrategyInstance().clearResultsCacheWithSet(modelCacheKey)
 }
 
 export const clearHydrationCache = async (recordId: string): Promise<void> => {
@@ -87,7 +84,7 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
     }
 }
 
-export const setKeyInResultsCaches = async <T extends CachedResult, M>(context: SpeedGooseCacheOperationContext, result: T, model: Model<M>): Promise<void> => {
+export const setKeyInResultsCaches = async <M>(context: SpeedGooseCacheOperationContext, result: CachedResult, model: Model<M>): Promise<void> => {
     context?.debug(`Setting key in cache`, context.cacheKey)
     await setKeyInResultsCache(result, context)
     await setKeyInModelCache(model, context)
@@ -99,7 +96,23 @@ export const setKeyInResultsCaches = async <T extends CachedResult, M>(context: 
     context?.debug(`Cache key set`, context.cacheKey)
 }
 
+const setKeyInHydatedDocumentsVariationsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
+    const recordId = String(document._id)
+    await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key)
+}
+
 export const setKeyInHydrationCaches = async <T>(key: string, document: Document<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     await setKeyInHydratedDocumentsCache(document, key, params)
     await setKeyInHydatedDocumentsVariationsCache(document, key, params)
 }
+
+export const createInMemoryCacheClientWithNamespace = <T>(namespace) => new Keyv<T, any>((
+    {
+        namespace,
+        serialize: objectSerializer,
+        deserialize: objectDeserializer
+    }))
+
+
+export const getResultsFromCache = async <R>(key: string): Promise<R> =>
+    getCacheStrategyInstance().getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, key) 

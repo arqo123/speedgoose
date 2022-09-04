@@ -4,14 +4,19 @@ import {Mongoose} from 'mongoose'
 import Keyv from 'keyv'
 import {GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
 import * as mongooseModelEvents from '../src/mongooseModelEvents'
+import {CommonCacheStrategyAbstract} from '../src/cachingStrategies/commonCacheStrategyAbstract'
 
 const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents,  'registerListenerForInternalEvents')
 
 describe(`applySpeedGooseCacheLayer`, () => {
-
     it(`should register new service in DiContainer with access to redis instance`, async () => {
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS)
         expect(redisInstance).toBeInstanceOf(Redis)
+    })
+    
+    it(`should register new service in DiContainer with access to cache strategy instance`, async () => {
+        const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
+        expect(redisInstance).toBeInstanceOf(CommonCacheStrategyAbstract)
     })
 
     it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {

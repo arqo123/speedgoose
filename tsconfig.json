@@ -3,6 +3,7 @@
       "module": "commonjs",
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
+      "experimentalDecorators": true,
       "resolveJsonModule": true,
       "target": "es2019",
       "noImplicitAny": false,
