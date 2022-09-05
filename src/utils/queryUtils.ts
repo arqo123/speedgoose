@@ -1,5 +1,5 @@
 import {Query, Aggregate} from "mongoose";
-import {MongooseCountQueries, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams, SpeedGooseDebuggerOperations} from "../types/types";
+import {MongooseCountQueries, SpeedGooseCacheOperationContext, SpeedGooseDebuggerOperations} from "../types/types";
 import {generateCacheKeyFromPipeline, generateCacheKeyFromQuery} from "./cacheKeyUtils";
 import {getConfig} from "./commonUtils"
 import {getDebugger} from "./debugUtils";

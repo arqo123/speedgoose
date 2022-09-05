@@ -12,7 +12,7 @@
 
 This project is a next-level mongoose caching library which is fully written in typescript.
 It's caching on two levels. Shared - with redis. And local inside memory. Supports all mongoose operations like find,findOne,count,aggregate... and others. Also supports lean queries. Why it is different? 
-- It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations.
+- It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations. Also supports full in-memory caching, without redis.
 - It has auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime that records changes, all cached related results will be cleared. 
 - It supports deep hydration, for caching not only the root document instances, but also those that are populated.   
 - Supports custom eventing. For example you wan't to remove given results from cache, but removal logic is not based on removing documents from db but rather field based (like `deleted: true`), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
@@ -140,8 +140,8 @@ applySpeedGooseCacheLayer(mongoose, {
 
 #### applySpeedGooseCacheLayer(mongoose, speedgooseConfig)
 ```ts
-    /** Connection string for redis containing url, credentials and port. */
-    redisUri: string;
+    /** Connection string for redis containing url, credentials and port. It's required to make cache sync working */
+    redisUri?: string;
     /** Config for multitenancy. */
     multitenancyConfig?: {
         /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
@@ -149,7 +149,7 @@ applySpeedGooseCacheLayer(mongoose, {
     },
     /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
     defaultTtl?: number;
-    // * Config for debugging mode supported with debug-js *//
+    /** Config for debugging mode supported with debug-js */
     debugConfig?: {
         /** When set to true, it will log all operations or operations only for enabled namespaces*/
         enabled?: boolean,
@@ -157,6 +157,9 @@ applySpeedGooseCacheLayer(mongoose, {
         debugModels?: string[],
         /** An array of operations to debug, if not set then debugger will log all operations */
         debugOperations?: SpeedGooseDebuggerOperations[],
+    /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS 
+     * Avaliable strategies: SharedCacheStrategies.REDIS and SharedCacheStrategies.IN_MEMORY */
+    sharedCacheStrategy?: SharedCacheStrategies  
     }
 ```
 #### ```cacheQuery(operationParams)``` and ```cachePipeline(operationParams)```
@@ -221,9 +224,13 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [ ] extendQuery
      - [ ] mongooseModelEvents
      - [X] wrapper
+     - [ ] inMemory caching strategy
+     - [ ] redis caching strategy
 - [X] Multitenancy (tenant field indicator) support
 - [X] Debugging mode
 - [ ] Support for more cache storages
+      - [X] In memory 
+      - [ ] Memcached
 
 
 See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full list of proposed features (and known issues).

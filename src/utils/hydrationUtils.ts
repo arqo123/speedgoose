@@ -75,4 +75,4 @@ export const hydrateResults = <T extends CachedResult>(
     context: SpeedGooseCacheOperationContext,
     result: CachedDocument
 ): Promise<CachedDocument | CachedDocument[]> =>
-    Array.isArray(result) ? getHydratedDocuments(query, context, result) : getHydratedDocument(query, context, result);
+    Array.isArray(result) ? getHydratedDocuments(query, context, result as Document<T>[]) : getHydratedDocument(query, context, result as Document<T>);
