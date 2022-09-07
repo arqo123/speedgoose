@@ -19,7 +19,7 @@ const setKeyInHydratedDocumentsCache = async <T>(document: Document<T>, key: str
 }
 
 const setKeyInResultsCache = async <T extends CachedResult>(results: T, params: SpeedGooseCacheOperationParams): Promise<void> =>
-    getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results)
+    getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results, params.ttl)
 
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const modelCacheKey = generateCacheKeyForModelName(model.modelName, params.multitenantValue)
