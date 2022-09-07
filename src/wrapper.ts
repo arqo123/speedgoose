@@ -17,7 +17,7 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
         debugModels: config?.debugConfig?.debugModels ?? undefined,
         debugOperations: config?.debugConfig?.debugOperations ?? undefined,
     }
-    config.sharedCacheStrategy = config.sharedCacheStrategy ?? SharedCacheStrategies.IN_MEMORY
+    config.sharedCacheStrategy = config.sharedCacheStrategy ?? SharedCacheStrategies.REDIS
     config.defaultTtl = config.defaultTtl ?? 60
 }
 
