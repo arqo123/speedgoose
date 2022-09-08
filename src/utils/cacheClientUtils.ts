@@ -18,6 +18,11 @@ const setKeyInHydratedDocumentsCache = async <T>(document: Document<T>, key: str
     await getHydrationCache().set(key, document, params.ttl * 1000)
 }
 
+const setKeyInHydatedDocumentsVariationsCache = async <T>(document: Document<T>, key: string): Promise<void> => {
+    const recordId = String(document._id)
+    await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key)
+}
+
 const setKeyInResultsCache = async <T extends CachedResult>(results: T, params: SpeedGooseCacheOperationParams): Promise<void> =>
     getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results, params.ttl)
 
@@ -96,14 +101,9 @@ export const setKeyInResultsCaches = async <M>(context: SpeedGooseCacheOperation
     context?.debug(`Cache key set`, context.cacheKey)
 }
 
-const setKeyInHydatedDocumentsVariationsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    const recordId = String(document._id)
-    await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key)
-}
-
 export const setKeyInHydrationCaches = async <T>(key: string, document: Document<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     await setKeyInHydratedDocumentsCache(document, key, params)
-    await setKeyInHydatedDocumentsVariationsCache(document, key, params)
+    await setKeyInHydatedDocumentsVariationsCache(document, key)
 }
 
 export const createInMemoryCacheClientWithNamespace = <T>(namespace) => new Keyv<T, any>((
