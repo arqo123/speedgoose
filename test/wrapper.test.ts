@@ -2,9 +2,9 @@ import Redis from 'ioredis-mock'
 import Container from 'typedi'
 import {Mongoose} from 'mongoose'
 import Keyv from 'keyv'
-import {GlobalDiContainerRegistryNames, SpeedGooseConfig} from '../src/types/types'
+import {GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig} from '../src/types/types'
 import * as mongooseModelEvents from '../src/mongooseModelEvents'
-import {CommonCacheStrategyAbstract} from '../src/cachingStrategies/commonCacheStrategyAbstract'
+import {InMemoryStrategy} from '../src/cachingStrategies/inMemoryStrategy'
 
 const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents,  'registerListenerForInternalEvents')
 
@@ -16,7 +16,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
     
     it(`should register new service in DiContainer with access to cache strategy instance`, async () => {
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
-        expect(redisInstance).toBeInstanceOf(CommonCacheStrategyAbstract)
+        expect(redisInstance).toBeInstanceOf(InMemoryStrategy)
     })
 
     it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {
@@ -32,6 +32,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
         expect(config).toBeInstanceOf(Object)
         expect(config.redisUri).toEqual('redis://localhost:6379')
         expect(config.defaultTtl).toEqual(60)
+        expect(config.sharedCacheStrategy).toBe(SharedCacheStrategies.IN_MEMORY)
     })
 
     it(`should register new service in DiContainer with access to mongoose instance`, async () => {

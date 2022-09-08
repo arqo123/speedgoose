@@ -10,17 +10,17 @@ jest.mock('ioredis', () => {
     };
 });
 
-const registerMongooseTestModel = () => {
+export const registerMongooseTestModel = () => {
     const schema = new mongoose.Schema({
         name: {type: String},
         fieldA: {type: Schema.Types.Mixed},
         fieldB: {type: Schema.Types.Mixed}
     });
 
-    return mongoose.model(TEST_MODEL_NAME, schema);
+    return mongoose.models[TEST_MODEL_NAME] ?? mongoose.model(TEST_MODEL_NAME, schema);
 }
 
 beforeAll(async () => {
     await applySpeedGooseCacheLayer(mongoose, TEST_SPEEDGOOSE_CONFIG)
     await registerMongooseTestModel()
- });
+});
