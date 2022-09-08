@@ -29,4 +29,4 @@ export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => g
 export const getMongooseModelByName = <T>(mongooseModelName: string): Model<T> => getMongooseInstance().models[mongooseModelName]
 
 export const getMongooseInstance = (): Mongoose =>
-    Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
+    Container.has(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS) ? Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS) : null

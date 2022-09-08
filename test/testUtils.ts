@@ -1,9 +1,11 @@
 import mongoose, {Aggregate, PipelineStage, Query, Document} from 'mongoose'
 import {getMongooseInstance} from '../src/utils/mongooseUtils'
 import {TEST_MODEL_NAME} from './constants'
+import {registerMongooseTestModel} from './setupTestEnv'
 import {TestModel} from './types'
 
-export const getMongooseTestModel = (): mongoose.Model<TestModel> => getMongooseInstance().models[TEST_MODEL_NAME]
+export const getMongooseTestModel = (): mongoose.Model<TestModel> =>
+    getMongooseInstance()?.models[TEST_MODEL_NAME] ?? registerMongooseTestModel()
 
 export const generateTestAggregate = (pipeline: PipelineStage[]): Aggregate<any> =>
     getMongooseTestModel().aggregate(pipeline)
