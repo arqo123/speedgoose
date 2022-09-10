@@ -6,8 +6,12 @@
  <img src="speedgoose.png" alt="Logo" width="180" >
  
 </div> 
-<!-- ABOUT THE PROJECT -->
-
+ 
+[![Node.js CI](https://github.com/arqo123/speedgoose/workflows/Node.js%20CI/badge.svg)](https://github.com/arqo123/speedgoose/actions?query=workflow:"Node.js+CI")
+[![Code Grade](https://api.codiga.io/project/34556/status/svg)](https://www.codiga.io)
+[![Code Quality](https://api.codiga.io/project/34556/score/svg)](https://www.codiga.io)
+[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
+ 
 ## About The Project
 
 This project is a next-level mongoose caching library which is fully written in typescript.
