@@ -2,9 +2,10 @@ import {CacheNamespaces} from "../../src/types/types"
 import * as cacheClientUtils from "../../src/utils/cacheClientUtils"
 import {getCacheStrategyInstance, objectDeserializer, objectSerializer} from "../../src/utils/commonUtils"
 import {cachingTestCases} from "../assets/utils/cacheClientUtils"
-import {generateTestDocument} from "../testUtils"
+import {generateTestDocument, getValuesFromSet} from "../testUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
 import {ObjectId} from "mongodb"
+import Keyv from "keyv"
 
 const mockedGetHydrationCache = jest.spyOn(commonUtils, 'getHydrationCache')
 const addValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet')
@@ -72,8 +73,8 @@ describe('setKeyInHydrationCaches', () => {
         const set1 = await commonUtils.getHydrationVariationsCache().get(id1.toString()) as Set<string>
         const set2 = await commonUtils.getHydrationVariationsCache().get(id2.toString()) as Set<string>
 
-        expect(Array.from(set1).sort()).toEqual(['testKey1', 'testKey1_varation'].sort())
-        expect(Array.from(set2).sort()).toEqual(['testKey2',].sort())
+        expect(getValuesFromSet(set1)).toEqual(['testKey1', 'testKey1_varation'].sort())
+        expect(getValuesFromSet(set2)).toEqual(['testKey2',].sort())
     })
 
     test(`should allow to overwrite keys in hydration cache `, async () => {
@@ -87,6 +88,43 @@ describe('setKeyInHydrationCaches', () => {
         expect(await commonUtils.getHydrationCache().get('testKey1')).toEqual(document4)
 
         const set1 = await commonUtils.getHydrationVariationsCache().get(id1.toString()) as Set<string>
-        expect(Array.from(set1).sort()).toEqual(['testKey1', 'testKey1_varation'].sort())
+        expect(getValuesFromSet(set1)).toEqual(['testKey1', 'testKey1_varation'].sort())
+    })
+})
+
+
+describe('addValueToInternalCachedSet', () => {
+    const cacheClient: Keyv<Set<string | number>> = cacheClientUtils.createInMemoryCacheClientWithNamespace('testNamespace')
+
+    test(`should create set with first element if does not exists for given key`, async () => {
+        await cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'firstNamespace', 'firstValue')
+        const set = await cacheClient.get('firstNamespace') as Set<string>
+
+        expect(getValuesFromSet(set)).toEqual(['firstValue'])
+    })
+
+    test(`should add next element to exisitng set`, async () => {
+        await cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'secondNamespace', 'firstValue')
+        await cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'secondNamespace', 'secondValue')
+
+        const set = await cacheClient.get('secondNamespace') as Set<string>
+
+        expect(getValuesFromSet(set)).toEqual(['firstValue', 'secondValue'])
+    })
+
+    test(`should prevent parrarel saves into set`, async () => {
+        await Promise.all(
+            [cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'thirdNamepsace', 'firstValue'),
+            cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'thirdNamepsace', 'secondValue'),
+            cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'thirdNamepsace', 'thirdValue'),
+            cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'thirdNamepsace', 'fourthValue'),
+            cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'thirdNamepsace', 'fifthValue'),
+            cacheClientUtils.addValueToInternalCachedSet(cacheClient, 'thirdNamepsace', 'sixthValue')
+            ])
+
+
+        const set = await cacheClient.get('thirdNamepsace') as Set<string>
+
+        expect(getValuesFromSet(set)).toEqual(['firstValue', 'secondValue', 'thirdValue', 'fourthValue', 'fifthValue', 'sixthValue'].sort())
     })
 })

@@ -1,3 +1,4 @@
+import Keyv from 'keyv';
 import './mongoose'
 import {Aggregate, Document, LeanDocument} from "mongoose";
 import {RedisStrategy} from '../cachingStrategies/redisStrategy';
@@ -91,6 +92,7 @@ export enum GlobalDiContainerRegistryNames {
     KEYV_REDIS_GLOBAL_ACCESS = 'keyvRedisAccess',
     HYDRATED_DOCUMENTS_CACHE_ACCESS = 'hydratedDocumentsCacheAccess',
     HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS = 'hydratedDocumentsVariationsCacheAccess',
+    GLOBAL_CACHED_SETS_QUEUE_ACCESS = 'globalCachedSetsQueueAccess',
 }
 
 export enum SpeedGooseRedisChannels {
@@ -112,3 +114,9 @@ export enum SharedCacheStrategies {
 }
 
 export type CacheStrategieTypes = RedisStrategy | InMemoryStrategy
+
+export type CacheSetQueuedTask = {
+    client: Keyv<Set<string | number>>,
+    namespace: string,
+    value: string | number
+}

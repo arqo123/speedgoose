@@ -21,3 +21,5 @@ export const generateTestDocument = (value: Record<string, unknown>): Document<a
 
     return new testModel(value)
 }
+
+export const getValuesFromSet = <T>(set: Set<T>): T[] => Array.from(set).sort()

@@ -2,18 +2,20 @@ import Redis from 'ioredis-mock'
 import Container from 'typedi'
 import {Mongoose} from 'mongoose'
 import Keyv from 'keyv'
-import {GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig} from '../src/types/types'
+import { GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig} from '../src/types/types'
 import * as mongooseModelEvents from '../src/mongooseModelEvents'
+import * as queueUtils from '../src/utils/queueUtils'
 import {InMemoryStrategy} from '../src/cachingStrategies/inMemoryStrategy'
 
-const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents,  'registerListenerForInternalEvents')
+const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents, 'registerListenerForInternalEvents')
+const registerInternalQueueWorkersSpy = jest.spyOn(queueUtils, 'registerInternalQueueWorkers')
 
 describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register new service in DiContainer with access to redis instance`, async () => {
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS)
         expect(redisInstance).toBeInstanceOf(Redis)
     })
-    
+
     it(`should register new service in DiContainer with access to cache strategy instance`, async () => {
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
         expect(redisInstance).toBeInstanceOf(InMemoryStrategy)
@@ -22,7 +24,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {
         const hydratedDocumnetsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS)
         const hydratedDocumentVariationsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS)
-    
+
         expect(hydratedDocumnetsCache).toBeInstanceOf(Keyv)
         expect(hydratedDocumentVariationsCache).toBeInstanceOf(Keyv)
     })
@@ -54,5 +56,9 @@ describe(`applySpeedGooseCacheLayer`, () => {
 
     it(`should register internal mongoose events`, async () => {
         expect(registerListenerForInternalEventsSpy).toHaveBeenCalled()
+    })
+
+    it(`should register new service in DiContainer with access to queues`, async () => {
+        expect(registerInternalQueueWorkersSpy).toBeCalled()
     })
 })
