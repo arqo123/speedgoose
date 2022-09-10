@@ -5,6 +5,7 @@ import {generateCacheKeyForModelName} from "./cacheKeyUtils"
 import {getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer} from "./commonUtils"
 import {logCacheClear} from "./debugUtils"
 import {isResultWithIds} from "./mongooseUtils"
+import {getCachedSetsQueue} from "./queueUtils"
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
     if (keysToClean && Array.isArray(keysToClean)) {
@@ -39,12 +40,9 @@ const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCa
         getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey)
     }
 }
-// Todo -> Try to prevent corner case with overwriting of this set
-export const addValueToInternalCachedSet = async <T extends string | number>(client: Keyv<Set<string | number>>, setNamespace: string, value: T): Promise<void> => {
-    const cachedSet = await client.get(setNamespace) ?? new Set()
 
-    cachedSet.add(value)
-    await client.set(setNamespace, cachedSet)
+export const addValueToInternalCachedSet = async <T extends string | number>(client: Keyv<Set<string | number>>, namespace: string, value: T): Promise<void> => {
+    await getCachedSetsQueue().push({client, namespace, value})
 }
 
 /** 

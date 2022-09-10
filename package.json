@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "debug": "^4.3.4",
+    "fastq": "^1.13.0",
     "ioredis": "^5.2.2",
     "keyv": "^4.4.1",
     "mongoose": "^6.5.2",

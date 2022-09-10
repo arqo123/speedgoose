@@ -20,9 +20,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
         const keyWithNamespace = `${namespace}:${key}`
 
-        const result = await this.resultsCacheClient.get(keyWithNamespace) as CachedResult
-
-        return result
+        return this.resultsCacheClient.get(keyWithNamespace) as CachedResult
     }
 
     public async addValueToCache<T extends CachedResult>(namespace: string, key: string, value: T, ttl?: number): Promise<void> {
