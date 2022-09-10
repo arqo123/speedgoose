@@ -43,7 +43,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         await this.resultsCacheClient.delete(`${namespace}:${key}`)
     }
 
-    public async clearResultsCacheWithSet<T>(namespace: string): Promise<void> {
+    public async clearResultsCacheWithSet(namespace: string): Promise<void> {
         const keys = await this.getValuesFromCachedSet(namespace)
         if (keys?.length > 0) {
             await this.resultsCacheClient.delete(keys.map(key => `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`))

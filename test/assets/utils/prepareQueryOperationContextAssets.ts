@@ -4,7 +4,7 @@ import {generateTestFindQuery} from "../../testUtils"
 
 type AggregateParamsOperationTestData = {
     given: {
-        query: Query<any, any>
+        query: Query<unknown, unknown>
         config: SpeedGooseConfig,
         params: SpeedGooseCacheOperationContext
     },

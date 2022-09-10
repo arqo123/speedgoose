@@ -5,7 +5,7 @@ import {generateTestAggregate} from "../../testUtils"
 
 type AggregateParamsOperationTestData = {
     given: {
-        aggregationPipeline: Aggregate<any>
+        aggregationPipeline: Aggregate<unknown>
         config: SpeedGooseConfig,
         params: SpeedGooseCacheOperationContext
     },
