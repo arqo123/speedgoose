@@ -10,6 +10,7 @@ import {RedisStrategy} from './cachingStrategies/redisStrategy';
 import {createInMemoryCacheClientWithNamespace} from './utils/cacheClientUtils'
 import {InMemoryStrategy} from './cachingStrategies/inMemoryStrategy';
 import {registerRedisClient} from './utils/redisUtils';
+import {registerInternalQueueWorkers} from './utils/queueUtils';
 
 const prepareConfig = (config: SpeedGooseConfig): void => {
     config.debugConfig = {
@@ -58,6 +59,7 @@ export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: Spee
     registerGlobalMongooseAccess(mongoose)
     await registerRedisClient(config.redisUri)
     await registerCacheStrategyInstance(config)
+    registerInternalQueueWorkers()
     registerHydrationCaches()
     registerListenerForInternalEvents(mongoose)
     addCachingToQuery(mongoose)

@@ -23,8 +23,10 @@ const isDebuggingEnabled = (modelName: string, debuggerOperation: SpeedGooseDebu
    return true
 }
 
-const getLabelBackgroundColor = (debug: DebuggerUtils.Debugger) : string =>
+const getLabelBackgroundColor = (debug: DebuggerUtils.Debugger): string =>
    '\u001B[4' + (Number(debug.color) < 8 ? Number(debug.color) : '8;5;' + Number(debug.color)) + 'm';
+
+export const emptyDebugCallback = (): object => ({})
 
 export const getDebugger = (modelName: string, debuggerOperation: SpeedGooseDebuggerOperations): CustomDebugger => {
    if (isDebuggingEnabled(modelName, debuggerOperation)) {
@@ -32,7 +34,7 @@ export const getDebugger = (modelName: string, debuggerOperation: SpeedGooseDebu
 
       return (label: string, ...dataToLog: unknown[]) => debug(getLabelBackgroundColor(debug), label, '\x1b[0m', ...dataToLog)
    }
-   return () => ({})
+   return emptyDebugCallback
 }
 
 export const logCacheClear = (label: string, cacheKey: string): void => {
@@ -56,3 +58,4 @@ export const setupDebugger = (config: SpeedGooseConfig): void => {
 
    DebuggerUtils.enable(nameSpacesToEnable.toString())
 }
+
