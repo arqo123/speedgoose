@@ -13,6 +13,7 @@
 [![Node.js CI](https://github.com/arqo123/speedgoose/workflows/Node.js%20CI/badge.svg)](https://github.com/arqo123/speedgoose/actions?query=workflow:"Node.js+CI")
 [![Code Grade](https://api.codiga.io/project/34556/status/svg)](https://www.codiga.io)
 [![Code Quality](https://api.codiga.io/project/34556/score/svg)](https://www.codiga.io)
+[![codecov](https://codecov.io/gh/arqo123/speedgoose/branch/master/graph/badge.svg?token=33R2CJ6I2C)](https://codecov.io/gh/arqo123/speedgoose)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
  
  
