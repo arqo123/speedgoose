@@ -27,7 +27,7 @@ const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
 }
 
 const registerHydrationCaches = (): void => {
-    Container.set<Keyv<Document, any>>(
+    Container.set<Keyv<Document>>(
         GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS,
         createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_NAMESPACE)
     )

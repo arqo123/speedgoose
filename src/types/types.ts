@@ -4,11 +4,11 @@ import {Aggregate, Document, LeanDocument} from "mongoose";
 import {RedisStrategy} from '../cachingStrategies/redisStrategy';
 import {InMemoryStrategy} from '../cachingStrategies/inMemoryStrategy';
 
-export type AggregationResult = Aggregate<any>
+export type AggregationResult = Aggregate<unknown>
+export type CachedDocument = Document | Document[]
+export type CachedLeanDocument = LeanDocument<unknown> | LeanDocument<unknown>[]
 
-export type CachedDocument = Document | Document[] | LeanDocument<any> | LeanDocument<any>[]
-
-export type CachedResult = CachedDocument | AggregationResult | number | string | string[] | number[]
+export type CachedResult = CachedDocument | CachedLeanDocument | AggregationResult | number | string | string[] | number[]
 
 export type SpeedGooseCacheAutoCleanerOptions = {
     /**

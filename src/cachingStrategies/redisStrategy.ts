@@ -3,7 +3,7 @@ import Container from "typedi";
 import {staticImplements} from "../types/decorators";
 import {CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames} from "../types/types";
 import {getConfig} from "../utils/commonUtils";
-import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods} from "./commonCacheStrategyAbstract";
+import {CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods} from "./commonCacheStrategyAbstract";
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
 export class RedisStrategy extends CommonCacheStrategyAbstract {
@@ -16,7 +16,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         Container.set<RedisStrategy>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS, strategy)
     }
 
-    public async getValueFromCache<R>(namespace: string, key: string): Promise<R> {
+    public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
         const keyWithNamespace = `${namespace}:${key}`
 
         const result = await this.client.get(keyWithNamespace)
@@ -45,7 +45,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         await this.client.del(`${namespace}:${key}`)
     }
 
-    public async clearResultsCacheWithSet<T>(namespace: string): Promise<void> {
+    public async clearResultsCacheWithSet(namespace: string): Promise<void> {
         const keys = await this.getValuesFromCachedSet(namespace)
         if (keys?.length > 0) {
             await this.client.del(keys.map(key => `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`))
@@ -64,10 +64,9 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     private setClient(uri: string): void {
         this.client = new Redis(uri)
     }
- 
+
     private async init(): Promise<void> {
         const config = getConfig()
         this.setClient(config.redisUri)
-     }
+    }
 }
- 
