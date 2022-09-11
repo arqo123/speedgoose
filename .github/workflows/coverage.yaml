@@ -1,8 +1,6 @@
-name: Build, Linter and Test
+name: Tests Coverage - Codecov
 
-on:
-  pull_request:
-    branches: '*'
+on: [push, pull_request]
 
 jobs:
   build:
@@ -19,15 +17,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-  
+
       - name: Install dependencies
         run: yarn install
-   
-      - name: Check linter
-        run: yarn lint:ci
-  
-      - name: Check linter
-        run: yarn test
-  
-      - name: Check linter
-        run: yarn build
+
+      - name: Check tests coverage
+        run: yarn test -- --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
