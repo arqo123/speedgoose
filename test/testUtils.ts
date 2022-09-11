@@ -7,16 +7,16 @@ import {TestModel} from './types'
 export const getMongooseTestModel = (): mongoose.Model<TestModel> =>
     getMongooseInstance()?.models[TEST_MODEL_NAME] ?? registerMongooseTestModel()
 
-export const generateTestAggregate = (pipeline: PipelineStage[]): Aggregate<any> =>
+export const generateTestAggregate = (pipeline: PipelineStage[]): Aggregate<unknown> =>
     getMongooseTestModel().aggregate(pipeline)
 
-export const generateTestFindQuery = (query: Record<string, unknown>): Query<any, any> =>
+export const generateTestFindQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
     getMongooseTestModel().find(query)
 
-export const generateTestFindOneQuery = (query: Record<string, unknown>): Query<any, any> =>
+export const generateTestFindOneQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
     getMongooseTestModel().findOne(query)
 
-export const generateTestDocument = (value: Record<string, unknown>): Document<any, any> => {
+export const generateTestDocument = (value: Record<string, unknown>): Document<unknown, unknown> => {
     const testModel = getMongooseTestModel()
 
     return new testModel(value)

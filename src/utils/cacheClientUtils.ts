@@ -104,13 +104,14 @@ export const setKeyInHydrationCaches = async <T>(key: string, document: Document
     await setKeyInHydatedDocumentsVariationsCache(document, key)
 }
 
-export const createInMemoryCacheClientWithNamespace = <T>(namespace) => new Keyv<T, any>((
+export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) => new Keyv<T>(
+    //@ts-expect-error There is a incorrect typo in the library for custom serializers
     {
         namespace,
         serialize: objectSerializer,
         deserialize: objectDeserializer
-    }))
+    })
 
 
-export const getResultsFromCache = async <R>(key: string): Promise<R> =>
+export const getResultsFromCache = async (key: string): Promise<CachedResult> =>
     getCacheStrategyInstance().getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, key) 

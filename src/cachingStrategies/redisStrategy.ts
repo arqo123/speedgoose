@@ -16,7 +16,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         Container.set<RedisStrategy>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS, strategy)
     }
 
-    public async getValueFromCache<R>(namespace: string, key: string): Promise<R> {
+    public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
         const keyWithNamespace = `${namespace}:${key}`
 
         const result = await this.client.get(keyWithNamespace)
@@ -64,10 +64,9 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     private setClient(uri: string): void {
         this.client = new Redis(uri)
     }
- 
+
     private async init(): Promise<void> {
         const config = getConfig()
         this.setClient(config.redisUri)
-     }
+    }
 }
- 
