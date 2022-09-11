@@ -6,14 +6,16 @@
  <img src="speedgoose.png" alt="Logo" width="180" >
  
 </div> 
+
+## About The Project
+ 
  
 [![Node.js CI](https://github.com/arqo123/speedgoose/workflows/Node.js%20CI/badge.svg)](https://github.com/arqo123/speedgoose/actions?query=workflow:"Node.js+CI")
 [![Code Grade](https://api.codiga.io/project/34556/status/svg)](https://www.codiga.io)
 [![Code Quality](https://api.codiga.io/project/34556/score/svg)](https://www.codiga.io)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
  
-## About The Project
-
+ 
 This project is a next-level mongoose caching library which is fully written in typescript.
 It's caching on two levels. Shared - with redis. And local inside memory. Supports all mongoose operations like find,findOne,count,aggregate... and others. Also supports lean queries. Why it is different? 
 - It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations. Also supports full in-memory caching, without redis.
@@ -249,7 +251,6 @@ Want to contribute? Great! Open new issue or pull request with the solution for 
 
 <!-- Known bugs -->
 ## :warning: Known bugs
-- They might be some problems with timings between events, but only when running server in cluster mode. Cache sync was done with redis Pub/Sub, but i'm not 100% sure if it will work in every case. 
 - Let me know if there are any, I will resolve them fast as SpeedGoose is! 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
