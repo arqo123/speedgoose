@@ -13,6 +13,7 @@ jest.mock('ioredis', () => {
 export const registerMongooseTestModel = () => {
     const schema = new mongoose.Schema({
         name: {type: String},
+        tenantId: {type: String},
         fieldA: {type: Schema.Types.Mixed},
         fieldB: {type: Schema.Types.Mixed}
     });
