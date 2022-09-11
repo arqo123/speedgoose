@@ -16,7 +16,6 @@
 [![codecov](https://codecov.io/gh/arqo123/speedgoose/branch/master/graph/badge.svg?token=33R2CJ6I2C)](https://codecov.io/gh/arqo123/speedgoose)
 [![Known Vulnerabilities](https://snyk.io//test/github/arqo123/speedgoose/badge.svg?targetFile=package.json)](https://snyk.io//test/github/arqo123/speedgoose?targetFile=package.json)
 ![NPM download/month](https://img.shields.io/npm/dm/speedgoose.svg)
-![NPM download total](https://img.shields.io/npm/dt/speedgoose.svg)  
 
  
 This project is a next-level mongoose caching library which is fully written in typescript.
