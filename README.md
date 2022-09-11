@@ -14,8 +14,10 @@
 [![Code Grade](https://api.codiga.io/project/34556/status/svg)](https://www.codiga.io)
 [![Code Quality](https://api.codiga.io/project/34556/score/svg)](https://www.codiga.io)
 [![codecov](https://codecov.io/gh/arqo123/speedgoose/branch/master/graph/badge.svg?token=33R2CJ6I2C)](https://codecov.io/gh/arqo123/speedgoose)
-[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
- 
+[![Known Vulnerabilities](https://snyk.io//test/github/arqo123/speedgoose/badge.svg?targetFile=package.json)](https://snyk.io//test/github/arqo123/speedgoose?targetFile=package.json)
+![NPM download/month](https://img.shields.io/npm/dm/speedgoose.svg)
+![NPM download total](https://img.shields.io/npm/dt/speedgoose.svg)  
+
  
 This project is a next-level mongoose caching library which is fully written in typescript.
 It's caching on two levels. Shared - with redis. And local inside memory. Supports all mongoose operations like find,findOne,count,aggregate... and others. Also supports lean queries. Why it is different? 
