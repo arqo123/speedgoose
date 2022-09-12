@@ -20,7 +20,7 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): stri
 )
 
 export const generateCacheKeyForSingleDocument = <T extends CachedDocument>(query: Query<T, T>, record: Document<T>): string => {
-    if (!query.selected) {
+    if (!query.selected() && query.getPopulatedPaths().length === 0) {
         return String(record._id)
     }
 
