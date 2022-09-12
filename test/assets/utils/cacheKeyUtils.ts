@@ -51,6 +51,7 @@ export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyFor
     const id1 = new ObjectId()
     const id2 = new ObjectId()
     const id3 = new ObjectId()
+    const id4 = new ObjectId()
 
     return [
         // t01 - populate inside query and 
@@ -80,7 +81,14 @@ export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyFor
             },
             expected: `${id3}_fieldA:1,name:1,tenantId:-1_modelToPopulate,secondModelToPopulate`
         },
-
+        // t04 - no selection, no population
+        {
+            given: {
+                query: generateTestFindQuery({tenantId: 'tenantTestValue'}) as Query<CachedDocument, CachedDocument>,
+                record: generateTestDocument({_id: id4, name: 'tc04'}),
+            },
+            expected: String(id4)
+        },
     ]
 
 }
