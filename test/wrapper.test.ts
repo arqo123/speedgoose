@@ -1,11 +1,15 @@
 import Redis from 'ioredis-mock'
 import Container from 'typedi'
-import {Mongoose} from 'mongoose'
+import mongoose, {Mongoose} from 'mongoose'
 import Keyv from 'keyv'
-import { GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig} from '../src/types/types'
+import {GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig} from '../src/types/types'
+import {InMemoryStrategy} from '../src/cachingStrategies/inMemoryStrategy'
+import {applySpeedGooseCacheLayer} from "../src/wrapper"
 import * as mongooseModelEvents from '../src/mongooseModelEvents'
 import * as queueUtils from '../src/utils/queueUtils'
-import {InMemoryStrategy} from '../src/cachingStrategies/inMemoryStrategy'
+import * as commonUtils from "../src/utils/commonUtils"
+import {RedisStrategy} from '../src/cachingStrategies/redisStrategy'
+
 
 const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents, 'registerListenerForInternalEvents')
 const registerInternalQueueWorkersSpy = jest.spyOn(queueUtils, 'registerInternalQueueWorkers')
@@ -17,8 +21,8 @@ describe(`applySpeedGooseCacheLayer`, () => {
     })
 
     it(`should register new service in DiContainer with access to cache strategy instance`, async () => {
-        const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
-        expect(redisInstance).toBeInstanceOf(InMemoryStrategy)
+        const cachingStrategy = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
+        expect(cachingStrategy).toBeInstanceOf(InMemoryStrategy)
     })
 
     it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {
@@ -60,5 +64,15 @@ describe(`applySpeedGooseCacheLayer`, () => {
 
     it(`should register new service in DiContainer with access to queues`, async () => {
         expect(registerInternalQueueWorkersSpy).toBeCalled()
+    })
+
+    it(`should set redis caching strategy if it was set in config`, async () => {
+        await applySpeedGooseCacheLayer(mongoose, {sharedCacheStrategy: SharedCacheStrategies.REDIS, redisUri: 'redisUri'})
+        expect(commonUtils.getCacheStrategyInstance()).toBeInstanceOf(RedisStrategy)
+    })
+
+    it(`should set in memory caching strategy if it was set in config`, async () => {
+        await applySpeedGooseCacheLayer(mongoose, {sharedCacheStrategy: SharedCacheStrategies.IN_MEMORY})
+        expect(commonUtils.getCacheStrategyInstance()).toBeInstanceOf(InMemoryStrategy)
     })
 })

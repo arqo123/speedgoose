@@ -54,7 +54,7 @@ describe('setKeyInHydrationCaches', () => {
     const document2 = generateTestDocument({_id: id2, name: 'testModelName2'})
     const document3 = generateTestDocument({_id: id1, name: 'testModelName1_withVariation', fieldA: 'fieldA'})
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         await cacheClientUtils.setKeyInHydrationCaches('testKey1', document1, {})
         await cacheClientUtils.setKeyInHydrationCaches('testKey2', document2, {})
         await cacheClientUtils.setKeyInHydrationCaches('testKey1_varation', document3, {})
