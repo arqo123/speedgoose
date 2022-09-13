@@ -89,6 +89,7 @@ export enum GlobalDiContainerRegistryNames {
     CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
     MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess',
     REDIS_GLOBAL_ACCESS = 'redisAccess',
+    REDIS_LISTENER_GLOBAL_ACCESS = 'redisListenerAccess',
     KEYV_REDIS_GLOBAL_ACCESS = 'keyvRedisAccess',
     HYDRATED_DOCUMENTS_CACHE_ACCESS = 'hydratedDocumentsCacheAccess',
     HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS = 'hydratedDocumentsVariationsCacheAccess',

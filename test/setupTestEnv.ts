@@ -3,6 +3,7 @@ import mongoose, {Schema} from 'mongoose'
 import Redis from 'ioredis-mock'
 import {applySpeedGooseCacheLayer} from "../src/wrapper";
 import {TEST_MODEL_NAME, TEST_SPEEDGOOSE_CONFIG} from './constants';
+import Container from 'typedi';
 
 jest.mock('ioredis', () => {
     return function () {
@@ -21,7 +22,8 @@ export const registerMongooseTestModel = () => {
     return mongoose.models[TEST_MODEL_NAME] ?? mongoose.model(TEST_MODEL_NAME, schema);
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
+    Container.reset()
     await applySpeedGooseCacheLayer(mongoose, TEST_SPEEDGOOSE_CONFIG)
     await registerMongooseTestModel()
 });
