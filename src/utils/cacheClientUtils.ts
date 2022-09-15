@@ -24,7 +24,7 @@ const setKeyInHydatedDocumentsVariationsCache = async <T>(document: Document<T>,
     await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key)
 }
 
-const setKeyInResultsCache = async <T extends CachedResult>(results: T, params: SpeedGooseCacheOperationParams): Promise<void> =>
+const setKeyInResultsCache = async <T>(results: CachedResult<T>, params: SpeedGooseCacheOperationParams): Promise<void> =>
     getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results, params.ttl)
 
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
@@ -33,7 +33,7 @@ const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOpe
     await getCacheStrategyInstance().addValueToCacheSet(modelCacheKey, params.cacheKey)
 }
 
-const setKeyInRecordsCache = async (result: CachedDocument, params: SpeedGooseCacheOperationParams): Promise<void> => {
+const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)]
     // Todo -> replace this logic with redis pipeline call
     if (resultsIds) {
@@ -87,13 +87,13 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
     }
 }
 
-export const setKeyInResultsCaches = async <M>(context: SpeedGooseCacheOperationContext, result: CachedResult, model: Model<M>): Promise<void> => {
+export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperationContext, result: CachedResult<T>, model: Model<T>): Promise<void> => {
     context?.debug(`Setting key in cache`, context.cacheKey)
     await setKeyInResultsCache(result, context)
     await setKeyInModelCache(model, context)
 
     if (isResultWithIds(result)) {
-        await setKeyInRecordsCache(result as CachedDocument, context)
+        await setKeyInRecordsCache(result as CachedDocument<T>, context)
     }
 
     context?.debug(`Cache key set`, context.cacheKey)
