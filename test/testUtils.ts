@@ -1,10 +1,10 @@
-import mongoose, {Aggregate, PipelineStage, Query, Document} from 'mongoose'
+import {Aggregate, PipelineStage, Query} from 'mongoose'
 import {getMongooseInstance} from '../src/utils/mongooseUtils'
 import {TEST_MODEL_NAME} from './constants'
 import {registerMongooseTestModel} from './setupTestEnv'
-import {TestModel} from './types'
+import {MongooseTestDocument, MongooseTestModel} from './types'
 
-export const getMongooseTestModel = (): mongoose.Model<TestModel> =>
+export const getMongooseTestModel = (): MongooseTestModel =>
     getMongooseInstance()?.models[TEST_MODEL_NAME] ?? registerMongooseTestModel()
 
 export const generateTestAggregate = (pipeline: PipelineStage[]): Aggregate<unknown> =>
@@ -16,10 +16,11 @@ export const generateTestFindQuery = (query: Record<string, unknown>): Query<unk
 export const generateTestFindOneQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
     getMongooseTestModel().findOne(query)
 
-export const generateTestDocument = (value: Record<string, unknown>): Document<unknown, unknown> => {
+export const generateTestDocument = (value: Record<string, unknown>): MongooseTestDocument => {
     const testModel = getMongooseTestModel()
+    const testModelInstance = new testModel(value)
 
-    return new testModel(value)
+    return testModelInstance
 }
 
 export const getValuesFromSet = <T>(set: Set<T>): T[] => Array.from(set).sort()

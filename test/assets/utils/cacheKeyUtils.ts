@@ -2,6 +2,7 @@ import {ObjectId} from 'mongodb'
 import {Document, Query} from 'mongoose'
 import {CachedDocument, SpeedGooseConfig} from "../../../src/types/types"
 import {generateTestDocument, generateTestFindQuery} from '../../testUtils'
+import {TestModel} from '../../types'
 
 type GenerateCacheKeyForRecordAndModelNameTestData = {
     given: {
@@ -15,7 +16,7 @@ type GenerateCacheKeyForRecordAndModelNameTestData = {
 type GenerateCacheKeyForSingleDocumentTestData = {
     given: {
         record: Document,
-        query: Query<CachedDocument, CachedDocument>
+        query: Query<CachedDocument<TestModel>, CachedDocument<TestModel>>
     },
     expected: string
 }
@@ -24,7 +25,7 @@ export const generateCacheKeyForRecordAndModelNameTestData = (): GenerateCacheKe
     // t01 - multitenancy with tenant multitenantValue in config
     {
         given: {
-            record: generateTestDocument({name: 'tc01', tenantId: 'tentant01'}) as CachedDocument,
+            record: generateTestDocument({name: 'tc01', tenantId: 'tentant01'}),
             config: {
                 multitenancyConfig: {
                     multitenantKey: 'tenantId'
@@ -37,7 +38,7 @@ export const generateCacheKeyForRecordAndModelNameTestData = (): GenerateCacheKe
     // t02 - multitenancy disabled 
     {
         given: {
-            record: generateTestDocument({name: 'tc02', tenantId: 'tentant02'}) as CachedDocument,
+            record: generateTestDocument({name: 'tc02', tenantId: 'tentant02'}),
             config: {},
             modelName: 'firstModelName'
         },
@@ -57,7 +58,7 @@ export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyFor
         // t01 - populate inside query and 
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'}).populate('modelToPopulate') as Query<CachedDocument, CachedDocument>,
+                query: generateTestFindQuery({tenantId: 'tenantTestValue'}).populate('modelToPopulate') as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
                 record: generateTestDocument({_id: id1, name: 'tc01'}),
             },
             expected: `${id1}__modelToPopulate`
@@ -65,7 +66,7 @@ export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyFor
         // t02 - selection inside query, selection fields should be sorted
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'}).select({tenantId: -1, name: 1}) as Query<CachedDocument, CachedDocument>,
+                query: generateTestFindQuery({tenantId: 'tenantTestValue'}).select({tenantId: -1, name: 1}) as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
                 record: generateTestDocument({_id: id2, name: 'tc02'}),
             },
             expected: `${id2}_name:1,tenantId:-1_`
@@ -76,7 +77,7 @@ export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyFor
                 query: generateTestFindQuery({tenantId: 'tenantTestValue'})
                     .select({tenantId: -1, name: 1, fieldA: 1})
                     .populate('secondModelToPopulate')
-                    .populate('modelToPopulate') as Query<CachedDocument, CachedDocument>,
+                    .populate('modelToPopulate') as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
                 record: generateTestDocument({_id: id3, name: 'tc03'}),
             },
             expected: `${id3}_fieldA:1,name:1,tenantId:-1_modelToPopulate,secondModelToPopulate`
@@ -84,7 +85,7 @@ export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyFor
         // t04 - no selection, no population
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'}) as Query<CachedDocument, CachedDocument>,
+                query: generateTestFindQuery({tenantId: 'tenantTestValue'}) as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
                 record: generateTestDocument({_id: id4, name: 'tc04'}),
             },
             expected: String(id4)

@@ -1,4 +1,4 @@
-import {CacheNamespaces} from "../../src/types/types"
+import {CachedResult, CacheNamespaces} from "../../src/types/types"
 import * as cacheClientUtils from "../../src/utils/cacheClientUtils"
 import {getCacheStrategyInstance, objectDeserializer, objectSerializer} from "../../src/utils/commonUtils"
 import {cachingTestCases} from "../assets/utils/cacheClientUtils"
@@ -37,7 +37,7 @@ describe('getResultsFromCache', () => {
     test(`should set and return objects as they are - without stringify when using getResultsFromCache`, async () => {
 
         for (const testCase of cachingTestCases) {
-            await getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key, testCase.value)
+            await getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key, testCase.value as CachedResult)
         }
 
         for (const testCase of cachingTestCases) {
