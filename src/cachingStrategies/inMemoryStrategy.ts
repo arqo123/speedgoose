@@ -7,7 +7,7 @@ import {CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods} from "./c
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
 export class InMemoryStrategy extends CommonCacheStrategyAbstract {
-    private resultsCacheClient: Keyv<CachedResult>
+    private resultsCacheClient: Keyv<CachedResult<unknown>>
     private recordResultsSetsClient: Keyv<Set<string>>
 
     public static async register(): Promise<void> {
@@ -20,10 +20,10 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
         const keyWithNamespace = `${namespace}:${key}`
 
-        return this.resultsCacheClient.get(keyWithNamespace) as CachedResult
+        return this.resultsCacheClient.get(keyWithNamespace)
     }
 
-    public async addValueToCache<T extends CachedResult>(namespace: string, key: string, value: T, ttl?: number): Promise<void> {
+    public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`
 
         await this.resultsCacheClient.set(keyWithNamespace, value, ttl)

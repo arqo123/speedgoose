@@ -1,14 +1,15 @@
 import Keyv from 'keyv';
 import './mongoose'
-import {Aggregate, Document, LeanDocument} from "mongoose";
+import {Aggregate, Document, LeanDocument, ObjectId} from "mongoose";
 import {RedisStrategy} from '../cachingStrategies/redisStrategy';
 import {InMemoryStrategy} from '../cachingStrategies/inMemoryStrategy';
 
 export type AggregationResult = Aggregate<unknown>
-export type CachedDocument = Document<unknown>
-export type CachedLeanDocument = LeanDocument<unknown>
+export type CachedDocument<T> = Document<T>
+export type CachedLeanDocument<T> = LeanDocument<T> & {_id: ObjectId | string}
 
-export type CachedResult = CachedDocument | CachedLeanDocument | CachedDocument[] | CachedLeanDocument[] | AggregationResult | number | string | string[] | number[]
+export type CachedResult<T = void> = CachedDocument<T> | CachedLeanDocument<T> | CachedDocument<T>[] | CachedLeanDocument<T>[] |
+    AggregationResult | number | string | string[] | number[]
 
 export type SpeedGooseCacheAutoCleanerOptions = {
     /**

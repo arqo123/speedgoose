@@ -2,7 +2,7 @@ import {Callback} from "ioredis"
 import Redis from "ioredis-mock"
 import Container from "typedi"
 import {GlobalDiContainerRegistryNames, SpeedGooseRedisChannels} from "../../src/types/types"
-import {getRedisInstance, publishRecordIdOnChannel, registerRedisClient} from "../../src/utils/redisUtils"
+import {getRedisInstance, getRedisListenerInstance, publishRecordIdOnChannel, registerRedisClient} from "../../src/utils/redisUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
 
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig')
@@ -21,6 +21,24 @@ describe('getRedisInstance', () => {
         await registerRedisClient(commonUtils.getConfig().redisUri as string)
 
         expect(getRedisInstance()).toBeNull()
+    })
+})
+
+describe('getRedisListenerInstance', () => {
+    it(`should return access redis listener instance if redis uri was set in config`, async () => {
+        mockedGetConfig.mockReturnValue({redisUri: 'testRedisUri'})
+        await registerRedisClient(commonUtils.getConfig().redisUri as string)
+
+        expect(getRedisListenerInstance()).toBeInstanceOf(Redis)
+    })
+
+    it(`should return null if registerRedisClient was not called with uri`, async () => {
+        mockedGetConfig.mockReturnValue({})
+        Container.remove(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS)
+
+        await registerRedisClient(commonUtils.getConfig().redisUri as string)
+
+        expect(getRedisListenerInstance()).toBeNull()
     })
 })
 

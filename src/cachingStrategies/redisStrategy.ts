@@ -24,7 +24,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         return result ? JSON.parse(result) : null
     }
 
-    public async addValueToCache<T extends CachedResult>(namespace: string, key: string, value: T, ttl?: number): Promise<void> {
+    public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`
 
         await this.client.pipeline().set(keyWithNamespace, JSON.stringify(value)).expire(keyWithNamespace, ttl).exec()

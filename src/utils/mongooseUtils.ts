@@ -1,4 +1,4 @@
-import {Model, Document, Mongoose} from "mongoose";
+import {Model, Document, Mongoose, LeanDocument} from "mongoose";
 import mpath from 'mpath'
 import Container from "typedi";
 import {GlobalDiContainerRegistryNames} from "../types/types";
@@ -15,7 +15,7 @@ export const isArrayOfObjectsWithIds = (value: unknown): boolean => {
 
 export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isResultWithId(result)
 
-export const getValueFromDocument = <T>(pathToValue: string, record: Document<T>): unknown =>
+export const getValueFromDocument = <T>(pathToValue: string, record: LeanDocument<T>): unknown =>
     mpath.get(pathToValue, record)
 
 export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, record: Document<T>): void =>
