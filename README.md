@@ -225,9 +225,9 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [X] mongooseUtils
      - [X] queryUtils
      - [ ] cacheClientUtils
-     - [ ] cacheKeyUtils
-     - [ ] hydrationUtils
-     - [ ] redisUtils
+     - [X] cacheKeyUtils
+     - [X] hydrationUtils
+     - [X] redisUtils
      - [ ] extendAggregate
      - [ ] extendQuery
      - [ ] mongooseModelEvents

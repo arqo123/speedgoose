@@ -53,12 +53,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         }
     }
 
-    private async clearCachedSet(namespace: string): Promise<void> {
-        await this.client.del(namespace)
+    public async getValuesFromCachedSet(namespace: string): Promise<string[] | number[]> {
+        return this.client.smembers(namespace)
     }
 
-    private async getValuesFromCachedSet(namespace: string): Promise<string[] | number[]> {
-        return this.client.smembers(namespace)
+    private async clearCachedSet(namespace: string): Promise<void> {
+        await this.client.del(namespace)
     }
 
     private setClient(uri: string): void {

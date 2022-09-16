@@ -51,14 +51,14 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         }
     }
 
-    private async clearCachedSet(namespace: string): Promise<void> {
-        await this.recordResultsSetsClient.delete(namespace)
-    }
-
-    private async getValuesFromCachedSet(namespace: string): Promise<string[] | number[]> {
+    public async getValuesFromCachedSet(namespace: string): Promise<string[] | number[]> {
         const setMembers = await this.recordResultsSetsClient.get(namespace)
 
         return setMembers ? Array.from(setMembers) : []
+    }
+
+    private async clearCachedSet(namespace: string): Promise<void> {
+        await this.recordResultsSetsClient.delete(namespace)
     }
 
     private setClients(): void {
