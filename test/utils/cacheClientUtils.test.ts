@@ -1,15 +1,18 @@
+import {ObjectId} from "mongodb"
+import Keyv from "keyv"
 import {CachedResult, CacheNamespaces} from "../../src/types/types"
 import * as cacheClientUtils from "../../src/utils/cacheClientUtils"
+import * as debugUtils from "../../src/utils/debugUtils"
 import {getCacheStrategyInstance, objectDeserializer, objectSerializer} from "../../src/utils/commonUtils"
 import {cachingTestCases} from "../assets/utils/cacheClientUtils"
 import {generateTestDocument, getValuesFromSet} from "../testUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
-import {ObjectId} from "mongodb"
-import Keyv from "keyv"
+import {clearCacheForKey} from "../../src/utils/cacheClientUtils"
+import {generateCacheKeyForSingleDocument} from "../../src/utils/cacheKeyUtils"
 
 const mockedGetHydrationCache = jest.spyOn(commonUtils, 'getHydrationCache')
-const addValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet')
-
+const mockedAddValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet')
+const mockedLogCacheClear = jest.spyOn(debugUtils, 'logCacheClear')
 
 describe('createInMemoryCacheClientWithNamespace', () => {
     const cacheClient = cacheClientUtils.createInMemoryCacheClientWithNamespace('testNamespace')
@@ -62,7 +65,7 @@ describe('setKeyInHydrationCaches', () => {
 
     test(`keys after set should be accessible with the getHydrationCache method`, async () => {
         expect(mockedGetHydrationCache).toBeCalled()
-        expect(addValueToInternalCachedSet).toBeCalled()
+        expect(mockedAddValueToInternalCachedSet).toBeCalled()
 
         expect(await commonUtils.getHydrationCache().get('testKey1')).toEqual(document1)
         expect(await commonUtils.getHydrationCache().get('testKey2')).toEqual(document2)
@@ -82,7 +85,7 @@ describe('setKeyInHydrationCaches', () => {
         await cacheClientUtils.setKeyInHydrationCaches('testKey1', document4, {})
 
         expect(mockedGetHydrationCache).toBeCalled()
-        expect(addValueToInternalCachedSet).toBeCalled()
+        expect(mockedAddValueToInternalCachedSet).toBeCalled()
 
         expect(await commonUtils.getHydrationCache().get('testKey1')).not.toEqual(document1)
         expect(await commonUtils.getHydrationCache().get('testKey1')).toEqual(document4)
@@ -91,7 +94,6 @@ describe('setKeyInHydrationCaches', () => {
         expect(getValuesFromSet(set1)).toEqual(['testKey1', 'testKey1_varation'].sort())
     })
 })
-
 
 describe('addValueToInternalCachedSet', () => {
     const cacheClient: Keyv<Set<string | number>> = cacheClientUtils.createInMemoryCacheClientWithNamespace('testNamespace')
@@ -126,5 +128,65 @@ describe('addValueToInternalCachedSet', () => {
         const set = await cacheClient.get('thirdNamepsace') as Set<string>
 
         expect(getValuesFromSet(set)).toEqual(['firstValue', 'secondValue', 'thirdValue', 'fourthValue', 'fifthValue', 'sixthValue'].sort())
+    })
+})
+
+describe(`clearCacheForKey`, () => {
+
+    test(`should log informations with debugger`, async () => {
+        mockedLogCacheClear.mockClear()
+        await clearCacheForKey('testKey')
+        expect(mockedLogCacheClear).toBeCalledTimes(1)
+        expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing results cache for key`, 'testKey')
+    })
+
+    test(`should clear cached key from results cache`, async () => {
+        const testCase = {
+            key: 'magicHat',
+            value: 'rabbit'
+        }
+
+        const strategy = await getCacheStrategyInstance()
+        //setting value to clear
+        await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key, testCase.value)
+        //checking if the value is set
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key)).toEqual(testCase.value)
+        //ok rabbit is still there. Lets do some magic  
+        await clearCacheForKey(testCase.key)
+        const cachedValue = await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key)
+        // expect(cachedValue).not.toEqual(testCase.value)
+        expect(cachedValue).toBeUndefined()
+    })
+})
+
+describe(`clearCacheForRecordId`, () => {
+    test(`should log informations with debugger`, async () => {
+        mockedLogCacheClear.mockClear()
+        await cacheClientUtils.clearCacheForRecordId('recordId')
+        expect(mockedLogCacheClear).toBeCalledTimes(2)
+        expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing results and hydration cache for recordId`, 'recordId')
+        expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing hydration cache for recordId`, 'recordId')
+    })
+
+    test(`should clear hydration cache`, async () => {
+        const testCase = {
+            key: 'recordId',
+            cacheQueryKey: 'cacheQueryKey',
+            value: generateTestDocument({name: 'testDocument'})
+        }
+        const recordId = String(testCase.value._id)
+        const strategy = getCacheStrategyInstance()
+        //setting value to clear
+        await strategy.addValueToManyCachedSets([recordId], testCase.cacheQueryKey)
+        await cacheClientUtils.setKeyInHydrationCaches(testCase.key, testCase.value, {cacheKey: testCase.cacheQueryKey})
+        //checking if the value was set
+        expect(await commonUtils.getHydrationCache().get(testCase.key)).toEqual(testCase.value)
+        expect(await strategy.getValuesFromCachedSet(recordId)).toEqual([testCase.cacheQueryKey])
+
+        // invoking clearCacheForRecordId
+        await cacheClientUtils.clearCacheForRecordId(recordId)
+
+        expect(await commonUtils.getHydrationCache().get(testCase.key)).toBeUndefined()
+        expect(await strategy.getValuesFromCachedSet(recordId)).toEqual([])
     })
 })
