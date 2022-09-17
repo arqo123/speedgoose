@@ -51,7 +51,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         }
     }
 
-    public async getValuesFromCachedSet(namespace: string): Promise<string[] | number[]> {
+    public async getValuesFromCachedSet(namespace: string): Promise<string[]> {
         const setMembers = await this.recordResultsSetsClient.get(namespace)
 
         return setMembers ? Array.from(setMembers) : []

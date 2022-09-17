@@ -9,7 +9,7 @@ export type CachedDocument<T> = Document<T>
 export type CachedLeanDocument<T> = LeanDocument<T> & {_id: ObjectId | string}
 
 export type CachedResult<T = void> = CachedDocument<T> | CachedLeanDocument<T> | CachedDocument<T>[] | CachedLeanDocument<T>[] |
-    AggregationResult | number | string | string[] | number[]
+    AggregationResult | number | string | string[] | number[] | Record<string, unknown>
 
 export type SpeedGooseCacheAutoCleanerOptions = {
     /**
@@ -19,7 +19,7 @@ export type SpeedGooseCacheAutoCleanerOptions = {
     wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
 }
 
-export type CustomDebugger = (label: string, ...dataToLog: unknown[]) => void
+export type CustomDebugger = (label?: string, ...dataToLog: unknown[]) => void
 
 export enum SpeedGooseDebuggerOperations {
     EVENTS = 'event',

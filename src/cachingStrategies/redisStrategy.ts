@@ -53,7 +53,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         }
     }
 
-    public async getValuesFromCachedSet(namespace: string): Promise<string[] | number[]> {
+    public async getValuesFromCachedSet(namespace: string): Promise<string[]> {
         return this.client.smembers(namespace)
     }
 
