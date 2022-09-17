@@ -1,10 +1,12 @@
 import DebugUtils from "debug"
 import {SpeedGooseDebuggerOperations} from "../../src/types/types"
-import {emptyDebugCallback, getDebugger} from '../../src/utils/debugUtils'
+import {emptyDebugCallback, getDebugger, setupDebugger} from '../../src/utils/debugUtils'
 import * as commonUtils from "../../src/utils/commonUtils"
+import {setupDebuggerTestCases} from "../assets/utils/debuggerUtils"
 
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig')
 const mockedDebug = jest.spyOn(DebugUtils, 'debug')
+const mockedDebugEnable = jest.spyOn(DebugUtils, 'enable')
 
 describe(`getDebugger`, () => {
     test(`should return undefined if debug mode is not enabled`, async () => {
@@ -80,5 +82,21 @@ describe(`getDebugger`, () => {
         expect(mockedDebug).toBeCalledTimes(1)
         expect(typeof debuggerForEnabledOperation).toEqual('function')
         expect(debuggerForDisabledOperation).toBe(emptyDebugCallback)
+    })
+})
+
+
+describe('setupDebugger', () => {
+    test(`should register debugger namespaces`, () => {
+        setupDebuggerTestCases().forEach(testCase => {
+            mockedDebugEnable.mockClear()
+            
+            if (testCase.config.debugConfig?.enabled) {
+                setupDebugger(testCase.config)
+                expect(mockedDebugEnable).toBeCalledWith(testCase.expectedNamespaces?.toString())
+            } else {
+                expect(mockedDebugEnable).not.toBeCalled()
+            }
+        })
     })
 })

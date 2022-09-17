@@ -2,7 +2,7 @@ import DebuggerUtils from "debug"
 import {CustomDebugger, SpeedGooseConfig, SpeedGooseDebuggerOperations} from "../types/types"
 import {getConfig} from "./commonUtils"
 
-const DEFAULT_NAMESPACE = 'speedgoose'
+export const DEFAULT_DEBUGGER_NAMESPACE = 'speedgoose'
 const CACHE_CLEAR = 'cacheClear'
 
 const isDebuggingEnabled = (modelName: string, debuggerOperation: SpeedGooseDebuggerOperations): boolean => {
@@ -30,7 +30,7 @@ export const emptyDebugCallback = (): object => ({})
 
 export const getDebugger = (modelName: string, debuggerOperation: SpeedGooseDebuggerOperations): CustomDebugger => {
    if (isDebuggingEnabled(modelName, debuggerOperation)) {
-      const debug = DebuggerUtils.debug(`${DEFAULT_NAMESPACE}:${modelName}:${debuggerOperation}`)
+      const debug = DebuggerUtils.debug(`${DEFAULT_DEBUGGER_NAMESPACE}:${modelName}:${debuggerOperation}`)
 
       return (label: string, ...dataToLog: unknown[]) => debug(getLabelBackgroundColor(debug), label, '\x1b[0m', ...dataToLog)
    }
@@ -54,7 +54,7 @@ export const setupDebugger = (config: SpeedGooseConfig): void => {
 
    const nameSpacesToEnable = modelsToDebug.flatMap(model =>
       operationsToDebug.map(operation =>
-         `${DEFAULT_NAMESPACE}:${model}:${operation}`))
+         `${DEFAULT_DEBUGGER_NAMESPACE}:${model}:${operation}`))
 
    DebuggerUtils.enable(nameSpacesToEnable.toString())
 }

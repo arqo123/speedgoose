@@ -1,4 +1,4 @@
-import {CachedLeanDocument, CachedResult} from "../../src/types/types"
+import {CachedLeanDocument} from "../../src/types/types"
 import {generateCacheKeyForModelName, generateCacheKeyForRecordAndModelName, generateCacheKeyForSingleDocument} from "../../src/utils/cacheKeyUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
 import {generateCacheKeyForRecordAndModelNameTestData, generateCacheKeyForSingleDocumentTestData} from "../assets/utils/cacheKeyUtils"

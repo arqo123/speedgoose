@@ -1,14 +1,16 @@
 import {ObjectId} from "mongodb"
 import Keyv from "keyv"
-import {CachedResult, CacheNamespaces} from "../../src/types/types"
+import {CachedResult, CacheNamespaces, CacheStrategieTypes} from "../../src/types/types"
 import * as cacheClientUtils from "../../src/utils/cacheClientUtils"
 import * as debugUtils from "../../src/utils/debugUtils"
 import {getCacheStrategyInstance, objectDeserializer, objectSerializer} from "../../src/utils/commonUtils"
-import {cachingTestCases} from "../assets/utils/cacheClientUtils"
+import {cachingTestCases, generateClearResultTestCase, generateSetKeyInResultsCachesTestData, SetKeyInResultsCachesTestData} from "../assets/utils/cacheClientUtils"
 import {generateTestDocument, getValuesFromSet} from "../testUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
 import {clearCacheForKey} from "../../src/utils/cacheClientUtils"
-import {generateCacheKeyForSingleDocument} from "../../src/utils/cacheKeyUtils"
+import {generateCacheKeyForModelName} from "../../src/utils/cacheKeyUtils"
+import {isResultWithId, isResultWithIds} from "../../src/utils/mongooseUtils"
+import {TestModel} from "../types"
 
 const mockedGetHydrationCache = jest.spyOn(commonUtils, 'getHydrationCache')
 const mockedAddValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet')
@@ -160,6 +162,8 @@ describe(`clearCacheForKey`, () => {
 })
 
 describe(`clearCacheForRecordId`, () => {
+    const testCase = generateClearResultTestCase()
+
     test(`should log informations with debugger`, async () => {
         mockedLogCacheClear.mockClear()
         await cacheClientUtils.clearCacheForRecordId('recordId')
@@ -169,11 +173,7 @@ describe(`clearCacheForRecordId`, () => {
     })
 
     test(`should clear hydration cache`, async () => {
-        const testCase = {
-            key: 'recordId',
-            cacheQueryKey: 'cacheQueryKey',
-            value: generateTestDocument({name: 'testDocument'})
-        }
+
         const recordId = String(testCase.value._id)
         const strategy = getCacheStrategyInstance()
         //setting value to clear
@@ -188,5 +188,110 @@ describe(`clearCacheForRecordId`, () => {
 
         expect(await commonUtils.getHydrationCache().get(testCase.key)).toBeUndefined()
         expect(await strategy.getValuesFromCachedSet(recordId)).toEqual([])
+    })
+})
+
+describe(`clearCachedResultsForModel`, () => {
+    const testCase = generateClearResultTestCase()
+
+    const modelCacheKey = generateCacheKeyForModelName(testCase.modelName, testCase.multitenantValue)
+
+    test(`should log informations with debugger`, async () => {
+        mockedLogCacheClear.mockClear()
+        await cacheClientUtils.clearCachedResultsForModel(testCase.modelName, testCase.multitenantValue)
+        expect(mockedLogCacheClear).toBeCalledTimes(1)
+        expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing model cache for key`, modelCacheKey)
+    })
+
+    test(`should clear results for given model`, async () => {
+        const strategy = getCacheStrategyInstance()
+        //setting value to clear
+        await strategy.addValueToManyCachedSets([modelCacheKey], testCase.cacheQueryKey)
+        await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.cacheQueryKey, testCase.value)
+
+        //checking if the value was set
+        expect(await strategy.getValuesFromCachedSet(modelCacheKey)).toEqual([testCase.cacheQueryKey])
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.cacheQueryKey)).toEqual(testCase.value)
+
+        await cacheClientUtils.clearCachedResultsForModel(testCase.modelName, testCase.multitenantValue)
+        expect(await strategy.getValuesFromCachedSet(modelCacheKey)).toEqual([])
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.cacheQueryKey)).toBeUndefined()
+    })
+})
+
+describe(`setKeyInResultsCaches`, () => {
+    const testCases = generateSetKeyInResultsCachesTestData()
+
+    beforeEach(async () => {
+        for (const testCase of testCases) {
+            await cacheClientUtils.setKeyInResultsCaches(testCase.context, testCase.result, testCase.model)
+        }
+    })
+
+    test(`should call context debuger`, async () => {
+        for (const testCase of testCases) {
+            const contextSpy = jest.spyOn(testCase.context, 'debug')
+             await cacheClientUtils.setKeyInResultsCaches(testCase.context, testCase.result, testCase.model)
+            expect(contextSpy).toBeCalledWith(`Setting key in cache`, testCase.context.cacheKey)
+            expect(contextSpy).toBeCalledWith(`Cache key set`, testCase.context.cacheKey)
+        }
+    })
+
+    test(`should addValueToCache with proper params`, async () => {
+        const strategy = getCacheStrategyInstance()
+        const mockedCacheStrategyInstance = jest.spyOn(strategy, 'addValueToCache')
+
+        for (const testCase of testCases) {
+            await cacheClientUtils.setKeyInResultsCaches(testCase.context, testCase.result, testCase.model)
+            expect(mockedCacheStrategyInstance).toBeCalledWith(CacheNamespaces.RESULTS_NAMESPACE, testCase.context.cacheKey, testCase.result, testCase.context.ttl)
+        }
+    })
+
+    test(`should set key in results cache `, async () => {
+        const strategy = getCacheStrategyInstance()
+
+        for (const testCase of testCases) {
+            const result = await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.context.cacheKey as string)
+            expect(result).toEqual(testCase.result)
+        }
+    })
+
+    test(`should set key in model cache `, async () => {
+        const strategy = getCacheStrategyInstance()
+        for (const testCase of testCases) {
+            const modelKey = generateCacheKeyForModelName(testCase.model.modelName)
+            const result = await strategy.getValuesFromCachedSet(modelKey)
+            expect(result).toContain(testCase.context.cacheKey)
+        }
+    })
+
+    test(`should set key records cache if it contains some documents with ids`, async () => {
+        const runTestForResultedRecord = async (
+            singleEntryFromResult: TestModel,
+            wholeResult: TestModel | TestModel[],
+            testCase: SetKeyInResultsCachesTestData,
+            strategy: CacheStrategieTypes
+        ): Promise<void> => {
+
+            const recordsRealatedKeys = await strategy.getValuesFromCachedSet(String(singleEntryFromResult._id))
+
+            for (const relatedKey of recordsRealatedKeys) {
+                const cachedResult = await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, relatedKey)
+                expect(cachedResult).toEqual(wholeResult)
+            }
+
+            expect(recordsRealatedKeys).toContain(testCase.context.cacheKey as string)
+        }
+
+        const strategy = getCacheStrategyInstance()
+        for (const testCase of testCases) {
+            if (isResultWithId(testCase.result)) {
+                await runTestForResultedRecord(testCase.result as TestModel, testCase.result as TestModel, testCase, strategy)
+            } else if (isResultWithIds(testCase.result)) {
+                for (const result of (testCase.result as TestModel[])) {
+                    await runTestForResultedRecord(result, testCase.result as TestModel[], testCase, strategy)
+                }
+            }
+        }
     })
 })
