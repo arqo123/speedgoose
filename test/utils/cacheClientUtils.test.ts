@@ -228,6 +228,15 @@ describe(`setKeyInResultsCaches`, () => {
         }
     })
 
+    test(`should call context debuger`, async () => {
+        for (const testCase of testCases) {
+            const contextSpy = jest.spyOn(testCase.context, 'debug')
+             await cacheClientUtils.setKeyInResultsCaches(testCase.context, testCase.result, testCase.model)
+            expect(contextSpy).toBeCalledWith(`Setting key in cache`, testCase.context.cacheKey)
+            expect(contextSpy).toBeCalledWith(`Cache key set`, testCase.context.cacheKey)
+        }
+    })
+
     test(`should addValueToCache with proper params`, async () => {
         const strategy = getCacheStrategyInstance()
         const mockedCacheStrategyInstance = jest.spyOn(strategy, 'addValueToCache')
