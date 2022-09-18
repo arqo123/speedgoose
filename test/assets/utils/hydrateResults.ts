@@ -5,7 +5,7 @@ import {generateTestFindQuery} from "../../testUtils"
 import {TestModel} from "../../types"
 
 type HydrateResultTestCases = {
-    record: CachedLeanDocument<TestModel>,
+    result: CachedLeanDocument<TestModel> | CachedLeanDocument<TestModel>[],
     query: Query<TestModel, TestModel>
 }
 
@@ -19,7 +19,7 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
         // tc01 - simple raw document 
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
-            record: {
+            result: {
                 _id: String(id1),
                 fieldA: 'tc01',
                 name: 'tc01Name',
@@ -28,7 +28,7 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
         // tc02 - document with population of one field 
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
-            record: {
+            result: {
                 _id: String(id2),
                 fieldA: 'tc02',
                 name: 'tc02Name',
@@ -42,7 +42,7 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
         // tc03 - document with population of one field which is array of relations
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
-            record: {
+            result: {
                 _id: String(id3),
                 fieldA: 'tc03',
                 name: 'tc03Name',
@@ -63,7 +63,7 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
         // tc04 - document with population of one field which is array of relations and with one single relationField
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
-            record: {
+            result: {
                 _id: String(id4),
                 fieldA: 'tc04',
                 name: 'tc04Name',
@@ -86,41 +86,96 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
                 }
             }
         },
-        // tc05 - document with deeply nested populated records
+        // tc05 - result as array of documents
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
-            record: {
-                _id: String(id4),
-                fieldA: 'tc04',
-                name: 'tc04Name',
-                relationArray: [
-                    {
+            result: [
+                {
+                    _id: String(id2),
+                    fieldA: 'tc02',
+                    name: 'tc02Name',
+                    relationField: {
                         _id: String(id1),
                         fieldA: 'tc01',
                         name: 'tc01Name',
-                    },
-                    {
-                        _id: String(id2),
-                        fieldA: 'tc02',
-                        name: 'tc02Name',
-                    },
-                ],
-                relationField: {
+                    }
+                },
+                {
                     _id: String(id1),
                     fieldA: 'tc01',
                     name: 'tc01Name',
+                },
+                {
+                    _id: String(id3),
+                    fieldA: 'tc03',
+                    name: 'tc03Name',
+                    relationArray: [
+                        {
+                            _id: String(id1),
+                            fieldA: 'tc01',
+                            name: 'tc01Name',
+                        },
+                        {
+                            _id: String(id2),
+                            fieldA: 'tc02',
+                            name: 'tc02Name',
+                        },
+                    ]
+                },
+                {
+                    _id: String(id4),
+                    fieldA: 'tc04',
+                    name: 'tc04Name',
+                    relationArray: [
+                        {
+                            _id: String(id1),
+                            fieldA: 'tc01',
+                            name: 'tc01Name',
+                        },
+                        {
+                            _id: String(id2),
+                            fieldA: 'tc02',
+                            name: 'tc02Name',
+                        },
+                    ],
                     relationField: {
-                        _id: String(id2),
-                        fieldA: 'tc02',
-                        name: 'tc02Name',
+                        _id: String(id1),
+                        fieldA: 'tc01',
+                        name: 'tc01Name',
+                    }
+                },
+                {
+                    _id: String(id4),
+                    fieldA: 'tc04',
+                    name: 'tc04Name',
+                    relationArray: [
+                        {
+                            _id: String(id1),
+                            fieldA: 'tc01',
+                            name: 'tc01Name',
+                        },
+                        {
+                            _id: String(id2),
+                            fieldA: 'tc02',
+                            name: 'tc02Name',
+                        },
+                    ],
+                    relationField: {
+                        _id: String(id1),
+                        fieldA: 'tc01',
+                        name: 'tc01Name',
                         relationField: {
-                            _id: String(id3),
-                            fieldA: 'tc03',
-                            name: 'tc03Name',
+                            _id: String(id2),
+                            fieldA: 'tc02',
+                            name: 'tc02Name',
+                            relationField: {
+                                _id: String(id3),
+                                fieldA: 'tc03',
+                                name: 'tc03Name',
+                            }
                         }
                     }
-                }
-            }
+                }]
         },
     ]
 }
