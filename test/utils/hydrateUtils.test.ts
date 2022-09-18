@@ -1,6 +1,7 @@
 import {Document} from 'mongoose'
 import {CachedLeanDocument} from '../../src/types/types'
 import {hydrateResults} from "../../src/utils/hydrationUtils"
+import {isResultWithId} from '../../src/utils/mongooseUtils'
 import {prepareHydrateResultsTestCases} from "../assets/utils/hydrateResults"
 import {MongooseTestDocument, TestModel} from '../types'
 
@@ -36,8 +37,13 @@ describe(`hydrateResults`, () => {
 
     test(`should properly recreate all documents from raw objects and turn them into deep populated documents`, () => {
         prepareHydrateResultsTestCases().forEach(async testCase => {
-            const hydratedResult = await hydrateResults<TestModel>(testCase.query, {}, testCase.record) as MongooseTestDocument
-            runTest(hydratedResult, testCase.record)
+            const hydratedResult = await hydrateResults<TestModel>(testCase.query, {}, testCase.result) 
+            if (isResultWithId(testCase.result)) {
+                runTest(hydratedResult as MongooseTestDocument, testCase.result as CachedLeanDocument<TestModel>)
+            } else {
+                (testCase.result as CachedLeanDocument<TestModel>[])
+                    .forEach((result, index) => runTest((hydratedResult as MongooseTestDocument[])[index], result as CachedLeanDocument<TestModel>))
+            }
         })
     })
 })
