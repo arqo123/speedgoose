@@ -1,5 +1,5 @@
 import {Document, Aggregate, Query} from "mongoose"
-import {CachedLeanDocument} from "../types/types"
+import {CachedLeanDocument, DocumentWithIdAndTenantValue} from "../types/types"
 import {getConfig} from "./commonUtils"
 import {stringifyPopulatedPaths, stringifyQueryParam} from "./queryUtils"
 
@@ -33,7 +33,7 @@ export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record:
 export const generateCacheKeyForModelName = (modelName: string, multitenantValue = ''): string =>
     `${modelName}_${String(multitenantValue)}`
 
-export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T>, modelName: string): string => {
+export const generateCacheKeyForRecordAndModelName = <T>(record: Document<T> | DocumentWithIdAndTenantValue, modelName: string): string => {
     const config = getConfig()
     const multitenantKey = config?.multitenancyConfig?.multitenantKey
 

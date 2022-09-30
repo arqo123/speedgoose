@@ -3,15 +3,17 @@ import {Container} from 'typedi'
 import {clearHydrationCache} from './cacheClientUtils'
 import {GlobalDiContainerRegistryNames, SpeedGooseRedisChannels} from '../types/types'
 
- const redisPubSubMessageHandler = async (channel: SpeedGooseRedisChannels, recordId: string): Promise<void> => {
-    await clearHydrationCache(recordId)
+const redisPubSubMessageHandler = async (channel: SpeedGooseRedisChannels, recordIds: string): Promise<void> => {
+    const parsedRecordIds = JSON.parse(recordIds)
+    if (Array.isArray(parsedRecordIds)) {
+        await Promise.all(parsedRecordIds.map(recordId => clearHydrationCache(recordId)))
+    }
+    await clearHydrationCache(parsedRecordIds)
 }
 
-const listenOnMessages = async (redisClient : Redis): Promise<void> => {
-    await redisClient.subscribe(SpeedGooseRedisChannels.REMOVED_DOCUMENTS)
-    await redisClient.subscribe(SpeedGooseRedisChannels.SAVED_DOCUMENTS)
+const listenOnMessages = async (redisClient: Redis): Promise<void> => {
+    await redisClient.subscribe(SpeedGooseRedisChannels.RECORDS_CHANGED)
 
-    // NOTE: Now this logic is simple - it's just clearing cached hydrated documents. But in near future those events might be usefull
     redisClient.on('message', redisPubSubMessageHandler)
 }
 
@@ -37,6 +39,7 @@ export const getRedisInstance = (): Redis =>
     Container.has(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS) ?
         Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS) : null
 
-export const publishRecordIdOnChannel = (channel: SpeedGooseRedisChannels, recordId: string): Promise<number> =>
-    getRedisInstance()?.publish(channel, recordId)
+export const publishRecordIdsOnChannel = (channel: SpeedGooseRedisChannels, recordIds: string | string[]): Promise<number> =>
+    getRedisInstance()?.publish(channel, JSON.stringify(recordIds))
+
 
