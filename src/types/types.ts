@@ -7,6 +7,7 @@ import {InMemoryStrategy} from '../cachingStrategies/inMemoryStrategy';
 export type AggregationResult = Aggregate<unknown>
 export type CachedDocument<T> = Document<T>
 export type CachedLeanDocument<T> = LeanDocument<T> & {_id: ObjectId | string}
+export type DocumentWithIdAndTenantValue = {_id: string, [tenantId: string]: string}
 
 export type CachedResult<T = void> = CachedDocument<T> | CachedLeanDocument<T> | CachedDocument<T>[] | CachedLeanDocument<T>[] |
     AggregationResult | number | string | string[] | number[] | Record<string, unknown>
@@ -65,18 +66,26 @@ export type SpeedGooseCacheOperationContext = SpeedGooseCacheOperationParams & {
 }
 
 export enum MongooseDocumentEvents {
-    BEFORE_SAVE = 'beforeSave',
-    AFTER_REMOVE = 'afterRemove',
-    AFTER_SAVE = 'afterSave',
+   SINGLE_DOCUMENT_CHANGED = 'singleDocumentChanged',
+   MANY_DOCUMENTS_CHANGED = 'manyDocumentsChanged'
 }
 
 export type MongooseDocumentEventsContext = {
-    record?: Document,
+    record?: Document | DocumentWithIdAndTenantValue;
     wasNew?: boolean;
     wasDeleted?: boolean;
     modelName?: string;
-    debug?: CustomDebugger
+    debug?: CustomDebugger;
 }
+
+export type MongooseManyObjectOperationEventContext = {
+    records: DocumentWithIdAndTenantValue[];
+    modelName?: string;
+    wasDeleted?: boolean;
+    debug?: CustomDebugger;
+}
+
+export type MongooseInternalEventContext = MongooseDocumentEventsContext | MongooseManyObjectOperationEventContext
 
 export enum CacheNamespaces {
     RESULTS_NAMESPACE = 'resultsNamespace',
@@ -98,9 +107,8 @@ export enum GlobalDiContainerRegistryNames {
 }
 
 export enum SpeedGooseRedisChannels {
-    REMOVED_DOCUMENTS = 'speedgooseRemovedDocumentsChannel',
-    SAVED_DOCUMENTS = 'speedgooseSavedDocumentsChannel',
-}
+    RECORDS_CHANGED = 'speedgooseRecordsChangedChannel',
+ }
 
 export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext) => void
 

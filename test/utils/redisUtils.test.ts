@@ -2,7 +2,7 @@ import {Callback} from "ioredis"
 import Redis from "ioredis-mock"
 import Container from "typedi"
 import {GlobalDiContainerRegistryNames, SpeedGooseRedisChannels} from "../../src/types/types"
-import {getRedisInstance, getRedisListenerInstance, publishRecordIdOnChannel, registerRedisClient} from "../../src/utils/redisUtils"
+import {getRedisInstance, getRedisListenerInstance, publishRecordIdsOnChannel, registerRedisClient} from "../../src/utils/redisUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
 
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig')
@@ -50,7 +50,7 @@ describe('publishRecordIdOnChannel', () => {
 
         const mockedPublish = jest.spyOn(redisInstance, 'publish').mockImplementation(mockedPublishImplementation);
 
-        await publishRecordIdOnChannel(SpeedGooseRedisChannels.SAVED_DOCUMENTS, 'someRecordId')
+        await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, 'someRecordId')
         expect(mockedPublish).toBeCalled()
     })
 })

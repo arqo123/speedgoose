@@ -1,5 +1,5 @@
 import {Mongoose} from "mongoose"
-import {MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext, SpeedGooseDebuggerOperations} from "./types/types"
+import {DocumentWithIdAndTenantValue, MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseInternalEventContext, MongooseManyObjectOperationEventContext, SpeedGooseDebuggerOperations} from "./types/types"
 import {clearCacheForRecordId} from "./utils/cacheClientUtils"
 import {generateCacheKeyForRecordAndModelName} from "./utils/cacheKeyUtils"
 import {getCacheStrategyInstance} from "./utils/commonUtils"
@@ -23,20 +23,31 @@ const prepareDocumentEventContext = (context: MongooseDocumentEventsContext): vo
     context.debug = getDebugger(context.modelName, SpeedGooseDebuggerOperations.EVENTS)
 }
 
+const prepareContextForSingleReocord = (record: DocumentWithIdAndTenantValue, context: MongooseInternalEventContext): MongooseInternalEventContext => {
+    return {record: record, modelName: context.modelName, debug: context.debug, wasDeleted: context.wasDeleted}
+}
+
 const listenOnInternalEvents = (
     mongoose: Mongoose,
-    eventsToListen: MongooseDocumentEvents[],
     callback: MongooseDocumentEventCallback): void => {
-    eventsToListen.forEach(event => {
+    [MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED].forEach(event => {
         Object.values(mongoose?.models ?? {}).forEach(model => {
-            model.on(event, async (context: MongooseDocumentEventsContext) => {
+            model.on(event, async (context: MongooseInternalEventContext) => {
                 prepareDocumentEventContext(context)
-                await callback(context)
+
+                if (event ===  MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED) {
+                    await callback(context)
+                } else {
+                    const records = (context as MongooseManyObjectOperationEventContext).records
+                    await Promise.all(
+                        records.map(record => callback(prepareContextForSingleReocord(record, context)))
+                    )
+                }
             })
         })
     })
 }
 
 export const registerListenerForInternalEvents = (mongoose: Mongoose): void => {
-    listenOnInternalEvents(mongoose, [MongooseDocumentEvents.BEFORE_SAVE, MongooseDocumentEvents.AFTER_REMOVE], clearCacheForRecordCallback)
+    listenOnInternalEvents(mongoose, clearCacheForRecordCallback)
 }

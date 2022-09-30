@@ -125,6 +125,14 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline({m
  /// with cacheQuery()
  const result = await model<SomeModelType>.find({}).cacheQuery({multitenantValue : 'someTenantUniqueValue'})
  ```
+<!-- Debugging -->
+## :electric_plug: Auto-cleaner Plugin 
+
+This plugin works on mongoose Document and Query/Model operations events. In case of Document events, we already know which of the document was changed - as it was the parent of the event. But records affected by Query/Model events are predicted according to query conditons and options. Currently supported Mongoose events: 
+1. Deleting operations -> ```findByIdAndRemove, findByIdAndDelete, findOneAndDelete, findOneAndRemove, deleteOne, deleteMany, remove```
+2. Saving operations -> ```updateOne, findOneAndUpdate, findByIdAndUpdate, updateMany, save, insertMany```
+
+If anything is missing it and it's worth implementing - let me know!
 
 <!-- Debugging -->
 ## :bug: Debugging
@@ -224,7 +232,7 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [X] debuggerUtils
      - [X] mongooseUtils
      - [X] queryUtils
-     - [ ] cacheClientUtils
+     - [X] cacheClientUtils
      - [X] cacheKeyUtils
      - [X] hydrationUtils
      - [X] redisUtils
@@ -232,7 +240,7 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [ ] extendQuery
      - [ ] mongooseModelEvents
      - [X] wrapper
-     - [ ] inMemory caching strategy
+     - [X] inMemory caching strategy
      - [ ] redis caching strategy
 - [X] Multitenancy (tenant field indicator) support
 - [X] Debugging mode
