@@ -18,13 +18,13 @@
 ![NPM download/month](https://img.shields.io/npm/dm/speedgoose.svg)
 
  
-This project is a next-level mongoose caching library which is fully written in typescript.
-It's caching on two levels. Shared - with redis. And local inside memory. Supports all mongoose operations like find,findOne,count,aggregate... and others. Also supports lean queries. Why it is different? 
-- It supports caching not only JSON objects in redis, but also whole Mongoose.Document instances in local memory to speed up code, and prevent unnecessary hydrations. Also supports full in-memory caching, without redis.
-- It has auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime that records changes, all cached related results will be cleared. 
-- It supports deep hydration, for caching not only the root document instances, but also those that are populated.   
-- Supports custom eventing. For example you wan't to remove given results from cache, but removal logic is not based on removing documents from db but rather field based (like `deleted: true`), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
-- Supports multitenancy by clearing cached results only for related tenant.
+This project is a next-level mongoose caching library that is fully written in typescript.
+It's caching on two levels. Shared - with Redis. And local inside memory. Supports all mongoose operations like find,findOne, count, aggregate... and others. Also supports lean queries. Why it is different? 
+- It supports caching not only JSON objects in Redis but also the whole Mongoose. Document instances in local memory to speed up code, and prevent unnecessary hydrations. Also supports full in-memory caching, without Redis.
+- It has an auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime, those records change, all cached-related results will be cleared. 
+- It supports deep hydration, for caching not only the root document instances but also those that are populated.   
+- Supports custom eventing. For example, if you want to remove given results from cache, but removal logic is not based on removing documents from DB but rather field based (like deleted: true), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
+- Supports multitenancy by clearing cached results only for a related tenant.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
@@ -51,19 +51,19 @@ applySpeedGooseCacheLayer(mongoose, {
   redisUri: process.env.REDIS_URI
 })
 ```
-2. To enable auto-clearing for given schema, just add plugin to it (required)
+2. To enable auto-clearing for a given schema, just add the plugin to it (required)
 ```ts
 import {SpeedGooseCacheAutoCleaner} from "speedgoose";
 
 Schema.plugin(SpeedGooseCacheAutoCleaner)
-// additionaly you can pass options for example callback for setting record as deleted 
+//additionally you can pass options for example callback for setting the record as deleted 
 Schema.plugin(SpeedGooseCacheAutoCleaner, {wasRecordDeletedCallback} )
 ```
   
  
 <!-- USAGE EXAMPLES -->
 ## Usage
-1. With find, count etc...
+1. With find, count, etc...
 
 ```ts
 // with findOne
@@ -92,7 +92,7 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline()
 
 <!-- Multitenancy -->
 ## :briefcase: Multitenancy
-  For enabling multitenancy, you have to pass multitenantKey into wrapper config, so it will looks like
+  For enabling multitenancy, you have to pass multitenantKey into wrapper config, so it will look like
 ```ts
 applySpeedGooseCacheLayer(mongoose, {
   redisUri: process.env.REDIS_URI,
@@ -102,11 +102,11 @@ applySpeedGooseCacheLayer(mongoose, {
 })
 ```
  
-SpeedGooseCacheAutoCleaner plugin clears cache for given model each time when new record appears, or some record was deleted. In multitenancy we wan't clear cache for all of the clients - as the change appear only for one tenant. 
+SpeedGooseCacheAutoCleaner plugin clears the cache for a given model each time when new record appears, or some record was deleted. In multitenancy, we won't clear the cache for all of the clients - as the change appears only for one tenant. 
 SpeeGoose will handle it for You! But to make it work, you have to follow the rules:
-1. Tenant key must be in root of mongo documents
+1. Tenant key must be in the root of mongo documents
 2. You have to somehow pass tenant value while running ```cacheQuery()``` or ```cachePipeline()```.
- - In case of ```cacheQuery()``` you can simply include tenant filtering condition in the root of query, so tenantValue will be automaticly set from there
+ - In the case of ```cacheQuery()``` you can simply include tenant filtering condition in the root of query, so tenantValue will be automatically set from there
  example: 
  ```ts
 const result = await model<SomeModelType>.find({
@@ -115,7 +115,7 @@ const result = await model<SomeModelType>.find({
     ... //rest of the query
  }).cacheQuery()
  ```
- - In other cases for ```cacheQuery()``` and ```cachePipeline()``` you have to pass tenantValue manualy by passing params 
+ - In other cases for ```cacheQuery()``` and ```cachePipeline()``` you have to pass tenantValue manually by passing params 
 ```ts
 /// with cachePipeline()
 const result = await model.aggregate<AggregationResultType>([]).cachePipeline({multitenantValue : 'someTenantUniqueValue'})  
@@ -128,23 +128,23 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline({m
 <!-- Debugging -->
 ## :electric_plug: Auto-cleaner Plugin 
 
-This plugin works on mongoose Document and Query/Model operations events. In case of Document events, we already know which of the document was changed - as it was the parent of the event. But records affected by Query/Model events are predicted according to query conditons and options. Currently supported Mongoose events: 
+This plugin works on mongoose Document and Query/Model operations events. In the case of Document events, we already know which of the document was changed - as it was the parent of the event. But records affected by Query/Model events are predicted according to query conditions and options. Currently supported Mongoose events: 
 1. Deleting operations -> ```findByIdAndRemove, findByIdAndDelete, findOneAndDelete, findOneAndRemove, deleteOne, deleteMany, remove```
 2. Saving operations -> ```updateOne, findOneAndUpdate, findByIdAndUpdate, updateMany, save, insertMany```
 
-If anything is missing it and it's worth implementing - let me know!
+If anything is missing and it's worth implementing - let me know!
 
 <!-- Debugging -->
 ## :bug: Debugging
-  For enabling debug mode, you have to pass multitenantKey into wrapper config, so it will looks like
+  For enabling debug mode, you have to pass multitenantKey into wrapper config, so it will look like
 ```ts
 applySpeedGooseCacheLayer(mongoose, {
   redisUri: process.env.REDIS_URI,
   debugConfig?: {
         enabled?: true,
-        /** Optional: An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
+        /** Optional: An array of mongoose models to debug, if not set then the debugger will log operations for all of the models */
         debugModels?: ['yourModelName'],
-        /** Optional: An array of operations to debug, if not set then debugger will log all operations */
+        /** Optional: An array of operations to debug, if not set then the debugger will log all operations */
         debugOperations?: SpeedGooseDebuggerOperations[],
     }
 })
@@ -156,34 +156,34 @@ applySpeedGooseCacheLayer(mongoose, {
 
 #### applySpeedGooseCacheLayer(mongoose, speedgooseConfig)
 ```ts
-    /** Connection string for redis containing url, credentials and port. It's required to make cache sync working */
+    /** Connection string for Redis containing URL, credentials, and port. It's required to make cache sync working */
     redisUri?: string;
     /** Config for multitenancy. */
     multitenancyConfig?: {
-        /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
+        /** If set, then the cache will work for multitenancy. It has to be a multitenancy field indicator, that is set at the root of every MongoDB record. */
         multitenantKey: string;
     },
-    /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
+    /** You can pass the default TTL value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
     defaultTtl?: number;
     /** Config for debugging mode supported with debug-js */
     debugConfig?: {
         /** When set to true, it will log all operations or operations only for enabled namespaces*/
         enabled?: boolean,
-        /** An array of mongoose models to debug, if not set then debugger will log operations for all of the models */
+        /** An array of mongoose models to debug, if not set then the debugger will log operations for all of the models */
         debugModels?: string[],
-        /** An array of operations to debug, if not set then debugger will log all operations */
+        /** An array of operations to debug, if not set then the debugger will log all operations */
         debugOperations?: SpeedGooseDebuggerOperations[],
     /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS 
-     * Avaliable strategies: SharedCacheStrategies.REDIS and SharedCacheStrategies.IN_MEMORY */
+     * Available strategies: SharedCacheStrategies.REDIS and SharedCacheStrategies.IN_MEMORY */
     sharedCacheStrategy?: SharedCacheStrategies  
     }
 ```
 #### ```cacheQuery(operationParams)``` and ```cachePipeline(operationParams)```
 ```ts
 { 
-    /** It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. */
-    ttl?: number;
-    /** Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
+    /** It tells to speedgoose for how long a given query should exist in the cache. By default is 60 seconds. Set 0 to make it disabled. */
+    TTL?: number;
+    /** Useful only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
     multitenantValue?: string;
     /** Your custom caching key.*/
     cacheKey?: string;
@@ -193,7 +193,7 @@ applySpeedGooseCacheLayer(mongoose, {
 ```ts
 {
     /**
-     * Could be set to check if given record was deleted. Useful when records are removing by setting some deletion indicator like "deleted" : true 
+     * Could be set to check if a given record was deleted. Useful when records are removed by setting some deletion indicator like "deleted" : true 
      * @param {Document} record mongoose document for which event was triggered
     **/
     wasRecordDeletedCallback?: <T>(record: Document<T>) => boolean
@@ -202,7 +202,7 @@ applySpeedGooseCacheLayer(mongoose, {
 #### ```clearCacheForKeys(cacheKey)``` 
 ```ts
 /** 
- * Can be used for manually clearing cache for given cache key
+ * Can be used for manually clearing the cache for a given cache key
  * @param {string} key cache key
 */
 clearCacheForKeys(cacheKey: string) : Promise<void>
@@ -210,7 +210,7 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 #### ```clearCachedResultsForModel(modelName,tenantId)``` 
 ```ts
 /** 
- * Can be used for manually clearing cache for given modelName. 
+ * Can be used for manually clearing the cache for given modelName. 
  * @param {string} modelName name of registerd mongoose model
  * @param {string} multitenantValue [optional] unique value of your tenant
 */
@@ -241,10 +241,10 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [ ] mongooseModelEvents
      - [X] wrapper
      - [X] inMemory caching strategy
-     - [ ] redis caching strategy
+     - [ ] Redis caching strategy
 - [X] Multitenancy (tenant field indicator) support
 - [X] Debugging mode
-- [ ] Support for more cache storages
+- [ ] Support for more cache storage
      - [X] In memory 
      - [ ] Memcached
 
@@ -256,7 +256,7 @@ See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full l
 
 <!-- CONTRIBUTING -->
 ## :ticket: Contributing
-Want to contribute? Great! Open new issue or pull request with the solution for given bug/feature. Any ideas for extending this library are more then wellcome.
+Want to contribute? Great! Open a new issue or pull request with the solution for a given bug/feature. Any ideas for extending this library are more than welcome.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- Known bugs -->
