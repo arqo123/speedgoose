@@ -5,12 +5,15 @@ import {stringifyPopulatedPaths, stringifyQueryParam} from "./queryUtils"
 
 export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string => JSON.stringify(
     {
-        ...query.getQuery(),
+        query: query.getQuery(),
         collection: query.mongooseCollection.name,
         op: query.op,
-        options: query.getOptions()
+        projection: {...query.projection(), ...query.getOptions().projection as Record<string, number>},
+        options: {...query.getOptions(), projection: undefined, }
     }
 )
+
+
 
 export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): string => JSON.stringify(
     {

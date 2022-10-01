@@ -1,4 +1,4 @@
-import {Aggregate, PipelineStage, Query} from 'mongoose'
+import {Aggregate, PipelineStage, ProjectionType, Query, QueryOptions} from 'mongoose'
 import {getMongooseInstance} from '../src/utils/mongooseUtils'
 import {TEST_MODEL_NAME} from './constants'
 import {registerMongooseTestModel} from './setupTestEnv'
@@ -10,8 +10,8 @@ export const getMongooseTestModel = (): MongooseTestModel =>
 export const generateTestAggregate = (pipeline: PipelineStage[]): Aggregate<unknown> =>
     getMongooseTestModel().aggregate(pipeline)
 
-export const generateTestFindQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
-    getMongooseTestModel().find(query)
+export const generateTestFindQuery = (query: Record<string, unknown>, projection?: ProjectionType<unknown>, options?: QueryOptions): Query<unknown, unknown> =>
+    getMongooseTestModel().find(query, projection ?? {}, options ?? {})
 
 export const generateTestFindOneQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
     getMongooseTestModel().findOne(query)
