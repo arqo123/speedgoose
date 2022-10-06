@@ -24,9 +24,9 @@ export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, 
 //@ts-expect-error from mongoose document constructor we can get modelName
 export const getMongooseModelNameFromDocument = <T>(record: Document<T>): string => record.constructor.modelName
 
-export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => getMongooseInstance().models[getMongooseModelNameFromDocument(record)]
+export const getMongooseModelFromDocument = <T>(record: Document): Model<T> => getMongooseInstance()?.models[getMongooseModelNameFromDocument(record)]
 
-export const getMongooseModelByName = <T>(mongooseModelName: string): Model<T> => getMongooseInstance().models[mongooseModelName]
+export const getMongooseModelByName = <T>(mongooseModelName: string): Model<T> => getMongooseInstance()?.models[mongooseModelName]
 
 export const getMongooseInstance = (): Mongoose =>
     Container.has(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS) ? Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS) : null
