@@ -186,6 +186,7 @@ describe(`getMongooseModelByName`, () => {
     })
 
     test(`should be falsy if there is no mongoose instance registered in di container`, () => {
+        Container.remove(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
          const result = getMongooseModelByName('testModel')
         expect(result).toBeFalsy()
      })
