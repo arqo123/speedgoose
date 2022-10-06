@@ -1,3 +1,5 @@
+import Container from 'typedi'
+import {GlobalDiContainerRegistryNames} from '../../src/types/types'
 import {
     getMongooseInstance,
     getMongooseModelFromDocument,
@@ -165,6 +167,14 @@ describe(`getMongooseModelFromDocument`, () => {
         expect(result).toBeInstanceOf(Object)
         expect(result.modelName).toEqual('testModel')
     })
+
+    test(`should be falsy if there is no mongoose instance registered in di container`, () => {
+        Container.remove(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
+        const TestModel = getMongooseTestModel()
+        const testDocument = new TestModel({})
+        const result  = getMongooseModelFromDocument(testDocument)
+        expect(result).toBeFalsy()
+     })
 })
 
 describe(`getMongooseModelByName`, () => {
@@ -174,6 +184,11 @@ describe(`getMongooseModelByName`, () => {
         expect(result).toBeInstanceOf(Object)
         expect(result.modelName).toEqual('testModel')
     })
+
+    test(`should be falsy if there is no mongoose instance registered in di container`, () => {
+         const result = getMongooseModelByName('testModel')
+        expect(result).toBeFalsy()
+     })
 })
 
 describe(`getMongooseInstance`, () => {
