@@ -44,9 +44,10 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
         this.$locals.wasNew = this.isNew
         this.$locals.wasDeleted = wasRecordDeleted(this, options)
         const model = getMongooseModelFromDocument(this)
-
-        await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id))
-        model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record: this, wasNew: this.isNew, wasDeleted: this.$locals.wasDeleted, modelName: model.modelName})
+        if (model) {
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id))
+            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record: this, wasNew: this.isNew, wasDeleted: this.$locals.wasDeleted, modelName: model.modelName})
+        }
         next()
     })
 
@@ -61,9 +62,10 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
 
     schema.post('remove', {document: true}, async function (record, next) {
         const model = getMongooseModelFromDocument(record)
-
-        await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id))
-        model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record, wasDeleted: true, modelName: model.modelName})
+        if (model) {
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id))
+            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record, wasDeleted: true, modelName: model.modelName})
+        }
         next()
     })
 }
