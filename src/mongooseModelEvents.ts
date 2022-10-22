@@ -23,7 +23,7 @@ const prepareDocumentEventContext = (context: MongooseDocumentEventsContext): vo
     context.debug = getDebugger(context.modelName, SpeedGooseDebuggerOperations.EVENTS)
 }
 
-const prepareContextForSingleReocord = (record: DocumentWithIdAndTenantValue, context: MongooseInternalEventContext): MongooseInternalEventContext => {
+const prepareContextForSingleRecord = (record: DocumentWithIdAndTenantValue, context: MongooseInternalEventContext): MongooseInternalEventContext => {
     return {record: record, modelName: context.modelName, debug: context.debug, wasDeleted: context.wasDeleted}
 }
 
@@ -40,7 +40,7 @@ const listenOnInternalEvents = (
                 } else {
                     const records = (context as MongooseManyObjectOperationEventContext).records
                     await Promise.all(
-                        records.map(record => callback(prepareContextForSingleReocord(record, context)))
+                        records.map(record => callback(prepareContextForSingleRecord(record, context)))
                     )
                 }
             })

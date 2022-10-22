@@ -4,19 +4,19 @@ import {DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEv
 import {getMongooseModelFromDocument} from "../utils/mongooseUtils";
 import {getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted} from "./utils";
 
-const MONGOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne']
-const MONGOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate']
-const MONGOSE_UPDATE_MANY_ACTIONS = ['updateMany']
-const MONGOSE_DELETE_MANY_ACTIONS = ['deleteMany']
+const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne']
+const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate']
+const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany']
+const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany']
 
 const appendQueryBasedListeners = (schema: Schema): void => {
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOSE_DELETE_ONE_ACTIONS, MONGOSE_UPDATE_ONE_ACTIONS], async function (next) {
+    schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
         const model = this.model
         //@ts-expect-error current type returned in the event is type Query - not document
         const updatedRecord = await getRecordAffectedByAction(this)
         if (updatedRecord) {
-            const wasDeleted = MONGOSE_DELETE_ONE_ACTIONS.includes(this.op)
+            const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(this.op)
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id))
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName})
         }
@@ -24,12 +24,12 @@ const appendQueryBasedListeners = (schema: Schema): void => {
     })
 
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOSE_UPDATE_MANY_ACTIONS, ...MONGOSE_DELETE_MANY_ACTIONS], {query: true}, async function (next) {
+    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], {query: true}, async function (next) {
         const model = this.model
         //@ts-expect-error current type returned in the event is type Query - not document
         const affectedRecords = await getRecordsAffectedByAction(this)
         if (affectedRecords.length > 0) {
-            const wasDeleted = MONGOSE_DELETE_MANY_ACTIONS.includes(this.op)
+            const wasDeleted = MONGOOSE_DELETE_MANY_ACTIONS.includes(this.op)
 
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, affectedRecords.map(record => record._id))
             model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{records: affectedRecords, wasDeleted, modelName: model.modelName})
