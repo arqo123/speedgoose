@@ -1,8 +1,8 @@
 import {Mongoose, Query, Document} from "mongoose"
-import {CachedLeanDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "./types/types"
+import {CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams} from "./types/types"
 import {getResultsFromCache, setKeyInResultsCaches} from "./utils/cacheClientUtils"
 import {hydrateResults} from "./utils/hydrationUtils"
-import {isCountQuery, isLeanQuery, prepareQueryOperationContext} from "./utils/queryUtils"
+import {prepareQueryOperationContext, shouldHydrateResult} from "./utils/queryUtils"
 
 export const addCachingToQuery = (mongoose: Mongoose): void => {
     /** 
@@ -18,7 +18,7 @@ const prepareQueryResults = async <T>(
     context: SpeedGooseCacheOperationContext,
     result: CachedResult<T>,
 ): Promise<CachedResult<T> | CachedResult<T>[]> => {
-    return isLeanQuery(query) || isCountQuery(query) ? result : await hydrateResults(query, context, result as CachedLeanDocument<T>)
+    return shouldHydrateResult(query) ? await hydrateResults(query, context, result as CachedDocument<T>) : result
 }
 
 const execQueryWithCache = async <T>(
@@ -35,7 +35,7 @@ const execQueryWithCache = async <T>(
         return prepareQueryResults(query, context, cachedValue)
     }
 
-    context?.debug(`Key didn't exists in cache, retreaving value from database`, context.cacheKey)
+    context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey)
     const result = await query.exec() as CachedResult<T>
 
     if (result) {

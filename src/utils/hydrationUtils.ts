@@ -28,14 +28,14 @@ const getFieldsToHydrate = <T>(model: Model<T>): FieldWithReferenceModel[] =>
     }).map(([path, schemaFieldType]) => ({path, referenceModelName: getReferenceModelNameFromSchema(schemaFieldType)}))
         .filter(schemaPaths => schemaPaths.referenceModelName)
 
-const getHydratedDocuments = <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, results: CachedDocument<T>[]): Promise<Document<T>[]> =>
+const getHydratedDocuments = <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, results: CachedDocument<T>[]): Promise<CachedDocument<T>[]> =>
     Promise.all(results.map(record => getHydratedDocument(query, context, record)))
 
-const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, result: CachedDocument<T>): Promise<Document<T>> => {
+const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, result: CachedDocument<T>): Promise<CachedDocument<T>> => {
     const cacheKey = generateCacheKeyForSingleDocument(query, result)
     const cachedValue = await getHydrationCache().get(cacheKey)
 
-    if (cachedValue && cachedValue?._id) return cachedValue
+    if (cachedValue && cachedValue?._id) return cachedValue as CachedDocument<T>
 
     const hydratedDocument = hydrateDocument(query, result)
     await setKeyInHydrationCaches(cacheKey, hydratedDocument, context)
@@ -43,12 +43,12 @@ const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCac
     return hydratedDocument
 }
 
-const hydrateDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): Document<T> => deepHydrate(query.model, record)
+const hydrateDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): CachedDocument<T> => deepHydrate(query.model, record)
 
 const deepHydrate = <T>(
     model: Model<T>, record: CachedDocument<T>
-): Document<T> => {
-    const hydratedRootDocument = model.hydrate(record) as Document<T>;
+): CachedDocument<T> => {
+    const hydratedRootDocument = model.hydrate(record) as CachedDocument<T>;
 
     for (const field of getFieldsToHydrate(model)) {
 

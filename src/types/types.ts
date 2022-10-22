@@ -5,7 +5,7 @@ import {RedisStrategy} from '../cachingStrategies/redisStrategy';
 import {InMemoryStrategy} from '../cachingStrategies/inMemoryStrategy';
 
 export type AggregationResult = Aggregate<unknown>
-export type CachedDocument<T> = Document<T>
+export type CachedDocument<T> = Document<string | ObjectId> & T  
 export type CachedLeanDocument<T> = LeanDocument<T> & {_id: ObjectId | string}
 export type DocumentWithIdAndTenantValue = {_id: string, [tenantId: string]: string}
 

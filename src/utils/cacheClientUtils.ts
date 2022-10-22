@@ -15,7 +15,7 @@ const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>):
     }
 }
 
-const setKeyInHydratedDocumentsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
+const setKeyInHydratedDocumentsCache = async <T>(document: CachedDocument<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
     await getHydrationCache().set(key, document, params.ttl * 1000)
 }
 
@@ -99,7 +99,7 @@ export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperation
     context?.debug(`Cache key set`, context.cacheKey)
 }
 
-export const setKeyInHydrationCaches = async <T>(key: string, document: Document<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
+export const setKeyInHydrationCaches = async <T>(key: string, document: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     await setKeyInHydratedDocumentsCache(document, key, params)
     await setKeyInHydratedDocumentsVariationsCache(document, key)
 }
