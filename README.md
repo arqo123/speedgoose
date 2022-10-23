@@ -103,7 +103,7 @@ applySpeedGooseCacheLayer(mongoose, {
 ```
  
 SpeedGooseCacheAutoCleaner plugin clears the cache for a given model each time when new record appears, or some record was deleted. In multitenancy, we won't clear the cache for all of the clients - as the change appears only for one tenant. 
-SpeeGoose will handle it for You! But to make it work, you have to follow the rules:
+SpeedGoose will handle it for You! But to make it work, you have to follow the rules:
 1. Tenant key must be in the root of mongo documents
 2. You have to somehow pass tenant value while running ```cacheQuery()``` or ```cachePipeline()```.
  - In the case of ```cacheQuery()``` you can simply include tenant filtering condition in the root of query, so tenantValue will be automatically set from there
@@ -211,7 +211,7 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 ```ts
 /** 
  * Can be used for manually clearing the cache for given modelName. 
- * @param {string} modelName name of registerd mongoose model
+ * @param {string} modelName name of registered mongoose model
  * @param {string} multitenantValue [optional] unique value of your tenant
 */
 clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promise<void>
@@ -241,7 +241,7 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [ ] mongooseModelEvents
      - [X] wrapper
      - [X] inMemory caching strategy
-     - [ ] Redis caching strategy
+     - [X] Redis caching strategy
 - [X] Multitenancy (tenant field indicator) support
 - [X] Debugging mode
 - [ ] Support for more cache storage

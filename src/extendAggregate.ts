@@ -26,7 +26,7 @@ const execAggregationWithCache = async <R>(
         return cachedValue as Aggregate<R>
     }
     
-    context?.debug(`Key didn't exists in cache, retreaving value from database`, context.cacheKey)
+    context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey)
     const result = await aggregation.exec() as AggregationResult
 
     if (result) {

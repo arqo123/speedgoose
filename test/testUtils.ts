@@ -13,6 +13,9 @@ export const generateTestAggregate = (pipeline: PipelineStage[]): Aggregate<unkn
 export const generateTestFindQuery = (query: Record<string, unknown>, projection?: ProjectionType<unknown>, options?: QueryOptions): Query<unknown, unknown> =>
     getMongooseTestModel().find(query, projection ?? {}, options ?? {})
 
+export const generateTestDistinctQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
+    getMongooseTestModel().distinct('someField', query)
+
 export const generateTestFindOneQuery = (query: Record<string, unknown>): Query<unknown, unknown> =>
     getMongooseTestModel().findOne(query)
 

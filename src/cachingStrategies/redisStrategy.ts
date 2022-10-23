@@ -7,7 +7,7 @@ import {CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods} from "./c
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
 export class RedisStrategy extends CommonCacheStrategyAbstract {
-    private client: Redis
+    public client: Redis
 
     public static async register(): Promise<void> {
         const strategy = new RedisStrategy()

@@ -1,7 +1,7 @@
 import {Query, Aggregate} from "mongoose";
-import {MongooseCountQueries, SpeedGooseCacheOperationContext, SpeedGooseDebuggerOperations} from "../types/types";
+import {MongooseCountQueries, MongooseSpecialQueries, SpeedGooseCacheOperationContext, SpeedGooseDebuggerOperations} from "../types/types";
 import {generateCacheKeyFromPipeline, generateCacheKeyFromQuery} from "./cacheKeyUtils";
-import {getConfig} from "./commonUtils"
+import {getCacheStrategyInstance, getConfig} from "./commonUtils"
 import {getDebugger} from "./debugUtils";
 
 export const stringifyQueryParam = (queryParam: Record<string, unknown>): string =>
@@ -18,6 +18,8 @@ export const isLeanQuery = <T>(query: Query<T, T>): boolean => query?._mongooseO
 
 export const isCountQuery = <T>(query: Query<T, T>): boolean => Object.values(MongooseCountQueries).includes(query.op as MongooseCountQueries)
 
+export const isDistinctQuery = <T>(query: Query<T, T>): boolean => MongooseSpecialQueries.DISTINCT === query.op
+
 export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext): void => {
     const config = getConfig()
 
@@ -31,7 +33,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
 
     context.cacheKey = context?.cacheKey ?? generateCacheKeyFromQuery(query)
 
-    context.debug = getDebugger(query.model.modelName, SpeedGooseDebuggerOperations.CACHE_QUERY) 
+    context.debug = getDebugger(query.model.modelName, SpeedGooseDebuggerOperations.CACHE_QUERY)
 }
 
 export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): void => {
@@ -44,4 +46,12 @@ export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, co
     context.cacheKey = context?.cacheKey ?? generateCacheKeyFromPipeline(aggregation)
 
     context.debug = getDebugger(aggregation._model.modelName, SpeedGooseDebuggerOperations.CACHE_PIPELINE)
+}
+
+export const shouldHydrateResult = <T>(query: Query<T, T>): boolean => {
+    if (!getCacheStrategyInstance().isHydrationEnabled()) {
+        return false
+    }
+
+    return !isLeanQuery(query) && !isCountQuery(query) && !isDistinctQuery(query)
 }

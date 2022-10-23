@@ -23,3 +23,5 @@ jspm_packages/
 .cache
 
 coverage
+
+.vscode

@@ -1,6 +1,6 @@
 import {ObjectId} from "mongodb"
 import Keyv from "keyv"
-import {CachedResult, CacheNamespaces, CacheStrategieTypes} from "../../src/types/types"
+import {CachedResult, CacheNamespaces, CacheStrategiesTypes} from "../../src/types/types"
 import * as cacheClientUtils from "../../src/utils/cacheClientUtils"
 import * as debugUtils from "../../src/utils/debugUtils"
 import {getCacheStrategyInstance, objectDeserializer, objectSerializer} from "../../src/utils/commonUtils"
@@ -270,7 +270,7 @@ describe(`setKeyInResultsCaches`, () => {
             singleEntryFromResult: TestModel,
             wholeResult: TestModel | TestModel[],
             testCase: SetKeyInResultsCachesTestData,
-            strategy: CacheStrategieTypes
+            strategy: CacheStrategiesTypes
         ): Promise<void> => {
 
             const recordsRealatedKeys = await strategy.getValuesFromCachedSet(String(singleEntryFromResult._id))

@@ -57,6 +57,11 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         return setMembers ? Array.from(setMembers) : []
     }
 
+    /* In case of in memory strategy, we keep already hydrated objects */
+    public isHydrationEnabled(): boolean {
+        return false
+    }
+
     private async clearCachedSet(namespace: string): Promise<void> {
         await this.recordResultsSetsClient.delete(namespace)
     }

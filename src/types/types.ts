@@ -5,7 +5,7 @@ import {RedisStrategy} from '../cachingStrategies/redisStrategy';
 import {InMemoryStrategy} from '../cachingStrategies/inMemoryStrategy';
 
 export type AggregationResult = Aggregate<unknown>
-export type CachedDocument<T> = Document<T>
+export type CachedDocument<T> = Document<string | ObjectId> & T  
 export type CachedLeanDocument<T> = LeanDocument<T> & {_id: ObjectId | string}
 export type DocumentWithIdAndTenantValue = {_id: string, [tenantId: string]: string}
 
@@ -55,7 +55,7 @@ export type SpeedGooseConfig = {
 export type SpeedGooseCacheOperationParams = {
     /** It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. */
     ttl?: number;
-    /** Usefull only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
+    /** Useful only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
     multitenantValue?: string;
     /** Your custom caching key.*/
     cacheKey?: string;
@@ -66,8 +66,8 @@ export type SpeedGooseCacheOperationContext = SpeedGooseCacheOperationParams & {
 }
 
 export enum MongooseDocumentEvents {
-   SINGLE_DOCUMENT_CHANGED = 'singleDocumentChanged',
-   MANY_DOCUMENTS_CHANGED = 'manyDocumentsChanged'
+    SINGLE_DOCUMENT_CHANGED = 'singleDocumentChanged',
+    MANY_DOCUMENTS_CHANGED = 'manyDocumentsChanged'
 }
 
 export type MongooseDocumentEventsContext = {
@@ -108,7 +108,7 @@ export enum GlobalDiContainerRegistryNames {
 
 export enum SpeedGooseRedisChannels {
     RECORDS_CHANGED = 'speedgooseRecordsChangedChannel',
- }
+}
 
 export type MongooseDocumentEventCallback = (context: MongooseDocumentEventsContext) => void
 
@@ -118,12 +118,16 @@ export enum MongooseCountQueries {
     ESTIMATED_DOCUMENTS_COUNT = 'estimatedDocumentCount'
 }
 
+export enum MongooseSpecialQueries {
+    DISTINCT = 'distinct'
+}
+
 export enum SharedCacheStrategies {
     REDIS = 'redis',
     IN_MEMORY = 'inMemory'
 }
 
-export type CacheStrategieTypes = RedisStrategy | InMemoryStrategy
+export type CacheStrategiesTypes = RedisStrategy | InMemoryStrategy
 
 export type CacheSetQueuedTask = {
     client: Keyv<Set<string | number>>,

@@ -1,11 +1,10 @@
 import {ObjectId} from "mongodb"
 import {Query} from "mongoose"
-import {CachedLeanDocument} from "../../../src/types/types"
 import {generateTestFindQuery} from "../../testUtils"
 import {TestModel} from "../../types"
 
 type HydrateResultTestCases = {
-    result: CachedLeanDocument<TestModel> | CachedLeanDocument<TestModel>[],
+    result: TestModel | TestModel[],
     query: Query<TestModel, TestModel>
 }
 
@@ -20,7 +19,7 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
             result: {
-                _id: String(id1),
+                _id: String(id1)  ,
                 fieldA: 'tc01',
                 name: 'tc01Name',
             }

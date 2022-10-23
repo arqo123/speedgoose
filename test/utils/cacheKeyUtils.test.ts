@@ -1,7 +1,8 @@
-import {CachedLeanDocument} from "../../src/types/types"
+import {CachedDocument} from "../../src/types/types"
 import {generateCacheKeyForModelName, generateCacheKeyForRecordAndModelName, generateCacheKeyForSingleDocument} from "../../src/utils/cacheKeyUtils"
 import * as commonUtils from "../../src/utils/commonUtils"
 import {generateCacheKeyForRecordAndModelNameTestData, generateCacheKeyForSingleDocumentTestData} from "../assets/utils/cacheKeyUtils"
+import {TestModel} from "../types"
 
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig')
 
@@ -29,7 +30,7 @@ describe(`generateCacheKeyForModelName`, () => {
 describe(`generateCacheKeyForSingleDocument`, () => {
     test(`should properly generate key for record and model name `, () => {
         generateCacheKeyForSingleDocumentTestData().forEach(testCase => {
-            const key = generateCacheKeyForSingleDocument(testCase.given.query, testCase.given.record as CachedLeanDocument<unknown>) 
+            const key = generateCacheKeyForSingleDocument(testCase.given.query, testCase.given.record as CachedDocument<TestModel>) 
             expect(key).toEqual(testCase.expected)
         })
     })

@@ -1,5 +1,5 @@
 import {Document, Aggregate, Query} from "mongoose"
-import {CachedLeanDocument, DocumentWithIdAndTenantValue} from "../types/types"
+import {CachedDocument, DocumentWithIdAndTenantValue} from "../types/types"
 import {getConfig} from "./commonUtils"
 import {stringifyPopulatedPaths, stringifyQueryParam} from "./queryUtils"
 
@@ -22,7 +22,7 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): stri
     }
 )
 
-export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedLeanDocument<T>): string => {
+export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
     if (!query.selected() && query.getPopulatedPaths().length === 0) {
         return String(record._id)
     }

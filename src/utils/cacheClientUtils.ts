@@ -15,11 +15,11 @@ const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>):
     }
 }
 
-const setKeyInHydratedDocumentsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
+const setKeyInHydratedDocumentsCache = async <T>(document: CachedDocument<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
     await getHydrationCache().set(key, document, params.ttl * 1000)
 }
 
-const setKeyInHydatedDocumentsVariationsCache = async <T>(document: Document<T>, key: string): Promise<void> => {
+const setKeyInHydratedDocumentsVariationsCache = async <T>(document: Document<T>, key: string): Promise<void> => {
     const recordId = String(document._id)
     await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key)
 }
@@ -56,7 +56,7 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
 
 /** 
  * Can be used for manually clearing cache for given recordId, 
- * usefull when performing silent updates of record
+ * useful when performing silent updates of record
  * @param {string} key cache key
 */
 export const clearCacheForRecordId = async (recordId: string): Promise<void> => {
@@ -67,7 +67,7 @@ export const clearCacheForRecordId = async (recordId: string): Promise<void> => 
 
 /** 
  * Can be used for manually clearing cache for given modelName. 
- * @param {string} modelName name of registerd mongoose model
+ * @param {string} modelName name of registered mongoose model
  * @param {string} multitenantValue [optional] unique value of your tenant
 */
 export const clearCachedResultsForModel = async (modelName: string, multitenantValue?: string): Promise<void> => {
@@ -99,9 +99,9 @@ export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperation
     context?.debug(`Cache key set`, context.cacheKey)
 }
 
-export const setKeyInHydrationCaches = async <T>(key: string, document: Document<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
+export const setKeyInHydrationCaches = async <T>(key: string, document: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     await setKeyInHydratedDocumentsCache(document, key, params)
-    await setKeyInHydatedDocumentsVariationsCache(document, key)
+    await setKeyInHydratedDocumentsVariationsCache(document, key)
 }
 
 export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) => new Keyv<T>(
