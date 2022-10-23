@@ -241,7 +241,7 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
      - [ ] mongooseModelEvents
      - [X] wrapper
      - [X] inMemory caching strategy
-     - [ ] Redis caching strategy
+     - [X] Redis caching strategy
 - [X] Multitenancy (tenant field indicator) support
 - [X] Debugging mode
 - [ ] Support for more cache storage
