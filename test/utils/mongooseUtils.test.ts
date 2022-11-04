@@ -1,3 +1,4 @@
+import {ObjectId} from 'mongodb'
 import Container from 'typedi'
 import {GlobalDiContainerRegistryNames} from '../../src/types/types'
 import {
@@ -9,9 +10,10 @@ import {
     isResultWithId,
     isResultWithIds,
     setValueOnDocument,
-    getMongooseModelByName
+    getMongooseModelByName,
+    isMongooseUnpopulatedField
 } from '../../src/utils/mongooseUtils'
-import {getMongooseTestModel} from '../testUtils'
+import {generateTestDocument, getMongooseTestModel} from '../testUtils'
 
 describe(`isResultWithId`, () => {
     test(`should be truthy if result is object with key _id`, () => {
@@ -163,7 +165,7 @@ describe(`getMongooseModelFromDocument`, () => {
     test(`should return proper model from mongoose document`, () => {
         const TestModel = getMongooseTestModel()
         const testDocument = new TestModel({})
-        const result  = getMongooseModelFromDocument(testDocument)
+        const result = getMongooseModelFromDocument(testDocument)
         expect(result).toBeInstanceOf(Object)
         expect(result.modelName).toEqual('testModel')
     })
@@ -172,24 +174,24 @@ describe(`getMongooseModelFromDocument`, () => {
         Container.remove(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
         const TestModel = getMongooseTestModel()
         const testDocument = new TestModel({})
-        const result  = getMongooseModelFromDocument(testDocument)
+        const result = getMongooseModelFromDocument(testDocument)
         expect(result).toBeFalsy()
-     })
+    })
 })
 
 describe(`getMongooseModelByName`, () => {
     test(`should return proper model by its name`, () => {
-         const result = getMongooseModelByName('testModel')
-        
+        const result = getMongooseModelByName('testModel')
+
         expect(result).toBeInstanceOf(Object)
         expect(result.modelName).toEqual('testModel')
     })
 
     test(`should be falsy if there is no mongoose instance registered in di container`, () => {
         Container.remove(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS)
-         const result = getMongooseModelByName('testModel')
+        const result = getMongooseModelByName('testModel')
         expect(result).toBeFalsy()
-     })
+    })
 })
 
 describe(`getMongooseInstance`, () => {
@@ -197,5 +199,30 @@ describe(`getMongooseInstance`, () => {
         const mongoose = getMongooseInstance()
         expect(mongoose).toBeInstanceOf(Object)
         expect(Object.keys(mongoose)).toContain('models')
+    })
+})
+
+describe(`isMongooseUnpopulatedField`, () => {
+
+    test(`should return true if the entry is mongooseId`, () => {
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationField: new ObjectId()}), 'relationField')).toBeTruthy()
+    })
+
+    test(`should return true if the entry is stringified MongooseId`, () => {
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationField: String(new ObjectId())}), 'relationField')).toBeTruthy()
+    })
+
+    test(`should return true if the entry is array of mongoose Ids`, () => {
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationArray: [new ObjectId(), new ObjectId]}), 'relationArray')).toBeTruthy()
+    })
+
+    test(`should return true if the entry is array of stringified MongooseIds`, () => {
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationArray: [String(new ObjectId()), String(new ObjectId)]}), 'relationArray')).toBeTruthy()
+    })
+
+    test(`should return false if the entry is not an id`, () => {
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationArray: [generateTestDocument({})]}), 'relationArray'))
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationField: generateTestDocument({})}), 'relationField'))
+        expect(isMongooseUnpopulatedField(generateTestDocument({relationField: null}), 'relationField'))
     })
 })

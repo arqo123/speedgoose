@@ -13,8 +13,6 @@ export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string => JSON
     }
 )
 
-
-
 export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): string => JSON.stringify(
     {
         pipeline: aggregation.pipeline(),

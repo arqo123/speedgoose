@@ -19,7 +19,7 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
         {
             query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
             result: {
-                _id: String(id1)  ,
+                _id: String(id1),
                 fieldA: 'tc01',
                 name: 'tc01Name',
             }
@@ -175,6 +175,46 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
                         }
                     }
                 }]
+        },
+        // tc06 - document with populated only one field, second one stays as a array ids
+        {
+            query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
+            result: {
+                _id: String(id4),
+                fieldA: 'tc04',
+                name: 'tc04Name',
+                relationArray: [
+                    id1,
+                    id2
+                ],
+                relationField: {
+                    _id: String(id1),
+                    fieldA: 'tc01',
+                    name: 'tc01Name',
+                }
+            }
+        },
+        // tc07 - document with populated array of record, second relation stays unpopulated
+        {
+            query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
+            result: {
+                _id: String(id4),
+                fieldA: 'tc04',
+                name: 'tc04Name',
+                relationArray: [
+                    {
+                        _id: String(id1),
+                        fieldA: 'tc01',
+                        name: 'tc01Name',
+                    },
+                    {
+                        _id: String(id2),
+                        fieldA: 'tc02',
+                        name: 'tc02Name',
+                    },
+                ],
+                relationField: id1
+            }
         },
     ]
 }

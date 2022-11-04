@@ -1,4 +1,4 @@
-import {Document} from 'mongoose'
+import {Document, isObjectIdOrHexString, } from 'mongoose'
 import {CachedDocument, CachedLeanDocument} from '../../src/types/types'
 import {hydrateResults} from "../../src/utils/hydrationUtils"
 import {isResultWithId} from '../../src/utils/mongooseUtils'
@@ -8,12 +8,18 @@ import {MongooseTestDocument, TestModel} from '../types'
 
 describe(`hydrateResults`, () => {
 
-    const checkDocumentConsistency = (hydratedRecord: MongooseTestDocument, sourceRecord: CachedLeanDocument<TestModel>): void => {
-        expect(hydratedRecord).toBeInstanceOf(Document)
+    const checkDocumentConsistency = (result: MongooseTestDocument, sourceRecord: CachedLeanDocument<TestModel>): void => {
+        //checking if the source record is just an id 
+        if (isObjectIdOrHexString(sourceRecord)) {
+            expect(isObjectIdOrHexString(result)).toBeTruthy()
+            expect(sourceRecord).toEqual(result)
+        } else {
+            expect(result).toBeInstanceOf(Document)
 
-        expect(String(hydratedRecord._id)).toEqual(String(sourceRecord._id))
-        expect(hydratedRecord.fieldA).toEqual(sourceRecord.fieldA)
-        expect(hydratedRecord.name).toEqual(sourceRecord.name)
+            expect(String(result._id)).toEqual(String(sourceRecord._id))
+            expect(result.fieldA).toEqual(sourceRecord.fieldA)
+            expect(result.name).toEqual(sourceRecord.name)
+        }
     }
 
     const runTest = (hydratedResult: MongooseTestDocument, sourceRecord: CachedLeanDocument<TestModel>) => {
@@ -24,6 +30,7 @@ describe(`hydrateResults`, () => {
             checkDocumentConsistency(hydratedResult.relationField as MongooseTestDocument, sourceRecord.relationField as CachedLeanDocument<TestModel>)
             runTest(hydratedResult.relationField as MongooseTestDocument, sourceRecord.relationField as CachedLeanDocument<TestModel>)
         }
+
         const relationArray = sourceRecord?.relationArray as CachedLeanDocument<TestModel>[]
 
         if (relationArray?.length > 0) {
@@ -37,7 +44,7 @@ describe(`hydrateResults`, () => {
 
     test(`should properly recreate all documents from raw objects and turn them into deep populated documents`, () => {
         prepareHydrateResultsTestCases().forEach(async testCase => {
-            const hydratedResult = await hydrateResults<TestModel>(testCase.query, {}, testCase.result as CachedDocument<TestModel>) 
+            const hydratedResult = await hydrateResults<TestModel>(testCase.query, {}, testCase.result as CachedDocument<TestModel>)
             if (isResultWithId(testCase.result)) {
                 runTest(hydratedResult as MongooseTestDocument, testCase.result as CachedLeanDocument<TestModel>)
             } else {
