@@ -5,8 +5,8 @@ export type TestModel = {
     name?: string,
     _id?: string | ObjectId,
     fieldA?: string,
-    relationField? : TestModel,
-    relationArray? : TestModel[]
+    relationField? : TestModel | string  | ObjectId,
+    relationArray? : TestModel[] | string[] | ObjectId[],
     [key: string]: unknown
 }
 

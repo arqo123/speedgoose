@@ -1,10 +1,10 @@
 import {Query} from "mongoose"
-import {Document, Model, SchemaType} from "mongoose"
+import {Model, SchemaType} from "mongoose"
 import {CachedDocument, SpeedGooseCacheOperationContext} from "../types/types"
 import {setKeyInHydrationCaches} from "./cacheClientUtils"
 import {generateCacheKeyForSingleDocument} from "./cacheKeyUtils"
 import {getHydrationCache} from "./commonUtils"
-import {getValueFromDocument, isResultWithIds, getMongooseModelByName, setValueOnDocument} from "./mongooseUtils"
+import {getValueFromDocument, isResultWithIds, getMongooseModelByName, setValueOnDocument, isMongooseUnpopulatedField} from "./mongooseUtils"
 
 type FieldWithReferenceModel = {
     path: string,
@@ -44,15 +44,15 @@ const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCac
 }
 
 const hydrateDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): CachedDocument<T> => deepHydrate(query.model, record)
-
+ 
 const deepHydrate = <T>(
     model: Model<T>, record: CachedDocument<T>
 ): CachedDocument<T> => {
     const hydratedRootDocument = model.hydrate(record) as CachedDocument<T>;
 
     for (const field of getFieldsToHydrate(model)) {
+        if (field.referenceModelName && !isMongooseUnpopulatedField(record, field.path)) {
 
-        if (field.referenceModelName) {
             const value = getValueFromDocument(field.path, record);
 
             if (!isResultWithIds(value)) continue;
@@ -75,6 +75,4 @@ export const hydrateResults = <T>(
     context: SpeedGooseCacheOperationContext,
     result: CachedDocument<T> | CachedDocument<T>[]
 ): Promise<CachedDocument<T> | CachedDocument<T>[]> =>
-   Array.isArray(result) ? getHydratedDocuments(query, context, result) : getHydratedDocument(query, context, result);
- 
- 
+    Array.isArray(result) ? getHydratedDocuments(query, context, result) : getHydratedDocument(query, context, result);
