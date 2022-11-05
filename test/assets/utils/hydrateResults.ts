@@ -1,6 +1,6 @@
 import {ObjectId} from "mongodb"
 import {Query} from "mongoose"
-import {generateTestFindQuery} from "../../testUtils"
+import {generateTestDocument, generateTestFindQuery} from "../../testUtils"
 import {TestModel} from "../../types"
 
 type HydrateResultTestCases = {
@@ -214,6 +214,32 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
                     },
                 ],
                 relationField: id1
+            }
+        },
+        // tc08 - document with already hydrated one of the field
+        {
+            query: generateTestFindQuery({}) as Query<TestModel, TestModel>,
+            result: {
+                _id: String(id4),
+                fieldA: 'tc04',
+                name: 'tc04Name',
+                relationArray: [
+                    {
+                        _id: String(id1),
+                        fieldA: 'tc01',
+                        name: 'tc01Name',
+                    },
+                    {
+                        _id: String(id2),
+                        fieldA: 'tc02',
+                        name: 'tc02Name',
+                    },
+                ],
+                relationField: generateTestDocument( {
+                    _id: String(id1),
+                    fieldA: 'tc01',
+                    name: 'tc01Name',
+                })
             }
         },
     ]
