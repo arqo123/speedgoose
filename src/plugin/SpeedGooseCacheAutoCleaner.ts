@@ -3,7 +3,6 @@ import {publishRecordIdsOnChannel} from "../utils/redisUtils";
 import {DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels} from "../types/types";
 import {getMongooseModelFromDocument} from "../utils/mongooseUtils";
 import {getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted} from "./utils";
-import {isCachingEnabled} from "../utils/commonUtils";
 
 const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne']
 const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate']
@@ -81,7 +80,7 @@ const isListenerPluginRegisteredForSchema = (schema: Schema): boolean =>
 
 export const SpeedGooseCacheAutoCleaner = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     /* Note: This is special logic to avoid duplicating listeners for given events */
-    if (!isListenerPluginRegisteredForSchema(schema) && isCachingEnabled()) {
+    if (!isListenerPluginRegisteredForSchema(schema)) {
         schema.plugin(speedGooseEventListeners, options)
     }
 }
