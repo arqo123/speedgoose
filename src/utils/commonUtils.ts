@@ -16,3 +16,5 @@ export const getHydrationVariationsCache = (): Keyv<Set<string>> =>
 
 export const getCacheStrategyInstance = (): CacheStrategiesTypes =>
     Container.get<CacheStrategiesTypes>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS)
+
+export const isCachingEnabled = (): boolean => getConfig()?.enabled

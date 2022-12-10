@@ -49,7 +49,9 @@ export type SpeedGooseConfig = {
         debugOperations?: SpeedGooseDebuggerOperations[],
     },
     /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS */
-    sharedCacheStrategy?: SharedCacheStrategies
+    sharedCacheStrategy?: SharedCacheStrategies,
+    /** Indicates if caching is enabled or disabled, by default is enabled */
+    enabled?: boolean
 }
 
 export type SpeedGooseCacheOperationParams = {
