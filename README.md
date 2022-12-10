@@ -175,7 +175,9 @@ applySpeedGooseCacheLayer(mongoose, {
         debugOperations?: SpeedGooseDebuggerOperations[],
     /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS 
      * Available strategies: SharedCacheStrategies.REDIS and SharedCacheStrategies.IN_MEMORY */
-    sharedCacheStrategy?: SharedCacheStrategies  
+    sharedCacheStrategy?: SharedCacheStrategies,
+    /** Indicates if caching is enabled or disabled, by default is enabled */
+    enabled?: boolean
     }
 ```
 #### ```cacheQuery(operationParams)``` and ```cachePipeline(operationParams)```

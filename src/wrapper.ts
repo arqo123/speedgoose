@@ -20,6 +20,7 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
     }
     config.sharedCacheStrategy = config.sharedCacheStrategy ?? SharedCacheStrategies.REDIS
     config.defaultTtl = config.defaultTtl ?? 60
+    config.enabled = config.enabled ?? true
 }
 
 const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
