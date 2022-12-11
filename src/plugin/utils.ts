@@ -10,20 +10,25 @@ export const wasRecordDeleted = <T>(record: Document<T>, options: SpeedGooseCach
     return false
 }
 
+const getMultitenantKeyProjection = (): Record<string, number> => {
+    const multitenantKey = getConfig().multitenancyConfig?.multitenantKey
+
+    return multitenantKey ? {[multitenantKey]: 1} : {}
+}
+
 /* In case of 'many' actions - as they are query operation we have to predict affected ids by making same query to fetch them */
 export const getRecordsAffectedByAction = async <T>(queryAction: Query<T, T>): Promise<DocumentWithIdAndTenantValue[]> => {
     const condition = queryAction.getFilter()
     const options = queryAction.getOptions()
-    const multitenantKey = getConfig().multitenancyConfig.multitenantKey
 
-    return queryAction.model.find<CachedDocument<T>>(condition, {_id: 1, [multitenantKey]: 1}, options).lean()
+
+    return queryAction.model.find<CachedDocument<T>>(condition, {_id: 1, ...getMultitenantKeyProjection()}, options).lean()
 }
 
 /* In case of 'many' actions - as they are query operation we have to predict affected ids by making same query to fetch them */
 export const getRecordAffectedByAction = async <T>(queryAction: Query<T, T>): Promise<DocumentWithIdAndTenantValue> => {
     const condition = queryAction.getFilter()
     const options = queryAction.getOptions()
-    const multitenantKey = getConfig().multitenancyConfig.multitenantKey
 
-    return queryAction.model.findOne<CachedDocument<T>>(condition, {_id: 1, [multitenantKey]: 1}, options).lean()
+    return queryAction.model.findOne<CachedDocument<T>>(condition, {_id: 1, ...getMultitenantKeyProjection()}, options).lean()
 }
