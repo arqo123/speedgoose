@@ -1,95 +1,89 @@
-import {ObjectId} from 'mongodb'
-import {Document, Query} from 'mongoose'
-import {CachedDocument, SpeedGooseConfig} from "../../../src/types/types"
-import {generateTestDocument, generateTestFindQuery} from '../../testUtils'
-import {TestModel} from '../../types'
+import { ObjectId } from 'mongodb';
+import { Document, Query } from 'mongoose';
+import { CachedDocument, SpeedGooseConfig } from '../../../src/types/types';
+import { generateTestDocument, generateTestFindQuery } from '../../testUtils';
+import { TestModel } from '../../types';
 
 type GenerateCacheKeyForRecordAndModelNameTestData = {
     given: {
-        record: Document
-        config: SpeedGooseConfig,
-        modelName: string
-    },
-    expected: string
-}
+        record: Document;
+        config: SpeedGooseConfig;
+        modelName: string;
+    };
+    expected: string;
+};
 
 type GenerateCacheKeyForSingleDocumentTestData = {
     given: {
-        record: Document,
-        query: Query<CachedDocument<TestModel>, CachedDocument<TestModel>>
-    },
-    expected: string
-}
+        record: Document;
+        query: Query<CachedDocument<TestModel>, CachedDocument<TestModel>>;
+    };
+    expected: string;
+};
 
 export const generateCacheKeyForRecordAndModelNameTestData = (): GenerateCacheKeyForRecordAndModelNameTestData[] => [
     // t01 - multitenancy with tenant multitenantValue in config
     {
         given: {
-            record: generateTestDocument({name: 'tc01', tenantId: 'tentant01'}),
+            record: generateTestDocument({ name: 'tc01', tenantId: 'tentant01' }),
             config: {
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
             },
-            modelName: 'firstModelName'
+            modelName: 'firstModelName',
         },
-        expected: `firstModelName_tentant01`
+        expected: `firstModelName_tentant01`,
     },
-    // t02 - multitenancy disabled 
+    // t02 - multitenancy disabled
     {
         given: {
-            record: generateTestDocument({name: 'tc02', tenantId: 'tentant02'}),
+            record: generateTestDocument({ name: 'tc02', tenantId: 'tentant02' }),
             config: {},
-            modelName: 'firstModelName'
+            modelName: 'firstModelName',
         },
-        expected: `firstModelName`
+        expected: `firstModelName`,
     },
-
-]
-
+];
 
 export const generateCacheKeyForSingleDocumentTestData = (): GenerateCacheKeyForSingleDocumentTestData[] => {
-    const id1 = new ObjectId()
-    const id2 = new ObjectId()
-    const id3 = new ObjectId()
-    const id4 = new ObjectId()
+    const id1 = new ObjectId();
+    const id2 = new ObjectId();
+    const id3 = new ObjectId();
+    const id4 = new ObjectId();
 
     return [
-        // t01 - populate inside query and 
+        // t01 - populate inside query and
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'}).populate('modelToPopulate') as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
-                record: generateTestDocument({_id: id1, name: 'tc01'}),
+                query: generateTestFindQuery({ tenantId: 'tenantTestValue' }).populate('modelToPopulate') as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
+                record: generateTestDocument({ _id: id1, name: 'tc01' }),
             },
-            expected: `${id1}__modelToPopulate`
+            expected: `${id1}__modelToPopulate`,
         },
         // t02 - selection inside query, selection fields should be sorted
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'}).select({tenantId: -1, name: 1}) as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
-                record: generateTestDocument({_id: id2, name: 'tc02'}),
+                query: generateTestFindQuery({ tenantId: 'tenantTestValue' }).select({ tenantId: -1, name: 1 }) as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
+                record: generateTestDocument({ _id: id2, name: 'tc02' }),
             },
-            expected: `${id2}_name:1,tenantId:-1_`
+            expected: `${id2}_name:1,tenantId:-1_`,
         },
         // t03 - selection and population inside query, selection and population should be sorted
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'})
-                    .select({tenantId: -1, name: 1, fieldA: 1})
-                    .populate('secondModelToPopulate')
-                    .populate('modelToPopulate') as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
-                record: generateTestDocument({_id: id3, name: 'tc03'}),
+                query: generateTestFindQuery({ tenantId: 'tenantTestValue' }).select({ tenantId: -1, name: 1, fieldA: 1 }).populate('secondModelToPopulate').populate('modelToPopulate') as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
+                record: generateTestDocument({ _id: id3, name: 'tc03' }),
             },
-            expected: `${id3}_fieldA:1,name:1,tenantId:-1_modelToPopulate,secondModelToPopulate`
+            expected: `${id3}_fieldA:1,name:1,tenantId:-1_modelToPopulate,secondModelToPopulate`,
         },
         // t04 - no selection, no population
         {
             given: {
-                query: generateTestFindQuery({tenantId: 'tenantTestValue'}) as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
-                record: generateTestDocument({_id: id4, name: 'tc04'}),
+                query: generateTestFindQuery({ tenantId: 'tenantTestValue' }) as Query<CachedDocument<TestModel>, CachedDocument<TestModel>>,
+                record: generateTestDocument({ _id: id4, name: 'tc04' }),
             },
-            expected: String(id4)
+            expected: String(id4),
         },
-    ]
-
-}
+    ];
+};

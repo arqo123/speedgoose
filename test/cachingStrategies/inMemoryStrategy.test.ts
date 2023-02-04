@@ -1,9 +1,9 @@
-import {InMemoryStrategy} from '../../src/cachingStrategies/inMemoryStrategy'
+import { InMemoryStrategy } from '../../src/cachingStrategies/inMemoryStrategy';
 
 describe('InMemoryStrategy.isHydrationEnabled', () => {
-    const strategy = new InMemoryStrategy()
-   
+    const strategy = new InMemoryStrategy();
+
     test(`should return false`, () => {
-        expect(strategy.isHydrationEnabled()).toBeFalsy()
-    })
-})
+        expect(strategy.isHydrationEnabled()).toBeFalsy();
+    });
+});

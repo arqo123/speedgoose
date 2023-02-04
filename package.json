@@ -1,66 +1,88 @@
 {
-  "name": "speedgoose",
-  "version": "1.2.19",
-  "description": "Next-level mongoose caching layer with event based cache clearing",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "private": false,
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/arqo123/speedgoose.git"
-  },
-  "author": "Arkadiusz Gil",
-  "license": "MIT",
-  "keywords": [
-    "mongoose",
-    "cache",
-    "mongodb",
-    "redis",
-    "ttl"
-  ],
-  "files": [
-    "lib/**/*.js",
-    "lib/**/*.d.ts"
-  ],
-  "scripts": {
-    "test": "yarn jest",
-    "test-watch": "nodemon --exec 'npm test'",
-    "clean": "rimraf ./lib/*",
-    "lint:base": "eslint --ignore-path .gitignore --ext .ts",
-    "lint": "yarn lint:base .",
-    "lint:ci": "yarn lint:base --quiet .&& tsc -p tsconfig.json",
-    "build": "yarn clean && tsc ",
-    "dev": "yarn clean && tsc --watch",
-    "version": "auto-changelog -p && git add CHANGELOG.md"
-  },
-  "dependencies": {
-    "debug": "^4.3.4",
-    "fastq": "^1.13.0",
-    "ioredis": "^5.2.2",
-    "keyv": "^4.4.1",
-    "mongoose": "6.7.5",
-    "mpath": "^0.9.0",
-    "typedi": "^0.10.0"
-  },
-  "devDependencies": {
-    "@types/debug": "^4.1.7",
-    "@types/jest": "^29.0.0",
-    "@types/keyv": "^4.2.0",
-    "@typescript-eslint/eslint-plugin": "^5.33.0",
-    "@typescript-eslint/parser": "^5.33.0",
-    "auto-changelog": "^2.4.0",
-    "eslint": "^8.21.0",
-    "ioredis-mock": "^8.2.2",
-    "jest": "^29.0.2",
-    "jest-extended": "^3.0.2",
-    "ts-jest": "^29.0.3",
-    "typescript": "^4.7.4"
-  },
-  "bugs": {
-    "url": "https://github.com/arqo123/speedgoose/issues"
-  },
-  "homepage": "https://github.com/arqo123/speedgoose#readme",
-  "directories": {
-    "lib": "lib"
-  }
+    "name": "speedgoose",
+    "version": "1.2.19",
+    "description": "Next-level mongoose caching layer with event based cache clearing",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "private": false,
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/arqo123/speedgoose.git"
+    },
+    "author": "Arkadiusz Gil",
+    "license": "MIT",
+    "keywords": [
+        "mongoose",
+        "cache",
+        "mongodb",
+        "redis",
+        "ttl"
+    ],
+    "files": [
+        "lib/**/*.js",
+        "lib/**/*.d.ts"
+    ],
+    "lint-staged": {
+        "*.{js,ts}": [
+            "eslint"
+        ]
+    },
+    "lint-prepush": {
+        "base": "master",
+        "tasks": {
+            "*.{js,ts}": [
+                "eslint"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "yarn jest",
+        "test-watch": "nodemon --exec 'npm test'",
+        "clean": "rimraf ./lib/*",
+        "lint:base": "eslint --ignore-path .gitignore --ext .ts",
+        "lint:fix": "eslint . --fix & prettier . --write",
+        "lint": "yarn lint:base .",
+        "lint:ci": "yarn lint:base --quiet .&& tsc -p tsconfig.json",
+        "build": "yarn clean && tsc ",
+        "dev": "yarn clean && tsc --watch",
+        "version": "auto-changelog -p && git add CHANGELOG.md",
+        "postinstall": "husky install"
+    },
+    "dependencies": {
+        "debug": "^4.3.4",
+        "fastq": "^1.13.0",
+        "ioredis": "^5.2.2",
+        "keyv": "^4.4.1",
+        "mongoose": "6.7.5",
+        "mpath": "^0.9.0",
+        "typedi": "^0.10.0"
+    },
+    "devDependencies": {
+        "@types/debug": "^4.1.7",
+        "@types/jest": "^29.0.0",
+        "@types/keyv": "^4.2.0",
+        "@typescript-eslint/eslint-plugin": "^5.33.0",
+        "@typescript-eslint/parser": "^5.33.0",
+        "auto-changelog": "^2.4.0",
+        "eslint": "^8.21.0",
+        "eslint-config-prettier": "^8.5.0",
+        "eslint-plugin-prettier": "^4.2.1",
+        "eslint-plugin-unused-imports": "^2.0.0",
+        "husky": "^8.0.3",
+        "ioredis-mock": "^8.2.2",
+        "jest": "^29.0.2",
+        "jest-extended": "^3.0.2",
+        "lint-staged": "^13.1.0",
+        "precise-commits": "^1.0.2",
+        "prettier": "^2.8.3",
+        "ts-jest": "^29.0.3",
+        "typescript": "^4.7.4"
+    },
+    "bugs": {
+        "url": "https://github.com/arqo123/speedgoose/issues"
+    },
+    "homepage": "https://github.com/arqo123/speedgoose#readme",
+    "directories": {
+        "lib": "lib"
+    }
 }
