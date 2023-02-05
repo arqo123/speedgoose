@@ -112,3 +112,5 @@ export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) =>
     );
 
 export const getResultsFromCache = async (key: string): Promise<CachedResult> => getCacheStrategyInstance().getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, key);
+
+export const refreshTtlForCachedResult = async <T>(key: string, ttl: number, value: CachedResult<T>): Promise<CachedResult> => getCacheStrategyInstance().refreshTtlForCachedResult(CacheNamespaces.RESULTS_NAMESPACE, key, ttl, value);
