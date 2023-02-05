@@ -1,86 +1,92 @@
-import {Schema} from "mongoose";
-import {publishRecordIdsOnChannel} from "../utils/redisUtils";
-import {DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels} from "../types/types";
-import {getMongooseModelFromDocument} from "../utils/mongooseUtils";
-import {getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted} from "./utils";
+import { Schema } from 'mongoose';
+import { publishRecordIdsOnChannel } from '../utils/redisUtils';
+import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
+import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
+import { getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted } from './utils';
 
-const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne']
-const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate']
-const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany']
-const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany']
+const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne'];
+const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate'];
+const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany'];
+const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 
 const appendQueryBasedListeners = (schema: Schema): void => {
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
-        const model = this.model
+        const model = this.model;
         //@ts-expect-error current type returned in the event is type Query - not document
-        const updatedRecord = await getRecordAffectedByAction(this)
+        const updatedRecord = await getRecordAffectedByAction(this);
         if (updatedRecord) {
-            const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(this.op)
-            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id))
-            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName})
+            const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(this.op);
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id));
+            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName });
         }
-        next()
-    })
+        next();
+    });
 
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], {query: true}, async function (next) {
-        const model = this.model
+    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function (next) {
+        const model = this.model;
         //@ts-expect-error current type returned in the event is type Query - not document
-        const affectedRecords = await getRecordsAffectedByAction(this)
+        const affectedRecords = await getRecordsAffectedByAction(this);
         if (affectedRecords.length > 0) {
-            const wasDeleted = MONGOOSE_DELETE_MANY_ACTIONS.includes(this.op)
+            const wasDeleted = MONGOOSE_DELETE_MANY_ACTIONS.includes(this.op);
 
-            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, affectedRecords.map(record => record._id))
-            model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{records: affectedRecords, wasDeleted, modelName: model.modelName})
-
+            await publishRecordIdsOnChannel(
+                SpeedGooseRedisChannels.RECORDS_CHANGED,
+                affectedRecords.map(record => record._id),
+            );
+            model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records: affectedRecords, wasDeleted, modelName: model.modelName });
         }
-        next()
-    })
-}
+        next();
+    });
+};
 
 const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
-    schema.pre('save', {document: true}, async function (next) {
-        this.$locals.wasNew = this.isNew
-        this.$locals.wasDeleted = wasRecordDeleted(this, options)
-        const model = getMongooseModelFromDocument(this)
+    schema.pre('save', { document: true }, async function (next) {
+        this.$locals.wasNew = this.isNew;
+        this.$locals.wasDeleted = wasRecordDeleted(this, options);
+        const model = getMongooseModelFromDocument(this);
         if (model) {
-            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id))
-            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record: this, wasNew: this.isNew, wasDeleted: this.$locals.wasDeleted, modelName: model.modelName})
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id));
+            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{
+                record: this,
+                wasNew: this.isNew,
+                wasDeleted: this.$locals.wasDeleted,
+                modelName: model.modelName,
+            });
         }
-        next()
-    })
+        next();
+    });
 
-    schema.post('insertMany', {document: true}, async function (insertedDocuments, next) {
+    schema.post('insertMany', { document: true }, async function (insertedDocuments, next) {
         if (insertedDocuments.length > 0) {
             //@ts-expect-error current type returned in the event is type Query - not document
-            const records = insertedDocuments as DocumentWithIdAndTenantValue[]
-            this.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{records, wasNew: true, wasDeleted: false, modelName: this.modelName})
+            const records = insertedDocuments as DocumentWithIdAndTenantValue[];
+            this.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records, wasNew: true, wasDeleted: false, modelName: this.modelName });
         }
-        next()
-    })
+        next();
+    });
 
-    schema.post('remove', {document: true}, async function (record, next) {
-        const model = getMongooseModelFromDocument(record)
+    schema.post('remove', { document: true }, async function (record, next) {
+        const model = getMongooseModelFromDocument(record);
         if (model) {
-            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id))
-            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{record, wasDeleted: true, modelName: model.modelName})
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
+            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record, wasDeleted: true, modelName: model.modelName });
         }
-        next()
-    })
-}
+        next();
+    });
+};
 
 const speedGooseEventListeners = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
-    appendDocumentBasedListeners(schema, options)
-    appendQueryBasedListeners(schema)
-}
+    appendDocumentBasedListeners(schema, options);
+    appendQueryBasedListeners(schema);
+};
 
-const isListenerPluginRegisteredForSchema = (schema: Schema): boolean =>
-    schema.plugins.some(plugin => plugin?.fn.name === speedGooseEventListeners.name)
+const isListenerPluginRegisteredForSchema = (schema: Schema): boolean => schema.plugins.some(plugin => plugin?.fn.name === speedGooseEventListeners.name);
 
 export const SpeedGooseCacheAutoCleaner = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     /* Note: This is special logic to avoid duplicating listeners for given events */
     if (!isListenerPluginRegisteredForSchema(schema)) {
-        schema.plugin(speedGooseEventListeners, options)
+        schema.plugin(speedGooseEventListeners, options);
     }
-}
+};

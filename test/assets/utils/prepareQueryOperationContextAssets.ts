@@ -1,27 +1,27 @@
-import {Query} from "mongoose"
-import {SpeedGooseCacheOperationContext, SpeedGooseConfig} from "../../../src/types/types"
-import {generateTestFindQuery} from "../../testUtils"
+import { Query } from 'mongoose';
+import { SpeedGooseCacheOperationContext, SpeedGooseConfig } from '../../../src/types/types';
+import { generateTestFindQuery } from '../../testUtils';
 
 type AggregateParamsOperationTestData = {
     given: {
-        query: Query<unknown, unknown>
-        config: SpeedGooseConfig,
-        params: SpeedGooseCacheOperationContext
-    },
-    expected: SpeedGooseCacheOperationContext
-}
+        query: Query<unknown, unknown>;
+        config: SpeedGooseConfig;
+        params: SpeedGooseCacheOperationContext;
+    };
+    expected: SpeedGooseCacheOperationContext;
+};
 
 export const generateQueryParamsOperationTestData = (): AggregateParamsOperationTestData[] => [
     // t01 - multitenancy with tenant key in query and ttl in params
     {
         given: {
-            query: generateTestFindQuery({tenantId: 'tenantTestValue'}),
+            query: generateTestFindQuery({ tenantId: 'tenantTestValue' }),
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
             params: {
                 ttl: 120,
@@ -29,10 +29,10 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 120,
-            cacheKey: "{\"query\":{\"tenantId\":\"tenantTestValue\"},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{},\"options\":{}}",
+            cacheKey: '{"query":{"tenantId":"tenantTestValue"},"collection":"testmodels","op":"find","projection":{},"options":{}}',
             multitenantValue: 'tenantTestValue',
-            debug: expect.any(Function)
-        }
+            debug: expect.any(Function),
+        },
     },
     // // t02 - multitenancy without tenant key in query and with default ttl
     {
@@ -41,18 +41,17 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
-            params: {
-            },
+            params: {},
         },
         expected: {
             ttl: 30,
-            cacheKey: "{\"query\":{},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{},\"options\":{}}",
-            debug: expect.any(Function)
-        }
+            cacheKey: '{"query":{},"collection":"testmodels","op":"find","projection":{},"options":{}}',
+            debug: expect.any(Function),
+        },
     },
     // // t03 - multitenancy disabled, tenant key in query and custom key set, debug enabled
     {
@@ -61,113 +60,109 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
                 debugConfig: {
-                    enabled: true
+                    enabled: true,
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
             params: {
-                cacheKey: 'testCacheKey'
+                cacheKey: 'testCacheKey',
             },
         },
         expected: {
             ttl: 30,
-            cacheKey: "testCacheKey",
-            debug: expect.any(Function)
-        }
+            cacheKey: 'testCacheKey',
+            debug: expect.any(Function),
+        },
     },
     // // t04 - multitenancy disabled, tenant key in query , projection set as query param
     {
         given: {
-            query: generateTestFindQuery({field1: 'x'}, {projectionField1: 1}),
+            query: generateTestFindQuery({ field1: 'x' }, { projectionField1: 1 }),
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
                 debugConfig: {
-                    enabled: true
+                    enabled: true,
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
-            params: {
-            },
+            params: {},
         },
         expected: {
             ttl: 30,
-            cacheKey: "{\"query\":{\"field1\":\"x\"},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{\"projectionField1\":1},\"options\":{}}",
-            debug: expect.any(Function)
-        }
+            cacheKey: '{"query":{"field1":"x"},"collection":"testmodels","op":"find","projection":{"projectionField1":1},"options":{}}',
+            debug: expect.any(Function),
+        },
     },
     // // t05 - multitenancy disabled, tenant key in query , projection set  with select method
     {
         given: {
-            query: generateTestFindQuery({field1: 'x'}).select('selectedField selectedSecondField'),
+            query: generateTestFindQuery({ field1: 'x' }).select('selectedField selectedSecondField'),
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
                 debugConfig: {
-                    enabled: true
+                    enabled: true,
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
-            params: {
-            },
+            params: {},
         },
         expected: {
             ttl: 30,
-            cacheKey: "{\"query\":{\"field1\":\"x\"},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{\"selectedField\":1,\"selectedSecondField\":1},\"options\":{}}",
-            debug: expect.any(Function)
-        }
+            cacheKey: '{"query":{"field1":"x"},"collection":"testmodels","op":"find","projection":{"selectedField":1,"selectedSecondField":1},"options":{}}',
+            debug: expect.any(Function),
+        },
     },
     // // t06 - multitenancy disabled, tenant key in query , projection set in options
     {
         given: {
-            query: generateTestFindQuery({field1: 'x'}, {}, {projection: {projectedFieldFromOptions: 1}}),
+            query: generateTestFindQuery({ field1: 'x' }, {}, { projection: { projectedFieldFromOptions: 1 } }),
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
                 debugConfig: {
-                    enabled: true
+                    enabled: true,
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
-            params: {
-            },
+            params: {},
         },
         expected: {
             ttl: 30,
-            cacheKey: "{\"query\":{\"field1\":\"x\"},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{\"projectedFieldFromOptions\":1},\"options\":{}}",
-            debug: expect.any(Function)
-        }
+            cacheKey: '{"query":{"field1":"x"},"collection":"testmodels","op":"find","projection":{"projectedFieldFromOptions":1},"options":{}}',
+            debug: expect.any(Function),
+        },
     },
     // t07 - multitenancy disabled, tenant key in query , projection set in options, as a param and with select method
     {
         given: {
-            query: generateTestFindQuery({field1: 'x'}, {projectedFieldThatWillBeOwerwritten : 1}, {projection : {projectionFromOptions :1} }).select('selectedField'),
+            query: generateTestFindQuery({ field1: 'x' }, { projectedFieldThatWillBeOwerwritten: 1 }, { projection: { projectionFromOptions: 1 } }).select('selectedField'),
             config: {
                 redisUri: 'redisUri',
                 multitenancyConfig: {
-                    multitenantKey: 'tenantId'
+                    multitenantKey: 'tenantId',
                 },
                 debugConfig: {
-                    enabled: true
+                    enabled: true,
                 },
-                defaultTtl: 30
+                defaultTtl: 30,
             },
-            params: {
-            },
+            params: {},
         },
         expected: {
             ttl: 30,
-            cacheKey: "{\"query\":{\"field1\":\"x\"},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{\"projectionFromOptions\":1,\"selectedField\":1},\"options\":{}}",
-            debug: expect.any(Function)
-        }
+            cacheKey: '{"query":{"field1":"x"},"collection":"testmodels","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
+            debug: expect.any(Function),
+        },
     },
-]
+];

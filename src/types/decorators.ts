@@ -1,1 +1,5 @@
-export const staticImplements = <T>() => <U extends T>(constructor: U) => {constructor};
+export const staticImplements =
+    <T>() =>
+    <U extends T>(constructor: U) => {
+        constructor;
+    };
