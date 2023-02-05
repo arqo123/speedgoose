@@ -20,8 +20,6 @@ const getReferenceModelNameFromSchema = (schema: SchemaType): string => {
     }
 };
 
-const isFieldAlreadyHydrated = <T>(record: CachedDocument<T>) => typeof record === 'object' && record?.constructor?.name === 'model';
-
 const getFieldsToHydrate = <T>(model: Model<T>): FieldWithReferenceModel[] =>
     Object.entries<SchemaType>({
         ...(model?.schema?.paths ?? {}),
@@ -48,7 +46,7 @@ const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCac
 const hydrateDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): CachedDocument<T> => deepHydrate(query.model, record);
 
 const deepHydrate = <T>(model: Model<T>, record: CachedDocument<T>): CachedDocument<T> => {
-    const hydratedRootDocument = isFieldAlreadyHydrated(record) ? record : (model.hydrate(record) as CachedDocument<T>);
+    const hydratedRootDocument = model.hydrate(record) as CachedDocument<T>;
 
     for (const field of getFieldsToHydrate(model)) {
         if (field.referenceModelName && !isMongooseUnpopulatedField(record, field.path)) {

@@ -234,7 +234,6 @@ export const prepareHydrateResultsTestCases = (): HydrateResultTestCases[] => {
                     },
                 ],
                 relationField: generateTestDocument({
-                    _id: String(id1),
                     fieldA: 'tc01',
                     name: 'tc01Name',
                 }),
