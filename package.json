@@ -74,6 +74,7 @@
         "ioredis-mock": "^8.2.2",
         "jest": "^29.0.2",
         "jest-extended": "^3.0.2",
+        "lint-prepush": "^2.2.1",
         "lint-staged": "^13.1.0",
         "precise-commits": "^1.0.2",
         "prettier": "^2.8.3",
