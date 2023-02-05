@@ -1,5 +1,7 @@
 import { Aggregate, PipelineStage, ProjectionType, Query, QueryOptions } from 'mongoose';
+import { SpeedGooseRedisChannels } from '../src/types/types';
 import { getMongooseInstance } from '../src/utils/mongooseUtils';
+import { getRedisListenerInstance } from '../src/utils/redisUtils';
 import { TEST_MODEL_NAME } from './constants';
 import { registerMongooseTestModel } from './setupTestEnv';
 import { MongooseTestDocument, MongooseTestModel } from './types';
@@ -22,3 +24,8 @@ export const generateTestDocument = (value: Record<string, unknown>): MongooseTe
 };
 
 export const getValuesFromSet = <T>(set: Set<T>): T[] => Array.from(set).sort();
+
+export const clearTestEventListeners = (): void => {
+    getMongooseTestModel().removeAllListeners();
+    getRedisListenerInstance()?.removeAllListeners(SpeedGooseRedisChannels.RECORDS_CHANGED);
+};

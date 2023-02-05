@@ -18,7 +18,10 @@ const listenOnMessages = async (redisClient: Redis): Promise<void> => {
 };
 
 export const registerRedisClient = async (uri: string): Promise<Redis> => {
-    if (uri) {
+    const registeredClient = getRedisInstance();
+    if (registeredClient) {
+        return registeredClient;
+    } else if (uri) {
         const redisClient = new Redis(uri);
         const redisListenerClient = new Redis(uri);
 

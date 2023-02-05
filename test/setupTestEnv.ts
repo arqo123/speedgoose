@@ -5,6 +5,7 @@ import { applySpeedGooseCacheLayer } from '../src/wrapper';
 import { TEST_MODEL_NAME, TEST_SPEEDGOOSE_CONFIG } from './constants';
 import Container from 'typedi';
 import { MongooseTestModel } from './types';
+import { clearTestEventListeners } from './testUtils';
 
 jest.mock('ioredis', () => {
     return function () {
@@ -37,4 +38,8 @@ beforeEach(async () => {
     Container.reset();
     await applySpeedGooseCacheLayer(mongoose, TEST_SPEEDGOOSE_CONFIG);
     await registerMongooseTestModel();
+});
+
+afterEach(async () => {
+    clearTestEventListeners();
 });

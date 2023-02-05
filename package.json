@@ -36,7 +36,8 @@
         }
     },
     "scripts": {
-        "test": "yarn jest",
+        "test": "jest",
+        "test:debug": "jest --runInBand",
         "test-watch": "nodemon --exec 'npm test'",
         "clean": "rimraf ./lib/*",
         "lint:base": "eslint --ignore-path .gitignore --ext .ts",

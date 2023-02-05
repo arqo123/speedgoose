@@ -34,7 +34,7 @@ export const isMongooseUnpopulatedField = <T>(record: CachedDocument<T>, path: s
     if (!value) return false;
 
     if (value && !Array.isArray(value)) {
-        return isObjectIdOrHexString(value);
+        return isObjectIdOrHexString(value) && !(value instanceof Document);
     }
 
     return value[0] && isObjectIdOrHexString(value[0]);

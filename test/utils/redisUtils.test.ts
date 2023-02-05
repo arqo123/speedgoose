@@ -9,6 +9,10 @@ const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig');
 const mockedPublishImplementation = async (channel: string | Buffer, message: string | Buffer, callback?: Callback<number> | undefined) => 1;
 
 describe('getRedisInstance', () => {
+    beforeEach(() => {
+        getRedisListenerInstance()?.removeAllListeners();
+    });
+
     it(`should return access redis instance if redis uri was set in config`, () => {
         mockedGetConfig.mockReturnValue({ redisUri: 'testRedisUri' });
         expect(getRedisInstance()).toBeInstanceOf(Redis);

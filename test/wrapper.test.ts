@@ -10,9 +10,6 @@ import * as queueUtils from '../src/utils/queueUtils';
 import * as commonUtils from '../src/utils/commonUtils';
 import { RedisStrategy } from '../src/cachingStrategies/redisStrategy';
 
-const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents, 'registerListenerForInternalEvents');
-const registerInternalQueueWorkersSpy = jest.spyOn(queueUtils, 'registerInternalQueueWorkers');
-
 describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register new service in DiContainer with access to redis instance`, async () => {
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
@@ -25,10 +22,10 @@ describe(`applySpeedGooseCacheLayer`, () => {
     });
 
     it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {
-        const hydratedDocumnetsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS);
+        const hydratedDocumentsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS);
         const hydratedDocumentVariationsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS);
 
-        expect(hydratedDocumnetsCache).toBeInstanceOf(Keyv);
+        expect(hydratedDocumentsCache).toBeInstanceOf(Keyv);
         expect(hydratedDocumentVariationsCache).toBeInstanceOf(Keyv);
     });
 
@@ -58,10 +55,14 @@ describe(`applySpeedGooseCacheLayer`, () => {
     });
 
     it(`should register internal mongoose events`, async () => {
+        const registerListenerForInternalEventsSpy = jest.spyOn(mongooseModelEvents, 'registerListenerForInternalEvents');
+        await applySpeedGooseCacheLayer(mongoose, { sharedCacheStrategy: SharedCacheStrategies.IN_MEMORY });
         expect(registerListenerForInternalEventsSpy).toHaveBeenCalled();
     });
 
     it(`should register new service in DiContainer with access to queues`, async () => {
+        const registerInternalQueueWorkersSpy = jest.spyOn(queueUtils, 'registerInternalQueueWorkers');
+        await applySpeedGooseCacheLayer(mongoose, { sharedCacheStrategy: SharedCacheStrategies.IN_MEMORY });
         expect(registerInternalQueueWorkersSpy).toBeCalled();
     });
 

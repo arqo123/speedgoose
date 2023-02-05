@@ -211,8 +211,8 @@ describe(`isMongooseUnpopulatedField`, () => {
     });
 
     test(`should return false if the entry is not an id`, () => {
-        expect(isMongooseUnpopulatedField(generateTestDocument({ relationArray: [generateTestDocument({})] }), 'relationArray'));
-        expect(isMongooseUnpopulatedField(generateTestDocument({ relationField: generateTestDocument({}) }), 'relationField'));
-        expect(isMongooseUnpopulatedField(generateTestDocument({ relationField: null }), 'relationField'));
+        expect(isMongooseUnpopulatedField(generateTestDocument({ relationArray: [generateTestDocument({})] }), 'relationArray')).toBeFalsy();
+        expect(isMongooseUnpopulatedField(generateTestDocument({ relationField: generateTestDocument({}) }), 'relationField')).toBeFalsy();
+        expect(isMongooseUnpopulatedField(generateTestDocument({ relationField: null }), 'relationField')).toBeFalsy();
     });
 });
