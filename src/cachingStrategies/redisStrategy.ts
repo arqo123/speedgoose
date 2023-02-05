@@ -24,6 +24,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         return result ? JSON.parse(result) : null;
     }
 
+    public async refreshTtlForCachedResult<T>(namespace: string, key: string, ttl: number, _: CachedResult<T>): Promise<void> {
+        const keyWithNamespace = `${namespace}:${key}`;
+
+        await this.client.expire(keyWithNamespace, ttl);
+    }
+
     public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
 
