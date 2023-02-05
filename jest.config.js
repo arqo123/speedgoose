@@ -10,5 +10,5 @@ module.exports = {
               },
         ],
     },
-    maxWorkers: '25%',,
+    maxWorkers: '25%',
 };
