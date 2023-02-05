@@ -56,6 +56,8 @@ export type SpeedGooseConfig = {
 export type SpeedGooseCacheOperationParams = {
     /** It tells to speedgoose for how long given query should exists in cache. By default is 60 seconds. Set 0 to make it disable. */
     ttl?: number;
+    /** It tells to speedgoose to refresh the ttl time when it reads from a cached results.*/
+    shouldRefreshTtlOnRead?: boolean;
     /** Useful only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
     multitenantValue?: string;
     /** Your custom caching key.*/
