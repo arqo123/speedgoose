@@ -1,6 +1,6 @@
 import { Aggregate, Mongoose } from 'mongoose';
 import { AggregationResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from './types/types';
-import { getResultsFromCache, setKeyInResultsCaches } from './utils/cacheClientUtils';
+import { getResultsFromCache, refreshTtlForCachedResult, setKeyInResultsCaches } from './utils/cacheClientUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { prepareAggregateOperationParams } from './utils/queryUtils';
 
@@ -21,6 +21,11 @@ const execAggregationWithCache = async <R>(aggregation: Aggregate<R>, context: S
 
     if (cachedValue) {
         context?.debug(`Returning cache for key`, context.cacheKey);
+        if (context.shouldRefreshTtlOnRead) {
+            context?.debug(`Refreshing ttl for key`, context.cacheKey);
+
+            await refreshTtlForCachedResult(context.cacheKey, context.ttl, cachedValue);
+        }
         return cachedValue as Aggregate<R>;
     }
 
