@@ -66,4 +66,16 @@ describe('registerRedisClient', () => {
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
         expect(redisInstance).toBeInstanceOf(Redis);
     });
+
+    it(`should not register new service in DiContainer when redis already exists`, async () => {
+        mockedGetConfig.mockReturnValue({ redisUri: 'testRedisUri' });
+        await registerRedisClient(commonUtils.getConfig().redisUri as string);
+        const redisInstance1 = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
+        expect(redisInstance1).toBeInstanceOf(Redis);
+
+        await registerRedisClient(commonUtils.getConfig().redisUri as string);
+        const redisInstance2 = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
+        expect(redisInstance2).toEqual(redisInstance1);
+        expect(redisInstance2).toBeInstanceOf(Redis);
+    });
 });
