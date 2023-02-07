@@ -29,7 +29,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         const keyWithNamespace = `${namespace}:${key}`;
         
         const refreshTtl = () => this.client.expire(keyWithNamespace, ttl);
-
+        // todo check if already exist the key into the queue before push
         await getRefreshTtlQueue().push({ key: keyWithNamespace, refreshTtlFn: refreshTtl });
     }
 
