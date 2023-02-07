@@ -3,6 +3,7 @@ import Container from 'typedi';
 import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { addValueToInternalCachedSet, createInMemoryCacheClientWithNamespace } from '../utils/cacheClientUtils';
+import { getRefreshTtlQueue } from '../utils/queueUtils';
 import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from './commonCacheStrategyAbstract';
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
@@ -26,7 +27,9 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     public async refreshTtlForCachedResult<T>(namespace: string, key: string, ttl: number, value: CachedResult<T>): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
 
-        await this.resultsCacheClient.set(keyWithNamespace, value, ttl * 1000);
+        const refreshTtl = this.resultsCacheClient.set.bind(keyWithNamespace, value, ttl * 1000);
+
+        await getRefreshTtlQueue().push({ key: keyWithNamespace, refreshTtlFn: refreshTtl });
     }
 
     public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {

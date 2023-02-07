@@ -24,7 +24,9 @@ const execAggregationWithCache = async <R>(aggregation: Aggregate<R>, context: S
         if (context.shouldRefreshTtlOnRead) {
             context?.debug(`Refreshing ttl for key`, context.cacheKey);
 
-            await refreshTtlForCachedResult(context.cacheKey, context.ttl, cachedValue);
+            setTimeout(() => {
+                refreshTtlForCachedResult(context.cacheKey, context.ttl, cachedValue);
+            }, 0);
         }
         return cachedValue as Aggregate<R>;
     }

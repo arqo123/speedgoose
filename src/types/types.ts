@@ -107,6 +107,7 @@ export enum GlobalDiContainerRegistryNames {
     HYDRATED_DOCUMENTS_CACHE_ACCESS = 'hydratedDocumentsCacheAccess',
     HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS = 'hydratedDocumentsVariationsCacheAccess',
     GLOBAL_CACHED_SETS_QUEUE_ACCESS = 'globalCachedSetsQueueAccess',
+    GLOBAL_REFRESH_TTL_QUEUE_ACCESS = 'globalResfeshTtlsQueueAccess',
 }
 
 export enum SpeedGooseRedisChannels {
@@ -136,4 +137,9 @@ export type CacheSetQueuedTask = {
     client: Keyv<Set<string | number>>;
     namespace: string;
     value: string | number;
+};
+
+export type RefreshTtlQueuedTask = {
+    key: string;
+    refreshTtlFn: () => Promise<void>;
 };

@@ -28,8 +28,10 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
         context?.debug(`Returning cache for key`, context.cacheKey);
         if (context.shouldRefreshTtlOnRead) {
             context?.debug(`Refreshing ttl for key`, context.cacheKey);
-
-            await refreshTtlForCachedResult(context.cacheKey, context.ttl, cachedValue);
+            
+            setTimeout(() => {
+                refreshTtlForCachedResult(context.cacheKey, context.ttl, cachedValue);
+            }, 0);
         }
         return prepareQueryResults(query, context, cachedValue);
     }
