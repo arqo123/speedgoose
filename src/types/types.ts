@@ -141,5 +141,5 @@ export type CacheSetQueuedTask = {
 
 export type RefreshTtlQueuedTask = {
     key: string;
-    refreshTtlFn: () => Promise<void>;
+    refreshTtlFn: () => any;
 };

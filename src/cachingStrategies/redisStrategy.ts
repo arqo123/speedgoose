@@ -28,7 +28,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async refreshTtlForCachedResult<T>(namespace: string, key: string, ttl: number, _: CachedResult<T>): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
         
-        const refreshTtl = this.client.expire.bind(keyWithNamespace, ttl);
+        const refreshTtl = () => this.client.expire(keyWithNamespace, ttl);
 
         await getRefreshTtlQueue().push({ key: keyWithNamespace, refreshTtlFn: refreshTtl });
     }
