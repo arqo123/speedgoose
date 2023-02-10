@@ -278,7 +278,7 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
 -   [x] Debugging mode
 -   [ ] Support for more cache storage
     -   [x] In memory
-    -   [ ] Memcached
+    -   [ ] Memcached https://github.com/arqo123/speedgoose/issues/49
 
 See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full list of proposed features (and known issues).
 
