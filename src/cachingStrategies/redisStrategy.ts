@@ -3,7 +3,6 @@ import Container from 'typedi';
 import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { getConfig } from '../utils/commonUtils';
-import { getRefreshTtlQueue } from '../utils/queueUtils';
 import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from './commonCacheStrategyAbstract';
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
@@ -28,9 +27,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async refreshTtlForCachedResult<T>(namespace: string, key: string, ttl: number, _: CachedResult<T>): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
 
-        const refreshTtl = () => this.client.expire(keyWithNamespace, ttl);
-        // todo check if already exist the key into the queue before push
-        await getRefreshTtlQueue().push({ key: keyWithNamespace, refreshTtlFn: refreshTtl });
+        await this.client.expire(keyWithNamespace, ttl);
     }
 
     public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
