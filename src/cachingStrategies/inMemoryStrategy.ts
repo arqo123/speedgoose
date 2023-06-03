@@ -64,6 +64,12 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         await this.recordResultsSetsClient.delete(namespace);
     }
 
+    public async refreshTTLForCachedResult<T>(key: string, ttl: number, value: CachedResult<T>): Promise<void> {
+        const keyWithNamespace = `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`;
+
+        await this.resultsCacheClient.set(keyWithNamespace, value, ttl * 1000);
+    }
+
     private setClients(): void {
         this.resultsCacheClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RESULTS_NAMESPACE);
         this.recordResultsSetsClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RECORD_RESULTS_SETS);

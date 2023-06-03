@@ -30,6 +30,10 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
     if (config?.defaultTtl) {
         context.ttl = context?.ttl ?? config.defaultTtl;
     }
+ 
+    if (config?.refreshTtlOnRead) {
+        context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;
+    }
 
     context.cacheKey = context?.cacheKey ?? generateCacheKeyFromQuery(query);
 
@@ -41,6 +45,10 @@ export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, co
 
     if (config?.defaultTtl) {
         context.ttl = context?.ttl ?? config.defaultTtl;
+    }
+
+    if (config?.refreshTtlOnRead) {
+        context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;
     }
 
     context.cacheKey = context?.cacheKey ?? generateCacheKeyFromPipeline(aggregation);
