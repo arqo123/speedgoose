@@ -61,6 +61,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         await this.client.del(namespace);
     }
 
+    public async refreshTTLForCachedResult(key: string, ttl: number): Promise<void> {
+        const keyWithNamespace = `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`;
+
+        await this.client.expire(keyWithNamespace, ttl);
+    }
+
     private setClient(uri: string): void {
         this.client = new Redis(uri);
     }

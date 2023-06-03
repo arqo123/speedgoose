@@ -1,20 +1,22 @@
 import { ObjectId } from 'mongodb';
 import Keyv from 'keyv';
-import { CachedResult, CacheNamespaces, CacheStrategiesTypes } from '../../src/types/types';
+import { CachedResult, CacheNamespaces, CacheStrategiesTypes, SpeedGooseCacheOperationContext } from '../../src/types/types';
 import * as cacheClientUtils from '../../src/utils/cacheClientUtils';
 import * as debugUtils from '../../src/utils/debugUtils';
 import { getCacheStrategyInstance, objectDeserializer, objectSerializer } from '../../src/utils/commonUtils';
 import { cachingTestCases, generateClearResultTestCase, generateSetKeyInResultsCachesTestData, SetKeyInResultsCachesTestData } from '../assets/utils/cacheClientUtils';
 import { generateTestDocument, getValuesFromSet } from '../testUtils';
 import * as commonUtils from '../../src/utils/commonUtils';
-import { clearCacheForKey } from '../../src/utils/cacheClientUtils';
+import { clearCacheForKey, refreshTTLTimeIfNeeded } from '../../src/utils/cacheClientUtils';
 import { generateCacheKeyForModelName } from '../../src/utils/cacheKeyUtils';
 import { isResultWithId, isResultWithIds } from '../../src/utils/mongooseUtils';
 import { TestModel } from '../types';
+import * as queueUtils from '../../src/utils/queueUtils';
 
 const mockedGetHydrationCache = jest.spyOn(commonUtils, 'getHydrationCache');
 const mockedAddValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet');
 const mockedLogCacheClear = jest.spyOn(debugUtils, 'logCacheClear');
+const mockedScheduleTTlRefreshing = jest.spyOn(queueUtils, 'scheduleTTlRefreshing');
 
 describe('createInMemoryCacheClientWithNamespace', () => {
     const cacheClient = cacheClientUtils.createInMemoryCacheClientWithNamespace('testNamespace');
@@ -282,5 +284,38 @@ describe(`setKeyInResultsCaches`, () => {
                 }
             }
         }
+    });
+});
+
+
+describe('refreshTTLTimeIfNeeded', () => {
+    beforeEach(() => {
+        jest.useFakeTimers();
+        jest.clearAllMocks();
+    });
+
+    it('should schedule TTL refreshing when refreshTtlOnRead is true', () => {
+        const context = <SpeedGooseCacheOperationContext>{ refreshTtlOnRead: true, debug: debugUtils.emptyDebugCallback };
+        const cachedValue = {}; // Your CachedResult goes here
+
+        refreshTTLTimeIfNeeded(context, cachedValue);
+
+        // Move timers forward so setTimeout callback is executed
+        jest.runAllTimers();
+
+        expect(mockedScheduleTTlRefreshing).toHaveBeenCalledTimes(1);
+        expect(mockedScheduleTTlRefreshing).toHaveBeenCalledWith(context, cachedValue);
+    });
+
+    it('should not schedule TTL refreshing when refreshTtlOnRead is false', () => {
+        const context = <SpeedGooseCacheOperationContext>{ refreshTtlOnRead: false, debug: debugUtils.emptyDebugCallback };
+        const cachedValue = {}; // Your CachedResult goes here
+
+        refreshTTLTimeIfNeeded(context, cachedValue);
+
+        // Move timers forward so setTimeout callback is executed
+        jest.runAllTimers();
+
+        expect(mockedScheduleTTlRefreshing).not.toHaveBeenCalled();
     });
 });

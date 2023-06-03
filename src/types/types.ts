@@ -36,8 +36,10 @@ export type SpeedGooseConfig = {
         /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
         multitenantKey: string;
     };
-    /** You can pass default ttl value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
+    /** You can pass default TTL value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
     defaultTtl?: number;
+    /** If true then will perform TTL refreshing on every read. By default is disabled */
+    refreshTtlOnRead?: boolean;
     /** Config for debugging mode supported with debug-js */
     debugConfig?: {
         /** When set to true, it will log all operations or operations only for enabled namespaces*/
@@ -60,6 +62,8 @@ export type SpeedGooseCacheOperationParams = {
     multitenantValue?: string;
     /** Your custom caching key.*/
     cacheKey?: string;
+    /** It tells to speedgoose to refresh the ttl time when it reads from a cached results.*/
+    refreshTtlOnRead?: boolean;
 };
 
 export type SpeedGooseCacheOperationContext = SpeedGooseCacheOperationParams & {
@@ -105,6 +109,8 @@ export enum GlobalDiContainerRegistryNames {
     HYDRATED_DOCUMENTS_CACHE_ACCESS = 'hydratedDocumentsCacheAccess',
     HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS = 'hydratedDocumentsVariationsCacheAccess',
     GLOBAL_CACHED_SETS_QUEUE_ACCESS = 'globalCachedSetsQueueAccess',
+    GLOBAL_REFRESH_TTL_SETS_QUEUE_ACCESS = 'globalResfeshTtlSetsQueueAccess',
+    GLOBAL_REFRESH_TTL_QUEUE_ACCESS = 'globalResfeshTtlsQueueAccess',
 }
 
 export enum SpeedGooseRedisChannels {
@@ -134,4 +140,10 @@ export type CacheSetQueuedTask = {
     client: Keyv<Set<string | number>>;
     namespace: string;
     value: string | number;
+};
+
+export type RefreshTtlQueuedTask = {
+    key: string;
+    ttl?: number;
+    value?: CachedResult<unknown>;
 };

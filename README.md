@@ -184,7 +184,7 @@ applySpeedGooseCacheLayer(mongoose, {
         /** If set, then the cache will work for multitenancy. It has to be a multitenancy field indicator, that is set at the root of every MongoDB record. */
         multitenantKey: string;
     },
-    /** You can pass the default TTL value for all operations, which will not have it passed as a parameter. By default is 60 seconds */
+    /** You can pass the default TTL value for all operations, which will not have it passed as a parameter. Value is in seconds. By default is 60 seconds */
     defaultTtl?: number;
     /** Config for debugging mode supported with debug-js */
     debugConfig?: {
@@ -206,7 +206,7 @@ applySpeedGooseCacheLayer(mongoose, {
 
 ```ts
 {
-    /** It tells to speedgoose for how long a given query should exist in the cache. By default is 60 seconds. Set 0 to make it disabled. */
+    /** It tells to speedgoose for how long a given query should exist in the cache. Value is in seconds. By default is 60 seconds. Set 0 to make it disabled. */
     TTL?: number;
     /** Useful only when using multitenancy. Could be set to distinguish cache keys between tenants.*/
     multitenantValue?: string;

@@ -136,3 +136,13 @@ describe('RedisStrategy.clearResultsCacheWithSet', () => {
         expect(mockedRedisDelMethod).toBeCalledWith('someNamespace');
     });
 });
+
+describe('RedisStrategy.refreshTTLForCachedResult', () => {
+    test(`should call expire for given key`, async () => {
+        const testData = { key: 'key1', ttl: 0.2 };
+        const mockedExpire = jest.spyOn(strategy.client, 'expire');
+
+        await strategy.refreshTTLForCachedResult(testData.key, testData.ttl);
+        expect(mockedExpire).toBeCalledWith(`${CacheNamespaces.RESULTS_NAMESPACE}:${testData.key}`, testData.ttl);
+    });
+});

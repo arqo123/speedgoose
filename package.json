@@ -1,6 +1,6 @@
 {
     "name": "speedgoose",
-    "version": "1.2.21",
+    "version": "1.2.23",
     "description": "Next-level mongoose caching layer with event based cache clearing",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
@@ -46,8 +46,7 @@
         "lint:ci": "yarn lint:base --quiet .&& tsc -p tsconfig.json",
         "build": "yarn clean && tsc ",
         "dev": "yarn clean && tsc --watch",
-        "version": "auto-changelog -p && git add CHANGELOG.md",
-        "postinstall": "husky install"
+        "version": "auto-changelog -p && git add CHANGELOG.md"
     },
     "dependencies": {
         "debug": "^4.3.4",

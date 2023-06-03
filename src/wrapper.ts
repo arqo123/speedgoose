@@ -20,6 +20,7 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
     }),
         (config.sharedCacheStrategy = config.sharedCacheStrategy ?? SharedCacheStrategies.REDIS);
     config.defaultTtl = config.defaultTtl ?? 60;
+    config.refreshTtlOnRead = config.refreshTtlOnRead ?? false;
     config.enabled = config.enabled ?? true;
     config.multitenancyConfig = config.multitenancyConfig ?? { multitenantKey: undefined };
 };

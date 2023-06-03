@@ -29,3 +29,7 @@ export const clearTestEventListeners = (): void => {
     getMongooseTestModel().removeAllListeners();
     getRedisListenerInstance()?.removeAllListeners(SpeedGooseRedisChannels.RECORDS_CHANGED);
 };
+
+export const wait = (ms: number): Promise<unknown> => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
