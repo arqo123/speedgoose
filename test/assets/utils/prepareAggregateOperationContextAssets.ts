@@ -78,4 +78,55 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             debug: expect.any(Function),
         },
     },
+    // t04 - force ttl refresh is set in config to true, and not passed in query context 
+    {
+        given: {
+            aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue' } }]),
+            config: {
+                redisUri: 'redisUri',
+                defaultTtl: 30,
+                debugConfig: {
+                    enabled: true,
+                },
+                refreshTtlOnRead: true
+            },
+            params: {
+                ttl: 90,
+                cacheKey: 'aggregateTestKey',
+                debug: getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY),
+            },
+        },
+        expected: {
+            ttl: 90,
+            cacheKey: 'aggregateTestKey',
+            debug: expect.any(Function),
+            refreshTtlOnRead: true
+        },
+    },
+    // t05 - force ttl refresh is set in config to false, and passed in query context 
+    {
+        given: {
+            aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue' } }]),
+            config: {
+                redisUri: 'redisUri',
+                defaultTtl: 30,
+                debugConfig: {
+                    enabled: true,
+                },
+                refreshTtlOnRead: false
+            },
+            params: {
+                ttl: 90,
+                cacheKey: 'aggregateTestKey',
+                debug: getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY),
+                refreshTtlOnRead: true
+            },
+        },
+        expected: {
+            ttl: 90,
+            cacheKey: 'aggregateTestKey',
+            debug: expect.any(Function),
+            refreshTtlOnRead: true
+        },
+    },
 ];
