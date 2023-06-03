@@ -78,7 +78,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             debug: expect.any(Function),
         },
     },
-    // t04 - force ttl refresh is set in config to true, and not passed in query context 
+    // t04 - force ttl refresh is set in config to true, and not passed in query context
     {
         given: {
             aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue' } }]),
@@ -88,7 +88,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
                 debugConfig: {
                     enabled: true,
                 },
-                refreshTtlOnRead: true
+                refreshTtlOnRead: true,
             },
             params: {
                 ttl: 90,
@@ -100,10 +100,10 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             ttl: 90,
             cacheKey: 'aggregateTestKey',
             debug: expect.any(Function),
-            refreshTtlOnRead: true
+            refreshTtlOnRead: true,
         },
     },
-    // t05 - force ttl refresh is set in config to false, and passed in query context 
+    // t05 - force ttl refresh is set in config to false, and passed in query context
     {
         given: {
             aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue' } }]),
@@ -113,20 +113,20 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
                 debugConfig: {
                     enabled: true,
                 },
-                refreshTtlOnRead: false
+                refreshTtlOnRead: false,
             },
             params: {
                 ttl: 90,
                 cacheKey: 'aggregateTestKey',
                 debug: getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY),
-                refreshTtlOnRead: true
+                refreshTtlOnRead: true,
             },
         },
         expected: {
             ttl: 90,
             cacheKey: 'aggregateTestKey',
             debug: expect.any(Function),
-            refreshTtlOnRead: true
+            refreshTtlOnRead: true,
         },
     },
 ];

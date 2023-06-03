@@ -165,7 +165,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
             debug: expect.any(Function),
         },
     },
-    // t08 - force ttl refresh is set in config to true, and not passed in query context 
+    // t08 - force ttl refresh is set in config to true, and not passed in query context
     {
         given: {
             query: generateTestFindQuery({ field1: 'x' }, {}, { projection: { projectionFromOptions: 1 } }).select('selectedField'),
@@ -186,10 +186,10 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
             ttl: 30,
             cacheKey: '{"query":{"field1":"x"},"collection":"testmodels","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
             debug: expect.any(Function),
-            refreshTtlOnRead: true
+            refreshTtlOnRead: true,
         },
     },
-    // t09 - force ttl refresh is set in config to false, and passed in query context 
+    // t09 - force ttl refresh is set in config to false, and passed in query context
     {
         given: {
             query: generateTestFindQuery({ field1: 'x' }, {}, { projection: { projectionFromOptions: 1 } }).select('selectedField'),
@@ -210,7 +210,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
             ttl: 30,
             cacheKey: '{"query":{"field1":"x"},"collection":"testmodels","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
             debug: expect.any(Function),
-            refreshTtlOnRead: true
+            refreshTtlOnRead: true,
         },
     },
 ];
