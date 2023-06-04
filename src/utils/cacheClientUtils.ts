@@ -32,7 +32,7 @@ const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOpe
 
 const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)];
-    // Todo -> replace this logic with redis pipeline call
+
     if (resultsIds) {
         getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey);
     }

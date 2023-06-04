@@ -184,6 +184,8 @@ applySpeedGooseCacheLayer(mongoose, {
     },
     /** You can pass the default TTL value for all operations, which will not have it passed as a parameter. Value is in seconds. By default is 60 seconds */
     defaultTtl?: number;
+    /** If true then will perform TTL refreshing on every read. By default is disabled */
+    refreshTtlOnRead?: boolean;
     /** Config for debugging mode supported with debug-js */
     debugConfig?: {
         /** When set to true, it will log all operations or operations only for enabled namespaces*/
@@ -210,6 +212,8 @@ applySpeedGooseCacheLayer(mongoose, {
     multitenantValue?: string;
     /** Your custom caching key.*/
     cacheKey?: string;
+    /** It tells to speedgoose to refresh the ttl time when it reads from a cached results.*/
+    refreshTtlOnRead?: boolean;
 }
 ```
 
@@ -252,10 +256,11 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
 
 -   [ ] Separated documentation
 -   [ ] Add more examples
--   [x] Deep hydration for nested documents [BETA]
+-   [x] Deep hydration for nested documents 
 -   [ ] Cache-based population
 -   [x] Manual cache clearing for custom keys
--   [x] Support for clustered servers [BETA]
+-   [x] Refreshing TTL on read
+-   [x] Support for clustered servers 
 -   [ ] Flowchart of logic
 -   [ ] Tests
     -   [x] commonUtils
