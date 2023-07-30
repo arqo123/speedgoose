@@ -14,7 +14,7 @@ export const stringifyPopulatedPaths = (populatedPaths: string[]): string => pop
 
 const getMultitenantValueFromQuery = <T>(query: Query<T, T>, multitenantKey: string): string => query.getQuery()[multitenantKey];
 
-export const isLeanQuery = <T>(query: Query<T, T>): boolean => query?._mongooseOptions.lean;
+export const isLeanQuery = <T>(query: Query<T, T>): boolean => Boolean(query?._mongooseOptions.lean);
 
 export const isCountQuery = <T>(query: Query<T, T>): boolean => Object.values(MongooseCountQueries).includes(query.op as MongooseCountQueries);
 
@@ -40,7 +40,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
     context.debug = getDebugger(query.model.modelName, SpeedGooseDebuggerOperations.CACHE_QUERY);
 };
 
-export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): void => {
+export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R[], R>, context: SpeedGooseCacheOperationContext): void => {
     const config = getConfig();
 
     if (config?.defaultTtl) {

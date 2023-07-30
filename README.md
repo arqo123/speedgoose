@@ -24,6 +24,9 @@ It's caching on two levels. Shared - with Redis. And local inside memory. Suppor
 -   Supports multitenancy by clearing cached results only for a related tenant.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
+## Release Note: 
+For now the latests version is on top of mongoose 7.4.1 and is tagged as beta. If you're facing any issues please use version 1.2.24.
+
 <!-- GETTING STARTED -->
 
 ## Getting Started

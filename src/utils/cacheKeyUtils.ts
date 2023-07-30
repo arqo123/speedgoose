@@ -12,7 +12,7 @@ export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string =>
         options: { ...query.getOptions(), projection: undefined },
     });
 
-export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): string =>
+export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R[], R>): string =>
     JSON.stringify({
         pipeline: aggregation.pipeline(),
         collection: aggregation._model.collection.name,

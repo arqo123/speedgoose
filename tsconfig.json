@@ -12,6 +12,7 @@
         "outDir": "lib",
         "allowJs": true,
         "noEmit": false,
+        "skipLibCheck": true,
         "removeComments": true,
         "declaration": true,
         "typeRoots": ["./src/types", "./node_modules/@types"]

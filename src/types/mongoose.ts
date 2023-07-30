@@ -10,7 +10,7 @@ declare module 'mongoose' {
         op: string;
     }
     //@ts-expect-error overwriting of mongoose Aggregate interface
-    interface Aggregate<R> extends Aggregate<R> {
+    interface Aggregate<R, ResultType> extends Aggregate<R> {
         cachePipeline(params?: SpeedGooseCacheOperationParams): Promise<R>;
         _model: Model<unknown>;
     }
