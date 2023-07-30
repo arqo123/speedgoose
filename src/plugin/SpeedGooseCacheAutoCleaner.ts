@@ -1,4 +1,4 @@
-import { Schema } from 'mongoose';
+import { Schema, Document } from 'mongoose';
 import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
 import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
@@ -12,11 +12,12 @@ const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 const appendQueryBasedListeners = (schema: Schema): void => {
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
-        const model = this.model;
-        //@ts-expect-error current type returned in the event is type Query - not document
-        const updatedRecord = await getRecordAffectedByAction(this);
+        const action = this as any;
+
+        const model = action.model;
+        const updatedRecord = await getRecordAffectedByAction(action);
         if (updatedRecord) {
-            const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(this.op);
+            const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(action.op);
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName });
         }
@@ -25,11 +26,12 @@ const appendQueryBasedListeners = (schema: Schema): void => {
 
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function (next) {
-        const model = this.model;
-        //@ts-expect-error current type returned in the event is type Query - not document
-        const affectedRecords = await getRecordsAffectedByAction(this);
+        const action = this as any;
+        const model = action.model;
+
+        const affectedRecords = await getRecordsAffectedByAction(action);
         if (affectedRecords.length > 0) {
-            const wasDeleted = MONGOOSE_DELETE_MANY_ACTIONS.includes(this.op);
+            const wasDeleted = MONGOOSE_DELETE_MANY_ACTIONS.includes(action.op);
 
             await publishRecordIdsOnChannel(
                 SpeedGooseRedisChannels.RECORDS_CHANGED,
@@ -67,7 +69,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
         next();
     });
 
-    schema.post('remove', { document: true }, async function (record, next) {
+    schema.post(/deleteOne/, { document: true }, async function (record: Document, next) {
         const model = getMongooseModelFromDocument(record);
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));

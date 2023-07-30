@@ -1,6 +1,6 @@
 {
     "name": "speedgoose",
-    "version": "1.2.24",
+    "version": "2.0.1-beta.0",
     "description": "Next-level mongoose caching layer with event based cache clearing",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
@@ -53,7 +53,7 @@
         "fastq": "^1.13.0",
         "ioredis": "^5.2.2",
         "keyv": "^4.4.1",
-        "mongoose": "6.7.5",
+        "mongoose": "^7.4.1",
         "mpath": "^0.9.0",
         "typedi": "^0.10.0"
     },

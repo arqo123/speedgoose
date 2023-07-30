@@ -1,4 +1,4 @@
-import { Model, Document, Mongoose, LeanDocument, isObjectIdOrHexString } from 'mongoose';
+import { Model, Document, Mongoose, isObjectIdOrHexString } from 'mongoose';
 import mpath from 'mpath';
 import Container from 'typedi';
 import { CachedDocument, GlobalDiContainerRegistryNames } from '../types/types';
@@ -16,7 +16,7 @@ export const isArrayOfObjectsWithIds = (value: unknown): boolean => {
 
 export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isResultWithId(result);
 
-export const getValueFromDocument = <T>(pathToValue: string, record: LeanDocument<T>): unknown => mpath.get(pathToValue, record);
+export const getValueFromDocument = <T>(pathToValue: string, record: T): unknown => mpath.get(pathToValue, record);
 
 export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, record: Document<T>): void => mpath.set(pathToValue, valueToSet, record);
 
