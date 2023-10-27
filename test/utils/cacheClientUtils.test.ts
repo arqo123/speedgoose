@@ -5,7 +5,7 @@ import * as cacheClientUtils from '../../src/utils/cacheClientUtils';
 import * as debugUtils from '../../src/utils/debugUtils';
 import { getCacheStrategyInstance, objectDeserializer, objectSerializer } from '../../src/utils/commonUtils';
 import { cachingTestCases, generateClearResultTestCase, generateSetKeyInResultsCachesTestData, SetKeyInResultsCachesTestData } from '../assets/utils/cacheClientUtils';
-import { generateTestDocument, getValuesFromSet } from '../testUtils';
+import { generateTestDocument, getMongooseTestModel, getValuesFromSet } from '../testUtils';
 import * as commonUtils from '../../src/utils/commonUtils';
 import { clearCacheForKey, refreshTTLTimeIfNeeded } from '../../src/utils/cacheClientUtils';
 import { generateCacheKeyForModelName } from '../../src/utils/cacheKeyUtils';
@@ -318,4 +318,26 @@ describe('refreshTTLTimeIfNeeded', () => {
 
         expect(mockedScheduleTTlRefreshing).not.toHaveBeenCalled();
     });
+});
+
+
+describe(`isCached`, () => {
+  it('should return false when key is not cached', async () => {
+    const isCached = await cacheClientUtils.isCached('nonExistentKey');
+    expect(isCached).toBe(false);
+  });
+
+  it('should return true when key is cached', async () => {
+    const context = {
+      ttl: 120,
+      cacheKey: 'cacheKeyTc01',
+      debug: debugUtils.emptyDebugCallback,
+    };
+    
+    const result = { key: 'cachedResult' };
+    const model = getMongooseTestModel();
+    await cacheClientUtils.setKeyInResultsCaches(context, result, model);
+    const isCached = await cacheClientUtils.isCached(context.cacheKey);
+    expect(isCached).toBe(true);
+  });
 });

@@ -92,7 +92,14 @@ const result  = await model<SomeModelType>.find({}).lean().cacheQuery()
 2. With aggregation
 
 ```ts
-const result = await model.aggregate<AggregationResultType>([]).cachePipeline();
+const result = await model.aggregate<AggregationResultType>([]).cachePipeline()
+```
+
+3. Checking if key was set under the key. 
+
+```ts
+const isQueryCached = await model<SomeModelType>.find({}).sort({fieldA : 1}).isCached()
+const isPipelineCached = await model.aggregate<AggregationResultType>([]).isCached()
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -252,6 +259,7 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 */
 clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promise<void>
 ```
+ 
 
 <!-- ROADMAP -->
 

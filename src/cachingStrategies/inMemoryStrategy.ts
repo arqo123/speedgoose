@@ -23,6 +23,12 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         return this.resultsCacheClient.get(keyWithNamespace);
     }
 
+    public async isValueCached(namespace: string, key: string): Promise<boolean> {
+        const keyWithNamespace = `${namespace}:${key}`;
+
+        return this.resultsCacheClient.has(keyWithNamespace);
+    }
+
     public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
 

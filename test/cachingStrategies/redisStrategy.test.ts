@@ -146,3 +146,35 @@ describe('RedisStrategy.refreshTTLForCachedResult', () => {
         expect(mockedExpire).toBeCalledWith(`${CacheNamespaces.RESULTS_NAMESPACE}:${testData.key}`, testData.ttl);
     });
 });
+
+describe('RedisStrategy.isValueCached', () => {
+  
+  beforeEach(async () => {
+    await strategy.client.flushall();
+  });
+  
+  test('should return true if value is cached', async () => {
+    const namespace = 'testNamespace';
+    const key = 'testKey';
+    const value = 'testValue';
+    const ttl = 60;
+
+    // Add value to cache
+    await strategy.addValueToCache(namespace, key, value, ttl);
+
+    // Check if value is cached
+    const isCached = await strategy.isValueCached(namespace, key);
+
+    expect(isCached).toBe(true);
+  });
+
+  test('should return false if value is not cached', async () => {
+    const namespace = 'testNamespace';
+    const key = 'testKey';
+
+    // Check if value is cached
+    const isCached = await strategy.isValueCached(namespace, key);
+
+    expect(isCached).toBe(false);
+  });
+});
