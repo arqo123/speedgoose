@@ -5,6 +5,7 @@ declare module 'mongoose' {
     // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
     interface Query<ResultType, DocType, THelpers = {}, RawDocType = DocType> extends Query<ResultType, DocType> {
         cacheQuery(params?: SpeedGooseCacheOperationParams): Promise<Query<ResultType, DocType, unknown>>;
+        isCached(params?: SpeedGooseCacheOperationParams): Promise<boolean>;
         mongooseCollection: Collection;
         //add proper types for operations
         op: string;
@@ -12,6 +13,7 @@ declare module 'mongoose' {
     //@ts-expect-error overwriting of mongoose Aggregate interface
     interface Aggregate<R, ResultType> extends Aggregate<R> {
         cachePipeline(params?: SpeedGooseCacheOperationParams): Promise<R>;
+        isCached(params?: SpeedGooseCacheOperationParams): Promise<boolean>;
         _model: Model<unknown>;
     }
     // //@ts-expect-error overwriting of mongoose SchemaType interface

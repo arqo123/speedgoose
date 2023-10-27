@@ -1,6 +1,6 @@
 import { Mongoose, Query, Document } from 'mongoose';
 import { CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from './types/types';
-import { getResultsFromCache, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
+import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { hydrateResults } from './utils/hydrationUtils';
 import { prepareQueryOperationContext, shouldHydrateResult } from './utils/queryUtils';
@@ -11,6 +11,15 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
      */
     mongoose.Query.prototype.cacheQuery = function <T>(params: SpeedGooseCacheOperationParams = {}): Promise<Query<CachedResult<T> | CachedResult<T>[], Document<T>>> {
         return isCachingEnabled() ? execQueryWithCache<T>(this, params) : this.exec();
+    };
+    
+    /**
+     * Function to check if given query is cached.
+     */
+    mongoose.Query.prototype.isCached = function <T>(context: SpeedGooseCacheOperationParams = {}): Promise<boolean> {
+        prepareQueryOperationContext(this, context);
+
+        return isCached(context.cacheKey)
     };
 };
 

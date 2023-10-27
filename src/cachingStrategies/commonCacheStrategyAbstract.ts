@@ -2,6 +2,7 @@ import { CachedResult } from '../types/types';
 
 export abstract class CommonCacheStrategyAbstract {
     public abstract getValueFromCache(namespace: string, key: string): Promise<CachedResult>;
+    public abstract isValueCached(namespace: string, key: string): Promise<boolean>;
     public abstract getValuesFromCachedSet(namespace: string): Promise<string[]>;
     public abstract addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void>;
     public abstract addValueToCacheSet<T extends string | number>(namespace: string, value: T): Promise<void>;

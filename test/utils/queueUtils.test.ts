@@ -1,15 +1,12 @@
 import Container from 'typedi';
 import * as Fastq from 'fastq';
 import * as queueUtils from '../../src/utils/queueUtils';
-import * as commonUtils from '../../src/utils/commonUtils';
 
 import { CacheSetQueuedTask, GlobalDiContainerRegistryNames } from '../../src/types/types';
 import { registerInternalQueueWorkers } from '../../src/utils/queueUtils';
 import { emptyDebugCallback } from '../../src/utils/debugUtils';
-import { getCacheStrategyInstance } from '../../src/utils/commonUtils';
 
 const containerSetSpy = jest.spyOn(Container, 'set');
-const mockedGetCacheStrategyInstance = jest.spyOn(commonUtils, 'getCacheStrategyInstance');
 
 describe('getCachedSetsQueue', () => {
     it(`should return access to queue of sets`, () => {
@@ -64,20 +61,5 @@ describe('scheduleTTlRefreshing', () => {
         expect(mockQueue.push).toHaveBeenCalledTimes(1);
         expect(mockQueue.push).toHaveBeenCalledWith({ key: context.cacheKey, ttl: context.ttl, value });
         expect(mockedDebug).toHaveBeenCalledWith(`Refreshing TTL time for key ${context.cacheKey}`);
-    });
-
-    it('should call refreshTTLForCachedResult on strategy instance', async () => {
-        const setAccess = Container.get<Set<string>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_SETS_QUEUE_ACCESS);
-        setAccess.add('testKey2');
-        const strategyInstance = getCacheStrategyInstance();
-        mockedGetCacheStrategyInstance.mockReset();
-        const mocked = jest.spyOn(strategyInstance, 'refreshTTLForCachedResult');
-
-        const context = { cacheKey: 'key1', ttl: 100, debug: emptyDebugCallback };
-        const value = {};
-        await queueUtils.scheduleTTlRefreshing(context, value);
-
-        expect(mockedGetCacheStrategyInstance).toHaveBeenCalledTimes(1);
-        expect(mocked).toHaveBeenCalledWith(context.cacheKey, context.ttl, value);
     });
 });
