@@ -23,7 +23,7 @@ export const registerInternalQueueWorkers = (): void => {
 export const getCachedSetsQueue = (): Fastq.queueAsPromised<CacheSetQueuedTask> => (Container.has(GlobalDiContainerRegistryNames.GLOBAL_CACHED_SETS_QUEUE_ACCESS) ? Container.get(GlobalDiContainerRegistryNames.GLOBAL_CACHED_SETS_QUEUE_ACCESS) : null);
 
 const refreshTTLForCachedResult = async (task: RefreshTtlQueuedTask): Promise<void> => {
-    await getCacheStrategyInstance().refreshTTLForCachedResult(task.key, task.ttl, task.value);
+    await getCacheStrategyInstance()?.refreshTTLForCachedResult(task.key, task.ttl, task.value);
     const scheduledKeysSetForRefreshTtl: Set<string> = Container.get(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_SETS_QUEUE_ACCESS);
 
     if (scheduledKeysSetForRefreshTtl) scheduledKeysSetForRefreshTtl.delete(task.key);
