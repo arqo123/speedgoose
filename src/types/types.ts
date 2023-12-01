@@ -1,5 +1,6 @@
 import Keyv from 'keyv';
 import './mongoose';
+import { RedisOptions } from 'ioredis';
 import { Aggregate, Document, ObjectId } from 'mongoose';
 import { RedisStrategy } from '../cachingStrategies/redisStrategy';
 import { InMemoryStrategy } from '../cachingStrategies/inMemoryStrategy';
@@ -29,6 +30,8 @@ export enum SpeedGooseDebuggerOperations {
 }
 
 export type SpeedGooseConfig = {
+    /** Connection options for redis. */
+    redisOptions?: RedisOptions;
     /** Connection string for redis containing url, credentials and port. */
     redisUri?: string;
     /** Config for multitenancy. */
