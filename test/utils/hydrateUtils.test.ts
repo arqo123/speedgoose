@@ -1,10 +1,16 @@
-import { Document, isObjectIdOrHexString } from 'mongoose';
+import { Document, isObjectIdOrHexString, Schema } from 'mongoose';
 import { CachedDocument, CachedLeanDocument } from '../../src/types/types';
-import { hydrateResults } from '../../src/utils/hydrationUtils';
+import { getReferenceModelNameFromSchema, hydrateResults } from '../../src/utils/hydrationUtils';
 import { isResultWithId } from '../../src/utils/mongooseUtils';
 import { prepareHydrateResultsTestCases } from '../assets/utils/hydrateResults';
 import { MongooseTestDocument, TestModel } from '../types';
 
+describe(`getReferenceModelNameFromSchema`, () => {
+    test(`should handle empty type array`, () => {
+        const testSchema = new Schema({ emptyTypeArray: [] });
+        expect(getReferenceModelNameFromSchema(testSchema.path('emptyTypeArray'))).toEqual(undefined);
+    });
+});
 describe(`hydrateResults`, () => {
     const checkDocumentConsistency = (result: MongooseTestDocument, sourceRecord: CachedLeanDocument<TestModel>): void => {
         //checking if the source record is just an id
