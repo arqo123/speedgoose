@@ -16,10 +16,10 @@ export const addCachingToAggregate = (mongoose: Mongoose): void => {
      * Function to check if given query is cached.
      */
     mongoose.Aggregate.prototype.isCached = function <T>(context: SpeedGooseCacheOperationParams = {}): Promise<boolean> {
-      prepareAggregateOperationParams(this, context);
+        prepareAggregateOperationParams(this, context);
 
-      return isCached(context.cacheKey)
-  };
+        return isCached(context.cacheKey);
+    };
 };
 
 const execAggregationWithCache = async <R>(aggregation: Aggregate<R[], R>, context: SpeedGooseCacheOperationContext): Promise<Aggregate<R[], R>> => {
