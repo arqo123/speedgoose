@@ -123,7 +123,6 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 90,    
-            // eslint-disable-next-line
             cacheKey: '{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\",\"abc\":\"regex:/abc/\"}}],\"collection\":\"testmodels\"}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
