@@ -14,3 +14,11 @@ export const getHydrationVariationsCache = (): Keyv<Set<string>> => Container.ge
 export const getCacheStrategyInstance = (): CacheStrategiesTypes => Container.get<CacheStrategiesTypes>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS);
 
 export const isCachingEnabled = (): boolean => getConfig()?.enabled;
+
+export const customStringifyReplacer = (key: string, value: unknown): unknown => {
+    if (value instanceof RegExp) {
+        return `regex:${value.toString()}`;
+    }
+
+    return value;
+}
