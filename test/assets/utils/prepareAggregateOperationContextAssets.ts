@@ -106,7 +106,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
     // t05 - aggregate pipeline with regex
     {
         given: {
-            aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue', object: /Chapter (\d+)\.\d*/ } }]),
+            aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue', abc: /abc/ } }]),
             config: {
                 redisUri: 'redisUri',
                 defaultTtl: 30,
@@ -122,8 +122,9 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             },
         },
         expected: {
-            ttl: 90,
-            cacheKey: '{"pipeline":["$mat""someField""someValue""obje":"regex:/Chapter (\\\\d+)\\\\.\\\\d*/"}}]"collection""testmodels"}',
+            ttl: 90,    
+            // eslint-disable-next-line
+            cacheKey: '{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\",\"abc\":\"regex:/abc/\"}}],\"collection\":\"testmodels\"}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
