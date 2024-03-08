@@ -21,4 +21,4 @@ export const customStringifyReplacer = (key: string, value: unknown): unknown =>
     }
 
     return value;
-}
+};

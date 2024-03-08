@@ -4,19 +4,25 @@ import { customStringifyReplacer, getConfig } from './commonUtils';
 import { stringifyPopulatedPaths, stringifyQueryParam } from './queryUtils';
 
 export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string =>
-    JSON.stringify({
-        query: query.getQuery(),
-        collection: query.mongooseCollection.name,
-        op: query.op,
-        projection: { ...query.projection(), ...(query.getOptions().projection as Record<string, number>) },
-        options: { ...query.getOptions(), projection: undefined },
-    }, customStringifyReplacer);
+    JSON.stringify(
+        {
+            query: query.getQuery(),
+            collection: query.mongooseCollection.name,
+            op: query.op,
+            projection: { ...query.projection(), ...(query.getOptions().projection as Record<string, number>) },
+            options: { ...query.getOptions(), projection: undefined },
+        },
+        customStringifyReplacer,
+    );
 
 export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R[], R>): string =>
-    JSON.stringify({
-        pipeline: aggregation.pipeline(),
-        collection: aggregation._model.collection.name,
-    }, customStringifyReplacer);
+    JSON.stringify(
+        {
+            pipeline: aggregation.pipeline(),
+            collection: aggregation._model.collection.name,
+        },
+        customStringifyReplacer,
+    );
 
 export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
     if (!query.selected() && query.getPopulatedPaths().length === 0) {
