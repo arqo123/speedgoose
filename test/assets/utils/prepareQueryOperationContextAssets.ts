@@ -213,4 +213,28 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
             refreshTtlOnRead: true,
         },
     },
+    // t10 - query with regexp inside query
+    {
+        given: {
+            query: generateTestFindQuery({ field1: 'x', some: { nested: { object: /Chapter (\d+)\.\d*/ } } }, {}, { projection: { projectionFromOptions: 1 } }).select('selectedField'),
+            config: {
+                redisUri: 'redisUri',
+                multitenancyConfig: {
+                    multitenantKey: 'tenantId',
+                },
+                debugConfig: {
+                    enabled: true,
+                },
+                refreshTtlOnRead: false,
+                defaultTtl: 30,
+            },
+            params: { refreshTtlOnRead: true },
+        },
+        expected: {
+            ttl: 30,
+            cacheKey: '{\"query\":{\"field1\":\"x\",\"some\":{\"nested\":{\"object\":\"regex:/Chapter (\\\\d+)\\\\.\\\\d*/\"}}},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{\"projectionFromOptions\":1,\"selectedField\":1},\"options\":{}}',
+            debug: expect.any(Function),
+            refreshTtlOnRead: true,
+        },
+    },
 ];

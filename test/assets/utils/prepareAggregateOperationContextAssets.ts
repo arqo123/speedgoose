@@ -103,10 +103,10 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             refreshTtlOnRead: true,
         },
     },
-    // t05 - force ttl refresh is set in config to false, and passed in query context
+    // t05 - aggregate pipeline with regex
     {
         given: {
-            aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue' } }]),
+            aggregationPipeline: generateTestAggregate([{ $match: { someField: 'someValue', object: /Chapter (\d+)\.\d*/ } }]),
             config: {
                 redisUri: 'redisUri',
                 defaultTtl: 30,
@@ -117,14 +117,13 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
             },
             params: {
                 ttl: 90,
-                cacheKey: 'aggregateTestKey',
                 debug: getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY),
                 refreshTtlOnRead: true,
             },
         },
         expected: {
             ttl: 90,
-            cacheKey: 'aggregateTestKey',
+            cacheKey: '{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\",\"object\":\"regex:/Chapter (\\\\d+)\\\\.\\\\d*/\"}}],\"collection\":\"testmodels\"}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
