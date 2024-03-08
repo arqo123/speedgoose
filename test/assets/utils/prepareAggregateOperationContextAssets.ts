@@ -123,7 +123,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 90,
-            cacheKey: '{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\",\"object\":\"regex:/Chapter (\\\\d+)\\\\.\\\\d*/\"}}],\"collection\":\"testmodels\"}',
+            cacheKey: '{\"pipeline\":[\"$mat\"\"someField\"\"someValue\"\"obje\":\"regex:/Chapter (\\\\d+)\\\\.\\\\d*/\"}}]\"collection\"\"testmodels\"}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },

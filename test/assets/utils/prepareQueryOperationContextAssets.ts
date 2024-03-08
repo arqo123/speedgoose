@@ -232,7 +232,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{\"query\":{\"field1\":\"x\",\"some\":{\"nested\":{\"object\":\"regex:/Chapter (\\\\d+)\\\\.\\\\d*/\"}}},\"collection\":\"testmodels\",\"op\":\"find\",\"projection\":{\"projectionFromOptions\":1,\"selectedField\":1},\"options\":{}}',
+            cacheKey: '{"query":{"field1":"x","some":{"nested":{"object":"regex:/Chapter (\\\\d+)\\\\.\\\\d*/"}}},"collection":"testmodels","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
