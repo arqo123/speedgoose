@@ -42,7 +42,7 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
     const result = (await query.exec()) as CachedResult<T>;
 
-    if (result) {
+    if (result !== undefined) {
         await setKeyInResultsCaches(context, result, query.model);
         return prepareQueryResults(query, context, result);
     }
