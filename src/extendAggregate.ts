@@ -38,7 +38,7 @@ const execAggregationWithCache = async <R>(aggregation: Aggregate<R[], R>, conte
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
     const result = (await aggregation.exec());
 
-    if (result) {
+    if (result !== undefined) {
         await setKeyInResultsCaches(context, result as CachedResult<R>, aggregation._model);
 
         return result as R[];
