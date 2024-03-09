@@ -62,7 +62,7 @@ describe('publishRecordIdOnChannel', () => {
 describe('registerRedisClient', () => {
     it(`should register new service in DiContainer with access to redis instance`, async () => {
         mockedGetConfig.mockReturnValue({ redisUri: 'testRedisUri' });
-        await registerRedisClient(commonUtils.getConfig().redisUri as string);
+        await registerRedisClient(commonUtils.getConfig().redisUri as string, commonUtils.getConfig().redisOptions);
         const redisInstance = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
         expect(redisInstance).toBeInstanceOf(Redis);
     });
