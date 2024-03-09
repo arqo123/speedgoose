@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { GlobalDiContainerRegistryNames, SpeedGooseConfig } from '../../src/types/types';
-import { getCacheStrategyInstance, getConfig, getHydrationCache, getHydrationVariationsCache, isCachingEnabled, objectDeserializer, objectSerializer } from '../../src/utils/commonUtils';
+import { customStringifyReplacer, getCacheStrategyInstance, getConfig, getHydrationCache, getHydrationVariationsCache, isCachingEnabled, objectDeserializer, objectSerializer } from '../../src/utils/commonUtils';
 import { TEST_SPEEDGOOSE_CONFIG } from '../constants';
 
 describe(`getConfig`, () => {
@@ -84,5 +84,17 @@ describe('Cache-related functions', () => {
         expect(containerGetSpy).toHaveBeenCalledTimes(1);
         expect(containerGetSpy).toHaveBeenCalledWith(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS);
         expect(result).toEqual(mockCacheStrategy);
+    });
+});
+
+describe(`customStringifyReplacer`, () => {
+    test(`should return 'regex:' prefixed string for RegExp objects`, () => {
+        const regex = new RegExp('test');
+        expect(customStringifyReplacer('key', regex)).toBe('regex:/test/');
+    });
+
+    test(`should return the original value for non-RegExp objects`, () => {
+        const value = 'test';
+        expect(customStringifyReplacer('key', value)).toBe(value);
     });
 });
