@@ -3,6 +3,7 @@ import './mongoose';
 import { Aggregate, Document, ObjectId } from 'mongoose';
 import { RedisStrategy } from '../cachingStrategies/redisStrategy';
 import { InMemoryStrategy } from '../cachingStrategies/inMemoryStrategy';
+import { RedisOptions } from 'ioredis';
 
 export type AggregationResult = Aggregate<unknown, unknown>;
 export type CachedDocument<T> = Document<string | ObjectId> & T;
@@ -31,6 +32,8 @@ export enum SpeedGooseDebuggerOperations {
 export type SpeedGooseConfig = {
     /** Connection string for redis containing url, credentials and port. */
     redisUri?: string;
+    /** Connection options for redis. */
+    redisOptions?: RedisOptions;
     /** Config for multitenancy. */
     multitenancyConfig?: {
         /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */

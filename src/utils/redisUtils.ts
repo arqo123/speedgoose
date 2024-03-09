@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { Container } from 'typedi';
 import { clearHydrationCache } from './cacheClientUtils';
 import { GlobalDiContainerRegistryNames, SpeedGooseRedisChannels } from '../types/types';
@@ -17,13 +17,13 @@ const listenOnMessages = async (redisClient: Redis): Promise<void> => {
     redisClient.on('message', redisPubSubMessageHandler);
 };
 
-export const registerRedisClient = async (uri: string): Promise<Redis> => {
+export const registerRedisClient = async (uri: string, redisOptions?: RedisOptions): Promise<Redis> => {
     const registeredClient = getRedisInstance();
     if (registeredClient) {
         return registeredClient;
     } else if (uri) {
-        const redisClient = new Redis(uri);
-        const redisListenerClient = new Redis(uri);
+        const redisClient = new Redis(uri, redisOptions ?? {});
+        const redisListenerClient = new Redis(uri, redisOptions ?? {});
 
         Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS, redisClient);
         Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS, redisListenerClient);

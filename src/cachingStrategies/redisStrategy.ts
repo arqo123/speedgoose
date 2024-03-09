@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import Container from 'typedi';
 import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
@@ -73,12 +73,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         await this.client.expire(keyWithNamespace, ttl);
     }
 
-    private setClient(uri: string): void {
-        this.client = new Redis(uri);
+    private setClient(uri: string, redisOptions?: RedisOptions): void {
+        this.client = new Redis(uri, redisOptions ?? {});
     }
 
     private async init(): Promise<void> {
         const config = getConfig();
-        this.setClient(config.redisUri);
+        this.setClient(config.redisUri, config.redisOptions);
     }
 }
