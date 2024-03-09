@@ -187,9 +187,9 @@ applySpeedGooseCacheLayer(mongoose, {
 ```ts
     /** Connection string for Redis containing URL, credentials, and port. It's required to make cache sync working */
     redisUri?: string;
-    /** Config for multitenancy. */
     /** Connection options for Redis. If redisOptions set, redisUri will be ignored */
     redisOptions?: string;
+    /** Config for multitenancy. */
     multitenancyConfig?: {
         /** If set, then the cache will work for multitenancy. It has to be a multitenancy field indicator, that is set at the root of every MongoDB record. */
         multitenantKey: string;
