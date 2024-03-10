@@ -1,15 +1,13 @@
 import { Mongoose } from 'mongoose';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEventCallback, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseInternalEventContext, MongooseManyObjectOperationEventContext, SpeedGooseDebuggerOperations } from './types/types';
 import { clearCacheForRecordId } from './utils/cacheClientUtils';
-import { generateCacheKeyForRecordAndModelName } from './utils/cacheKeyUtils';
 import { getCacheStrategyInstance } from './utils/commonUtils';
 import { getDebugger } from './utils/debugUtils';
 
 const clearModelCache = async (context: MongooseDocumentEventsContext): Promise<void> => {
-    const modelCacheKey = generateCacheKeyForRecordAndModelName(context.record, context.modelName);
-    context?.debug(`Clearing model cache for key`, modelCacheKey);
+     context?.debug(`Clearing model cache for model name ${context.modelName}_`, context.modelName);
 
-    await getCacheStrategyInstance().clearResultsCacheWithSet(modelCacheKey);
+    await getCacheStrategyInstance().clearResultsCacheWithSet(`${context.modelName}_`);
 };
 
 const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext): Promise<void> => {
