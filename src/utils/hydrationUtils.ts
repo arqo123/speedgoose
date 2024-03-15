@@ -32,16 +32,18 @@ const getFieldsToHydrate = <T>(model: Model<T>): FieldWithReferenceModel[] =>
 const getHydratedDocuments = <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, results: CachedDocument<T>[]): Promise<CachedDocument<T>[]> => Promise.all(results.map(record => getHydratedDocument(query, context, record)));
 
 const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, result: CachedDocument<T>): Promise<CachedDocument<T>> => {
-    const cacheKey = generateCacheKeyForSingleDocument(query, result);
-    const cachedValue = await getHydrationCache().get(cacheKey);
+    if (result) {
+        const cacheKey = generateCacheKeyForSingleDocument(query, result);
+        const cachedValue = await getHydrationCache().get(cacheKey);
 
-    if (cachedValue && cachedValue?._id) return cachedValue as CachedDocument<T>;
+        if (cachedValue && cachedValue?._id) return cachedValue as CachedDocument<T>;
 
-    const hydratedDocument = hydrateDocument(query, result);
-    await setKeyInHydrationCaches(cacheKey, hydratedDocument, context);
+        const hydratedDocument = hydrateDocument(query, result);
+        await setKeyInHydrationCaches(cacheKey, hydratedDocument, context);
 
-    return hydratedDocument;
-};
+        return hydratedDocument;
+    }
+}
 
 const hydrateDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): CachedDocument<T> => deepHydrate(query.model, record);
 
