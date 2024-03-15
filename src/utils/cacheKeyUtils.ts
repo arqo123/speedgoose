@@ -25,6 +25,8 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R[], R>):
     );
 
 export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
+    if (!record) return '';
+    
     if (!query.selected() && query.getPopulatedPaths().length === 0) {
         return String(record._id);
     }
@@ -32,7 +34,7 @@ export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record:
     const projectionFields = stringifyQueryParam((query?.projection() as Record<string, number>) ?? {});
     const populationFields = stringifyPopulatedPaths(query?.getPopulatedPaths() ?? []);
 
-    return `${record._id}_${projectionFields}_${populationFields}`;
+    return `${record?._id}_${projectionFields}_${populationFields}`;
 };
 
 export const generateCacheKeyForModelName = (modelName: string, multitenantValue = ''): string => `${modelName}_${String(multitenantValue)}`;
