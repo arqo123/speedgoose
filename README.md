@@ -9,7 +9,7 @@
 
 ## About The Project
 
-[![Node.js CI](https://github.com/arqo123/speedgoose/workflows/Node.js%20CI/badge.svg)](https://github.com/arqo123/speedgoose/actions?query=workflow:"Node.js+CI")
+[![npm version](https://img.shields.io/npm/v/speedgoose.svg?style=flat-square)](https://www.npmjs.org/package/speedgoose)
 [![codecov](https://codecov.io/gh/arqo123/speedgoose/branch/master/graph/badge.svg?token=33R2CJ6I2C)](https://codecov.io/gh/arqo123/speedgoose)
 [![Known Vulnerabilities](https://snyk.io//test/github/arqo123/speedgoose/badge.svg?targetFile=package.json)](https://snyk.io//test/github/arqo123/speedgoose?targetFile=package.json)
 ![NPM download/month](https://img.shields.io/npm/dm/speedgoose.svg)
