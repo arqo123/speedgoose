@@ -12,7 +12,7 @@ type FieldWithReferenceModel = {
 };
 
 export const getReferenceModelNameFromSchema = (schema: SchemaType): string => {
-    if (schema.options.ref) {
+    if (schema?.options?.ref) {
         return schema.options.ref as string;
     }
     if (Array.isArray(schema?.options?.type) && schema.options.type.length) {
