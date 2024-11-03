@@ -55,12 +55,6 @@ describe(`isLeanQuery`, () => {
 });
 
 describe(`isCountQuery`, () => {
-    test(`should return true when count method was called on query`, async () => {
-        const query = generateTestFindQuery({}).count();
-
-        expect(isCountQuery(query)).toBeTruthy();
-    });
-
     test(`should return true when countDocuments method was called on query`, async () => {
         const query = generateTestFindQuery({}).countDocuments();
 
@@ -136,7 +130,7 @@ describe(`shouldHydrateResult`, () => {
     test(`should return false if hydration is enabled but query return type is not Document`, () => {
         mockedCacheStrategyInstance.mockReturnValue(true);
 
-        expect(shouldHydrateResult(generateTestFindQuery({}).count())).toBeFalsy();
+        expect(shouldHydrateResult(generateTestFindQuery({}).countDocuments())).toBeFalsy();
         expect(shouldHydrateResult(generateTestFindQuery({}).lean())).toBeFalsy();
         expect(shouldHydrateResult(generateTestDistinctQuery({}))).toBeFalsy();
     });
@@ -150,6 +144,6 @@ describe(`isDistinctQuery`, () => {
     test(`should return false if query was called without distinct method`, () => {
         expect(isDistinctQuery(generateTestFindOneQuery({}))).toBeFalsy();
         expect(isDistinctQuery(generateTestFindOneQuery({}).lean())).toBeFalsy();
-        expect(isDistinctQuery(generateTestFindOneQuery({}).count())).toBeFalsy();
+        expect(isDistinctQuery(generateTestFindOneQuery({}).countDocuments())).toBeFalsy();
     });
 });

@@ -79,7 +79,7 @@ export enum MongooseDocumentEvents {
 }
 
 export type MongooseDocumentEventsContext = {
-    record?: Document | DocumentWithIdAndTenantValue;
+    record?: Document & { _id: string } | DocumentWithIdAndTenantValue;
     wasNew?: boolean;
     wasDeleted?: boolean;
     modelName?: string;
