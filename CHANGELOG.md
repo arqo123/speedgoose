@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/arqo123/speedgoose/compare/v1.0.1...v1.0.2) (2025-07-16)
+
+
+### Bug Fixes
+
+* **release:** improve semantic-release output handling and version extraction ([b1cb939](https://github.com/arqo123/speedgoose/commit/b1cb939d6baacd5677aa90c4414fac702e3efbe8))
+
 ### Changelog
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
