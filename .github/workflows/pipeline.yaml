@@ -25,7 +25,9 @@ jobs:
       - name: Check linter
         run: yarn lint:ci
       - name: Run tests
-        run: yarn test
+        run: yarn test -- --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
       - name: Build
         run: yarn build
 
