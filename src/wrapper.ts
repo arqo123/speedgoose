@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
-import { Document, Mongoose } from 'mongoose';
 import Keyv from 'keyv';
+import { Document, Mongoose } from 'mongoose';
 import { CacheNamespaces, GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig } from './types/types';
 import { addCachingToQuery } from './extendQuery';
 import { addCachingToAggregate } from './extendAggregate';

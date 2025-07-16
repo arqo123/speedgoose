@@ -46,6 +46,10 @@ jobs:
           node-version: 22.x
       - name: Install dependencies
         run: yarn install
+      - name: Fetch all tags
+        run: git fetch --tags --force
+      - name: List tags
+        run: git tag -l
       - name: Run semantic-release
         id: semantic
         run: |
