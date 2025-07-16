@@ -47,7 +47,11 @@ jobs:
       - name: Install dependencies
         run: yarn install
       - name: Run semantic-release
-        run: yarn semantic-release
+        id: semantic
+        run: |
+          yarn semantic-release > release.log
+          NEW_VERSION=$(grep -oP 'Published release \K[^\s]+' release.log | head -1)
+          echo "new_release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
