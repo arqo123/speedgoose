@@ -25,3 +25,5 @@ jspm_packages/
 coverage
 
 .vscode
+
+memory-bank
