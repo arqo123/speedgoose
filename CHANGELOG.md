@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/arqo123/speedgoose/compare/v2.1.0...v2.1.1) (2025-07-16)
+
+
+### Bug Fixes
+
+* **pipeline:** add steps to fetch and list git tags before running semantic-release ([459f755](https://github.com/arqo123/speedgoose/commit/459f755d040928e62c429eaa331c84d5f964fc9f))
+
 ### Changelog
 
 All notable changes to this project will be documented in this file. Dates are displayed in UTC.
