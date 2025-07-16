@@ -6,15 +6,11 @@ module.exports = {
     ['@semantic-release/changelog', {
       changelogFile: 'CHANGELOG.md',
     }],
-    ['@semantic-release/npm', {
-      npmPublish: true,
-    }],
-    ['@semantic-release/git', {
-      assets: ['package.json', 'yarn.lock', 'CHANGELOG.md'],
-      message: 'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}',
-    }],
+    '@semantic-release/npm',
     ['@semantic-release/github', {
-        assets: ['lib/**'],
+        assets: [
+          ['package.json', 'yarn.lock', 'CHANGELOG.md'],
+        ],
     }],
   ],
 };
