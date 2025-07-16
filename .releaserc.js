@@ -11,6 +11,8 @@ module.exports = {
         assets: [
           ['package.json', 'yarn.lock', 'CHANGELOG.md'],
         ],
+        failTitle: false,
+        failComment: false,
     }],
   ],
 };

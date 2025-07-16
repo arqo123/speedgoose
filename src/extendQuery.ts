@@ -1,8 +1,8 @@
 import { Mongoose, Query, Document } from 'mongoose';
 import { CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from './types/types';
 import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
-import { hydrateResults } from './utils/hydrationUtils';
 import { isCachingEnabled } from './utils/commonUtils';
+import { hydrateResults } from './utils/hydrationUtils';
 import { prepareQueryOperationContext, shouldHydrateResult } from './utils/queryUtils';
 
 export const addCachingToQuery = (mongoose: Mongoose): void => {
