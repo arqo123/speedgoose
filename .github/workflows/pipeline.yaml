@@ -1,4 +1,4 @@
-name: Build and Release
+name:  Build
 
 on:
   push:
@@ -30,25 +30,4 @@ jobs:
         uses: codecov/codecov-action@v3
       - name: Build
         run: yarn build
-
-  release:
-    needs: build
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Use Node.js 22.x
-        uses: actions/setup-node@v3
-        with:
-          node-version: 22.x
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
-      - name: Install dependencies
-        run: yarn install
-      - name: Run semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: yarn semantic-release
+ 
