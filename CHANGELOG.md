@@ -1,3 +1,12 @@
+## [2.1.2](https://github.com/arqo123/speedgoose/compare/v2.1.1...v2.1.2) (2025-07-16)
+
+
+### Bug Fixes
+
+* **pipeline:** remove unnecessary steps and streamline semantic-release execution ([30f3e3b](https://github.com/arqo123/speedgoose/commit/30f3e3ba84ee6b3f7e20996df91a6a6d60055067))
+* restore import of hydrateResults in extendQuery.ts ([aa83f82](https://github.com/arqo123/speedgoose/commit/aa83f82b61d914d17cb3b0290d6698db1fa7584a))
+* update pipeline configuration and add release workflow ([6c51368](https://github.com/arqo123/speedgoose/commit/6c51368bc203d91a5eac572b9b51234bf5baa84b))
+
 ## [2.1.1](https://github.com/arqo123/speedgoose/compare/v2.1.0...v2.1.1) (2025-07-16)
 
 
