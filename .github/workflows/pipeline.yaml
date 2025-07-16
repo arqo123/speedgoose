@@ -49,8 +49,16 @@ jobs:
       - name: Run semantic-release
         id: semantic
         run: |
-          yarn semantic-release > release.log
-          NEW_VERSION=$(grep -oP 'Published release \K[^\s]+' release.log | head -1)
+          yarn semantic-release --no-ci > release.log 2>&1 || true
+          cat release.log
+          NEW_VERSION=$(grep -oP 'Created tag v\K[^\s]+' release.log | head -1)
+          if [ -z "$NEW_VERSION" ]; then
+            NEW_VERSION=$(grep -oP 'The next release version is \K[^\s]+' release.log | head -1)
+          fi
+          if [ -z "$NEW_VERSION" ]; then
+            echo "Could not determine new version from semantic-release output."
+            exit 1
+          fi
           echo "new_release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
