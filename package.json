@@ -45,6 +45,7 @@
         "lint": "yarn lint:base .",
         "lint:ci": "yarn lint:base --quiet .&& tsc -p tsconfig.json",
         "build": "yarn clean && tsc ",
+        "prepare": "yarn build",
         "dev": "yarn clean && tsc --watch",
         "semantic-release": "semantic-release",
         "update:check": "ncu",
