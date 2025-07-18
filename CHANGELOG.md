@@ -1,3 +1,10 @@
+## [2.1.3](https://github.com/arqo123/speedgoose/compare/v2.1.2...v2.1.3) (2025-07-18)
+
+
+### Bug Fixes
+
+* add prepare script to package.json for build automation ([#99](https://github.com/arqo123/speedgoose/issues/99)) ([6fbe508](https://github.com/arqo123/speedgoose/commit/6fbe508d108d268e3c744057b5e5e6c8d4f62468))
+
 ## [2.1.2](https://github.com/arqo123/speedgoose/compare/v2.1.1...v2.1.2) (2025-07-16)
 
 
