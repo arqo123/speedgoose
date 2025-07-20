@@ -3,6 +3,7 @@ import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
 import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
 import { getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted } from './utils';
+import { clearParentCache } from '../utils/cacheClientUtils';
 
 const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne'];
 const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate'];
@@ -56,6 +57,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
                 wasDeleted: this.$locals.wasDeleted,
                 modelName: model.modelName,
             });
+            await clearParentCache(this);
         }
         next();
     });
@@ -74,6 +76,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record, wasDeleted: true, modelName: model.modelName });
+            await clearParentCache(record);
         }
         next();
     });

@@ -1,5 +1,11 @@
 import { Mongoose, Query, Document } from 'mongoose';
-import { CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from './types/types';
+import {
+    CachedDocument,
+    CachedResult,
+    SpeedGooseCacheOperationContext,
+    SpeedGooseCacheOperationParams,
+    SpeedGoosePopulateOptions
+} from './types/types';
 import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { hydrateResults } from './utils/hydrationUtils';
@@ -20,6 +26,18 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
         prepareQueryOperationContext(this, context);
 
         return isCached(context.cacheKey)
+    };
+
+    /**
+     * Function to add populate options for cached population
+     */
+    mongoose.Query.prototype.cachePopulate = function (options: SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]) {
+        if (!this._mongooseOptions.speedGoosePopulate) {
+            this._mongooseOptions.speedGoosePopulate = [];
+        }
+        const opts = Array.isArray(options) ? options : [options];
+        this._mongooseOptions.speedGoosePopulate.push(...opts);
+        return this;
     };
 };
 

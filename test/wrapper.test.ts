@@ -41,7 +41,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
         const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS);
         expect(mongoose).toBeInstanceOf(Object);
         // We have one test model registered
-        expect(Object.keys(mongoose.models).length).toEqual(1);
+        expect(Object.keys(mongoose.models).length).toEqual(3);
     });
 
     it(`should extend mongoose query interfaces with cacheQuery() function`, async () => {

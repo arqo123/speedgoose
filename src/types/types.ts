@@ -95,11 +95,26 @@ export type MongooseManyObjectOperationEventContext = {
 
 export type MongooseInternalEventContext = MongooseDocumentEventsContext | MongooseManyObjectOperationEventContext;
 
+export type SpeedGoosePopulateOptions = {
+    /** The path to populate. */
+    path: string;
+    /** Fields to select. */
+    select?: string | Record<string, number>;
+    /** Optional TTL for individual populated documents. */
+    ttl?: number;
+    /** Controls TTL inheritance behavior */
+    ttlInheritance?: 'override' | 'fallback';
+    /** Controls the scope of cache invalidation when a child document changes. */
+    invalidationScope?: 'parents' | 'full'; // 'parents' = tylko dokumenty rodziców, 'full' = rodzice + zapytania
+};
+
 export enum CacheNamespaces {
     RESULTS_NAMESPACE = 'resultsNamespace',
     HYDRATED_DOCUMENTS_NAMESPACE = 'hydratedDocumentsNamespace',
     HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE = 'hydratedDocumentsVariationsKeyNamespace',
     RECORD_RESULTS_SETS = 'recordResultsSets',
+    DOCUMENTS = 'doc',
+    RELATIONS_CHILD_TO_PARENT = 'rel:child',
 }
 
 export enum GlobalDiContainerRegistryNames {

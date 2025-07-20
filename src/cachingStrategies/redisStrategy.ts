@@ -73,6 +73,41 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         await this.client.expire(keyWithNamespace, ttl);
     }
 
+    public async getDocuments<T>(keys: string[]): Promise<Map<string, CachedResult<T>>> {
+        const resultsMap = new Map<string, CachedResult<T>>();
+        if (keys.length === 0) return resultsMap;
+
+        const values = await this.client.mget(keys);
+        values.forEach((value, index) => {
+            if (value) {
+                resultsMap.set(keys[index], JSON.parse(value));
+            }
+        });
+        return resultsMap;
+    }
+
+    public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
+        if (documents.size === 0) return;
+
+        const pipeline = this.client.pipeline();
+        for (const [key, value] of documents.entries()) {
+            pipeline.set(key, JSON.stringify(value), 'EX', ttl);
+        }
+        await pipeline.exec();
+    }
+    
+    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void> {
+        await this.client.sadd(childIdentifier, parentIdentifier);
+    }
+    
+    public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
+        return this.client.smembers(childIdentifier);
+    }
+    
+    public async removeChildRelationships(childIdentifier: string): Promise<void> {
+        await this.client.del(childIdentifier);
+    }
+
     private setClient(uri: string, redisOptions?: RedisOptions): void {
         this.client = new Redis(uri, redisOptions ?? {});
     }

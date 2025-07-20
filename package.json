@@ -83,6 +83,7 @@
         "jest-extended": "^3.0.2",
         "lint-prepush": "^2.2.1",
         "lint-staged": "^13.1.0",
+        "mongodb-memory-server": "^10.1.4",
         "npm-check-updates": "^18.0.1",
         "precise-commits": "^1.0.2",
         "prettier": "^2.8.3",

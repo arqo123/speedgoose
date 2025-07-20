@@ -4,7 +4,7 @@ import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperation
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
 import { getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
 import { logCacheClear } from './debugUtils';
-import { isResultWithIds } from './mongooseUtils';
+import { isResultWithIds, getMongooseModelByName } from './mongooseUtils';
 import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
@@ -121,4 +121,48 @@ export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationConte
             scheduleTTlRefreshing(context, cachedValue);
         }, 0);
     }
+};
+
+export const clearParentCache = async (doc: Document, processedIds = new Set<string>(), depth = 0): Promise<void> => {
+    const MAX_DEPTH = 10; // Zabezpieczenie przed nieskończoną rekursją
+    if (depth > MAX_DEPTH) return;
+    
+    const docIdentifier = `${doc.constructor.modelName}:${doc._id}`;
+    if (processedIds.has(docIdentifier)) {
+        return;
+    }
+    processedIds.add(docIdentifier);
+    
+    // Dodanie metryk
+    debugUtils.recordMetric('invalidation_depth', depth);
+
+    const cacheStrategy = getCacheStrategyInstance();
+    const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${doc.constructor.modelName}:${doc._id}`;
+    
+    const parentIdentifiers = await cacheStrategy.getParentsOfChild(childIdentifier);
+    
+    if (parentIdentifiers.length > 0) {
+        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, docIdentifier);
+
+        // Batch processing for concurrency control
+        const BATCH_SIZE = 50;
+        for (let i = 0; i < parentIdentifiers.length; i += BATCH_SIZE) {
+            const batch = parentIdentifiers.slice(i, i + BATCH_SIZE);
+            const promises = batch.map(async parentIdWithModel => {
+                const [modelName, id] = parentIdWithModel.split(':');
+                const parentModel = getMongooseModelByName(modelName);
+                if (parentModel) {
+                    const parentDoc = await parentModel.findById(id).lean();
+                    if(parentDoc) {
+                        await clearCacheForRecordId(id);
+                        await clearParentCache(parentDoc, processedIds, depth + 1);
+                    }
+                }
+            });
+            await Promise.all(promises);
+        }
+    }
+
+    // Usunięcie starych relacji po ich przetworzeniu
+    await cacheStrategy.removeChildRelationships(childIdentifier);
 };

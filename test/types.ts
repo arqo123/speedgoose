@@ -10,5 +10,19 @@ export type TestModel = {
     [key: string]: unknown;
 };
 
+export type Friend = {
+    _id?: string | ObjectId;
+    name: string;
+    bestFriend?: Friend | string | ObjectId;
+};
+
+export type User = {
+    _id?: string | ObjectId;
+    name: string;
+    friends?: (Friend | string | ObjectId)[];
+};
+
 export type MongooseTestDocument = Document<string> & TestModel;
+export type MongooseFriendDocument = Document<string> & Friend;
+export type MongooseUserDocument = Document<string> & User;
 export type MongooseTestModel = Model<any>;
