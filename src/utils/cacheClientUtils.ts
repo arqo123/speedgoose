@@ -1,10 +1,13 @@
 import Keyv from 'keyv';
+import { Container } from 'typedi';
 import { Document, Model } from 'mongoose';
+import { SpeedGooseConfig } from '../types/types';
+import { GlobalDiContainerRegistryNames } from '../types/types';
 import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from '../types/types';
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
 import { getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
 import { logCacheClear } from './debugUtils';
-import { isResultWithIds, getMongooseModelByName } from './mongooseUtils';
+import { isResultWithIds, getMongooseModelNameFromDocument } from './mongooseUtils';
 import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
@@ -123,46 +126,45 @@ export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationConte
     }
 };
 
-export const clearParentCache = async (doc: Document, processedIds = new Set<string>(), depth = 0): Promise<void> => {
-    const MAX_DEPTH = 10; // Zabezpieczenie przed nieskończoną rekursją
-    if (depth > MAX_DEPTH) return;
+export const clearParentCache = async (doc: Document): Promise<void> => {
+    const modelName = getMongooseModelNameFromDocument(doc);
+    const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${doc._id}`;
     
-    const docIdentifier = `${doc.constructor.modelName}:${doc._id}`;
-    if (processedIds.has(docIdentifier)) {
-        return;
-    }
-    processedIds.add(docIdentifier);
-    
-    // Dodanie metryk
-    debugUtils.recordMetric('invalidation_depth', depth);
-
     const cacheStrategy = getCacheStrategyInstance();
-    const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${doc.constructor.modelName}:${doc._id}`;
-    
     const parentIdentifiers = await cacheStrategy.getParentsOfChild(childIdentifier);
     
+    const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
+    const CACHE_PARENT_LIMIT = Math.max(1,
+        Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100
+    );
+    
     if (parentIdentifiers.length > 0) {
-        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, docIdentifier);
+        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${doc._id}`);
 
-        // Batch processing for concurrency control
-        const BATCH_SIZE = 50;
-        for (let i = 0; i < parentIdentifiers.length; i += BATCH_SIZE) {
-            const batch = parentIdentifiers.slice(i, i + BATCH_SIZE);
-            const promises = batch.map(async parentIdWithModel => {
-                const [modelName, id] = parentIdWithModel.split(':');
-                const parentModel = getMongooseModelByName(modelName);
-                if (parentModel) {
-                    const parentDoc = await parentModel.findById(id).lean();
-                    if(parentDoc) {
-                        await clearCacheForRecordId(id);
-                        await clearParentCache(parentDoc, processedIds, depth + 1);
-                    }
-                }
-            });
-            await Promise.all(promises);
+        // Process in batches with delay up to CACHE_PARENT_LIMIT
+        const BATCH_SIZE = 25;
+        const maxToProcess = Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT);
+        const processedCount = 0;
+        
+        // Process batches with proper limit enforcement
+        const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
+        
+        for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+            const batchStart = batchIndex * BATCH_SIZE;
+            const batchEnd = Math.min(batchStart + BATCH_SIZE, CACHE_PARENT_LIMIT);
+            const batch = parentIdentifiers.slice(batchStart, batchEnd);
+            
+            await Promise.all(batch.map(async parentIdWithModel => {
+                const id = parentIdWithModel.split(':').pop();
+                await clearCacheForRecordId(id!);
+            }));
+            
+            // Add delay between batches except last
+            if (batchIndex < batchCount - 1) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
         }
     }
 
-    // Usunięcie starych relacji po ich przetworzeniu
     await cacheStrategy.removeChildRelationships(childIdentifier);
 };

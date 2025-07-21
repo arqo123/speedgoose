@@ -9,14 +9,21 @@ import { generateTestDocument, getMongooseTestModel, getValuesFromSet } from '..
 import * as commonUtils from '../../src/utils/commonUtils';
 import { clearCacheForKey, refreshTTLTimeIfNeeded } from '../../src/utils/cacheClientUtils';
 import { generateCacheKeyForModelName } from '../../src/utils/cacheKeyUtils';
-import { isResultWithId, isResultWithIds } from '../../src/utils/mongooseUtils';
+// TestModel is already imported via getMongooseTestModel
 import { TestModel } from '../types';
 import * as queueUtils from '../../src/utils/queueUtils';
+import { isResultWithId, isResultWithIds } from '../../src/utils/mongooseUtils';
+import mongoose from 'mongoose';
+
 
 const mockedGetHydrationCache = jest.spyOn(commonUtils, 'getHydrationCache');
 const mockedAddValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet');
 const mockedLogCacheClear = jest.spyOn(debugUtils, 'logCacheClear');
 const mockedScheduleTTlRefreshing = jest.spyOn(queueUtils, 'scheduleTTlRefreshing');
+
+beforeEach(() => {
+    jest.useFakeTimers();
+});
 
 describe('createInMemoryCacheClientWithNamespace', () => {
     const cacheClient = cacheClientUtils.createInMemoryCacheClientWithNamespace('testNamespace');
@@ -290,7 +297,6 @@ describe(`setKeyInResultsCaches`, () => {
 
 describe('refreshTTLTimeIfNeeded', () => {
     beforeEach(() => {
-        jest.useFakeTimers();
         jest.clearAllMocks();
     });
 
@@ -321,6 +327,7 @@ describe('refreshTTLTimeIfNeeded', () => {
 });
 
 
+
 describe(`isCached`, () => {
   it('should return false when key is not cached', async () => {
     const isCached = await cacheClientUtils.isCached('nonExistentKey');
@@ -340,4 +347,8 @@ describe(`isCached`, () => {
     const isCached = await cacheClientUtils.isCached(context.cacheKey);
     expect(isCached).toBe(true);
   });
+});
+
+afterEach(() => {
+    mongoose.model('User').removeAllListeners();
 });

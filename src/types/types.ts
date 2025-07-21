@@ -56,6 +56,8 @@ export type SpeedGooseConfig = {
     sharedCacheStrategy?: SharedCacheStrategies;
     /** Indicates if caching is enabled or disabled, by default is enabled */
     enabled?: boolean;
+    /** Maximum number of parent records to process in cache invalidation batches */
+    cacheParentLimit?: number;
 };
 
 export type SpeedGooseCacheOperationParams = {

@@ -29,6 +29,7 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
     config.refreshTtlOnRead = config.refreshTtlOnRead ?? false;
     config.enabled = config.enabled ?? true;
     config.multitenancyConfig = config.multitenancyConfig ?? { multitenantKey: undefined };
+    config.cacheParentLimit = config.cacheParentLimit ?? 100;
 };
 
 const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
