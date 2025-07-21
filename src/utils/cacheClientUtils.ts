@@ -1,6 +1,6 @@
 import Keyv from 'keyv';
 import { Container } from 'typedi';
-import { Document, Model } from 'mongoose';
+import { Document, Model, ObjectId } from 'mongoose';
 import { SpeedGooseConfig } from '../types/types';
 import { GlobalDiContainerRegistryNames } from '../types/types';
 import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from '../types/types';
@@ -62,7 +62,7 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
 export const clearCacheForRecordId = async (recordId: string): Promise<void> => {
     recordId = String(recordId);
     logCacheClear(`Clearing results and hydration cache for recordId`, recordId);
-    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), clearHydrationCache(recordId)]);
+    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), clearHydrationCache(recordId), getCacheStrategyInstance().clearDocumentsCache(recordId)]);
 };
 
 /**
@@ -126,9 +126,8 @@ export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationConte
     }
 };
 
-export const clearParentCache = async (doc: Document): Promise<void> => {
-    const modelName = getMongooseModelNameFromDocument(doc);
-    const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${doc._id}`;
+export const clearParentCache = async (modelName: string, docId: string| ObjectId): Promise<void> => {
+     const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${docId}`;
     
     const cacheStrategy = getCacheStrategyInstance();
     const parentIdentifiers = await cacheStrategy.getParentsOfChild(childIdentifier);
@@ -139,13 +138,11 @@ export const clearParentCache = async (doc: Document): Promise<void> => {
     );
     
     if (parentIdentifiers.length > 0) {
-        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${doc._id}`);
+        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
 
         // Process in batches with delay up to CACHE_PARENT_LIMIT
         const BATCH_SIZE = 25;
-        const maxToProcess = Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT);
-        const processedCount = 0;
-        
+
         // Process batches with proper limit enforcement
         const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
         

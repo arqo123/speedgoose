@@ -11,6 +11,7 @@ const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany'];
 const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 
 const appendQueryBasedListeners = (schema: Schema): void => {
+ 
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
         const action = this as any;
@@ -21,6 +22,7 @@ const appendQueryBasedListeners = (schema: Schema): void => {
             const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(action.op);
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName });
+            await clearParentCache( model.modelName, updatedRecord._id as string);
         }
         next();
     });
@@ -39,6 +41,11 @@ const appendQueryBasedListeners = (schema: Schema): void => {
                 affectedRecords.map(record => record._id),
             );
             model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records: affectedRecords, wasDeleted, modelName: model.modelName });
+            
+            // Clear parent caches for all affected records
+            await Promise.all(affectedRecords.map(record =>
+                clearParentCache( model.modelName, record._id as string)
+            ));
         }
         next();
     });
@@ -57,7 +64,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
                 wasDeleted: this.$locals.wasDeleted,
                 modelName: model.modelName,
             });
-            await clearParentCache(this);
+            await clearParentCache(model.modelName, this._id as string);
         }
         next();
     });
@@ -76,7 +83,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record, wasDeleted: true, modelName: model.modelName });
-            await clearParentCache(record);
+            await clearParentCache(model.modelName, record._id as string);
         }
         next();
     });

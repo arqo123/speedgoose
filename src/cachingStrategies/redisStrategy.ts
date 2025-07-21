@@ -1,11 +1,9 @@
 import Redis, { RedisOptions } from 'ioredis';
 import Container from 'typedi';
-import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { getConfig } from '../utils/commonUtils';
-import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from './commonCacheStrategyAbstract';
+import { CommonCacheStrategyAbstract } from './commonCacheStrategyAbstract';
 
-@staticImplements<CommonCacheStrategyStaticMethods>()
 export class RedisStrategy extends CommonCacheStrategyAbstract {
     public client: Redis;
 
@@ -106,6 +104,32 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     
     public async removeChildRelationships(childIdentifier: string): Promise<void> {
         await this.client.del(childIdentifier);
+    }
+
+    public async clearDocumentsCache(namespace: string): Promise<void> {
+        const stream = this.client.scanStream({
+            match: `${namespace}:*`,
+            count: 100
+        });
+        
+        for await (const keys of stream) {
+            if (keys.length) {
+                await this.client.del(...keys);
+            }
+        }
+    }
+
+    public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
+        const stream = this.client.scanStream({
+            match: `*->${parentIdentifier}`,
+            count: 100
+        });
+        
+        for await (const keys of stream) {
+            if (keys.length) {
+                await this.client.del(...keys);
+            }
+        }
     }
 
     private setClient(uri: string, redisOptions?: RedisOptions): void {

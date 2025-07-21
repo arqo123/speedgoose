@@ -7,6 +7,7 @@ import { getMongooseInstance } from '../src/utils/mongooseUtils';
 import { TEST_MODEL_NAME } from './constants';
 import { registerMongooseTestModel } from './setupTestEnv';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { SpeedGooseCacheAutoCleaner } from '../src/plugin/SpeedGooseCacheAutoCleaner';
 
 let mongoServer: MongoMemoryServer;
 
@@ -26,6 +27,8 @@ export const UserSchema = new mongoose.Schema({
     relationField: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     relationArray: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 });
+
+UserSchema.plugin(SpeedGooseCacheAutoCleaner)
 
 export const UserModel = mongoose.model('User', UserSchema);
 

@@ -1,11 +1,11 @@
 import { Container } from 'typedi';
 import Keyv from 'keyv';
 import { Document, Mongoose, Query } from 'mongoose';
-import { 
-    CacheNamespaces, 
-    GlobalDiContainerRegistryNames, 
-    SharedCacheStrategies, 
-    SpeedGooseConfig 
+import {
+    CacheNamespaces,
+    GlobalDiContainerRegistryNames,
+    SharedCacheStrategies,
+    SpeedGooseConfig
 } from './types/types';
 import { addCachingToQuery } from './extendQuery';
 import { addCachingToAggregate } from './extendAggregate';
@@ -38,12 +38,12 @@ const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
 
 const registerHydrationCaches = (): void => {
     Container.set<Keyv<Document>>(
-        GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS, 
+        GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS,
         createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_NAMESPACE)
     );
 
     Container.set<Keyv<Set<string>>>(
-        GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS, 
+        GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS,
         createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE)
     );
 };
@@ -64,7 +64,7 @@ const registerCacheStrategyInstance = (config: SpeedGooseConfig): Promise<void> 
 
 const wrapExecForPopulation = (mongoose: Mongoose): void => {
     const originalExec = mongoose.Query.prototype.exec;
-    
+
     mongoose.Query.prototype.exec = function (...args) {
         // @ts-ignore
         const populateOptions = this._mongooseOptions.speedGoosePopulate;
@@ -73,14 +73,14 @@ const wrapExecForPopulation = (mongoose: Mongoose): void => {
             return originalExec.apply(this, args);
         }
 
-populateOptions.touched = true
+        populateOptions.touched = true
         return originalExec.apply(this, args).then(documents => {
             if (!documents) return documents;
             return handleCachedPopulation(
-                Array.isArray(documents) ? documents : [documents], 
+                Array.isArray(documents) ? documents : [documents],
                 populateOptions,
-                this as Query<any,any>
-            ).then(populatedDocs => 
+                this as Query<any, any>
+            ).then(populatedDocs =>
                 Array.isArray(documents) ? populatedDocs : populatedDocs[0]
             );
         });

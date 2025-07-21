@@ -44,11 +44,11 @@ export const handleCachedPopulation = async <T extends Document>(
         // Fetch missing documents from DB
         if (missedIds.length > 0) {
             const docsFromDbQuery = populatedModel.find({ _id: { $in: missedIds } }, select)
-            
+
             if (isLeanQuery(query)) {
                 docsFromDbQuery.lean()
             }
-            
+
             const docsFromDb = await docsFromDbQuery.exec()
 
             const newDocsToCache = new Map<string, CachedResult<unknown>>();
@@ -74,12 +74,14 @@ export const handleCachedPopulation = async <T extends Document>(
             // Convert cached plain objects to Mongoose documents when needed
             if (!isLeanQuery(query)) {
                 if (Array.isArray(value)) {
+                    //@ts-expect-error Assuming value is an array of documents
                     value = value.map(item => item && typeof item === 'object'
                         ? populatedModel.hydrate(item)
                         : item
                     );
                 } else if (value && typeof value === 'object') {
-                    value = populatedModel.hydrate(value);
+                    //@ts-expect-error Assuming value is an array of documents
+                    value = populatedModel.hydrate(value)
                 }
             }
 

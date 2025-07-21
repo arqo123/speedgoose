@@ -82,12 +82,9 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         this.resultsCacheClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RESULTS_NAMESPACE);
         this.recordResultsSetsClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RECORD_RESULTS_SETS);
         this.documentsCacheClient = createInMemoryCacheClientWithNamespace(
-            CacheNamespaces.DOCUMENTS,
-            { maxSize: 10000 }
-        );
+            CacheNamespaces.DOCUMENTS);
         this.relationsCacheClient = createInMemoryCacheClientWithNamespace(
-            CacheNamespaces.RELATIONS_CHILD_TO_PARENT,
-            { maxSize: 50000 }
+            CacheNamespaces.RELATIONS_CHILD_TO_PARENT
         );
     }
 
@@ -125,8 +122,29 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         const parents = await this.relationsCacheClient.get(childIdentifier);
         return parents ? Array.from(parents) : [];
     }
-    
+
     public async removeChildRelationships(childIdentifier: string): Promise<void> {
         await this.relationsCacheClient.delete(childIdentifier);
+    }
+
+    public async clearDocumentsCache(namespace: string): Promise<void> {
+        const keysToDelete: string[] = [];
+        for await (const [key] of this.documentsCacheClient.iterator()) {
+            if (key.includes(`${namespace}`)) {
+                keysToDelete.push(key);
+            }
+        }
+        await Promise.all(keysToDelete.map(key => this.documentsCacheClient.delete(key)));
+    }
+
+    public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
+        const keysToDelete: string[] = [];
+        for await (const [key] of this.relationsCacheClient.iterator()) {
+            const parents = await this.relationsCacheClient.get(key);
+            if (parents?.has(parentIdentifier)) {
+                keysToDelete.push(key);
+            }
+        }
+        await Promise.all(keysToDelete.map(key => this.relationsCacheClient.delete(key)));
     }
 }
