@@ -28,16 +28,16 @@ describe('RedisStrategy.isHydrationEnabled', () => {
 describe('RedisStrategy.removeKeyForCache', () => {
     test(`should call del method on redis client with correct namespace and key`, () => {
         strategy.removeKeyForCache('someNamespace', 'someKey');
-        expect(mockedRedisDelMethod).toBeCalledTimes(1);
-        expect(mockedRedisDelMethod).toBeCalledWith('someNamespace:someKey');
+        expect(mockedRedisDelMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisDelMethod).toHaveBeenCalledWith('someNamespace:someKey');
     });
 });
 
 describe('RedisStrategy.addValueToCacheSet', () => {
     test(`should call sadd method on redis client with correct namespace and value`, () => {
         strategy.addValueToCacheSet('someNamespace', 'someValue');
-        expect(mockedRedisSaddMethod).toBeCalledTimes(1);
-        expect(mockedRedisSaddMethod).toBeCalledWith('someNamespace', 'someValue');
+        expect(mockedRedisSaddMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisSaddMethod).toHaveBeenCalledWith('someNamespace', 'someValue');
     });
 });
 
@@ -52,23 +52,23 @@ describe('RedisStrategy.addValueToCache', () => {
 
         strategy.addValueToCache('someNamespace', 'someKey', { testKey: 'testValue' }, 123);
 
-        expect(mockedRedisPipelineMethod).toBeCalledTimes(1);
+        expect(mockedRedisPipelineMethod).toHaveBeenCalledTimes(1);
 
-        expect(mockedRedisPipelineSetMethod).toBeCalledTimes(1);
-        expect(mockedRedisPipelineSetMethod).toBeCalledWith('someNamespace:someKey', '{"testKey":"testValue"}');
+        expect(mockedRedisPipelineSetMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisPipelineSetMethod).toHaveBeenCalledWith('someNamespace:someKey', '{"testKey":"testValue"}');
 
-        expect(mockedRedisPipelineExpireMethod).toBeCalledTimes(1);
-        expect(mockedRedisPipelineExpireMethod).toBeCalledWith('someNamespace:someKey', 123);
+        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('someNamespace:someKey', 123);
 
-        expect(mockedRedisPipelineExecMethod).toBeCalledTimes(1);
+        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
     });
 });
 
 describe('RedisStrategy.getValueFromCache', () => {
     test(`should call sadd method on redis client with correct namespace and value with use of pipeline`, () => {
         strategy.getValueFromCache('someNamespace', 'someKey');
-        expect(mockedRedisGetMethod).toBeCalledTimes(1);
-        expect(mockedRedisGetMethod).toBeCalledWith('someNamespace:someKey');
+        expect(mockedRedisGetMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisGetMethod).toHaveBeenCalledWith('someNamespace:someKey');
     });
 
     test(`should return null if there was no value assigned to test key`, async () => {
@@ -88,8 +88,8 @@ describe('RedisStrategy.getValueFromCache', () => {
 describe('RedisStrategy.getValuesFromCachedSet', () => {
     test(`should call smembers method on redis client`, async () => {
         await strategy.getValuesFromCachedSet('someNamespace');
-        expect(mockedRedisSmembersMethod).toBeCalledTimes(1);
-        expect(mockedRedisSmembersMethod).toBeCalledWith('someNamespace');
+        expect(mockedRedisSmembersMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisSmembersMethod).toHaveBeenCalledWith('someNamespace');
     });
 
     test(`should return value returned by the smembers method`, async () => {
@@ -111,16 +111,16 @@ describe('RedisStrategy.addValueToManyCachedSets', () => {
 
         strategy.addValueToManyCachedSets(['nameSpace1', 'nameSpace2', 'nameSpace3'], 'someValue');
 
-        expect(mockedRedisPipelineMethod).toBeCalledTimes(1);
+        expect(mockedRedisPipelineMethod).toHaveBeenCalledTimes(1);
 
-        expect(mockedRedisPipelineSaddMethod).toBeCalledTimes(3);
-        expect(mockedRedisPipelineSaddMethod).toBeCalledWith('nameSpace1', 'someValue');
-        expect(mockedRedisPipelineSaddMethod).toBeCalledWith('nameSpace2', 'someValue');
-        expect(mockedRedisPipelineSaddMethod).toBeCalledWith('nameSpace3', 'someValue');
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(3);
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('nameSpace1', 'someValue');
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('nameSpace2', 'someValue');
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('nameSpace3', 'someValue');
 
-        expect(mockedRedisPipelineExpireMethod).toBeCalledTimes(0);
+        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(0);
 
-        expect(mockedRedisPipelineExecMethod).toBeCalledTimes(1);
+        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -131,9 +131,9 @@ describe('RedisStrategy.clearResultsCacheWithSet', () => {
         const cachedSetsPreparedKeys = ['someKey1', 'someKey2', 'someKey3'].map(key => `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`);
 
         await strategy.clearResultsCacheWithSet('someNamespace');
-        expect(mockedRedisDelMethod).toBeCalledTimes(2);
-        expect(mockedRedisDelMethod).toBeCalledWith(cachedSetsPreparedKeys);
-        expect(mockedRedisDelMethod).toBeCalledWith('someNamespace');
+        expect(mockedRedisDelMethod).toHaveBeenCalledTimes(2);
+        expect(mockedRedisDelMethod).toHaveBeenCalledWith(cachedSetsPreparedKeys);
+        expect(mockedRedisDelMethod).toHaveBeenCalledWith('someNamespace');
     });
 });
 
@@ -143,7 +143,7 @@ describe('RedisStrategy.refreshTTLForCachedResult', () => {
         const mockedExpire = jest.spyOn(strategy.client, 'expire');
 
         await strategy.refreshTTLForCachedResult(testData.key, testData.ttl);
-        expect(mockedExpire).toBeCalledWith(`${CacheNamespaces.RESULTS_NAMESPACE}:${testData.key}`, testData.ttl);
+        expect(mockedExpire).toHaveBeenCalledWith(`${CacheNamespaces.RESULTS_NAMESPACE}:${testData.key}`, testData.ttl);
     });
 });
 

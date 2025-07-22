@@ -16,7 +16,7 @@ describe(`getRecordAffectedByAction`, () => {
         mockedFindOne.mockImplementation(mockedLeanQuery);
 
         await pluginUtils.getRecordAffectedByAction(query);
-        expect(mockedFindOne).toBeCalledWith({ someFiltrationKey: 'value' }, { _id: 1 }, {});
+        expect(mockedFindOne).toHaveBeenCalledWith({ someFiltrationKey: 'value' }, { _id: 1 }, {});
     });
 
     test(`should add multitenancyKey to projection if it was set in config`, async () => {
@@ -28,6 +28,6 @@ describe(`getRecordAffectedByAction`, () => {
         mockedFindOne.mockImplementation(mockedLeanQuery);
 
         await pluginUtils.getRecordAffectedByAction(query);
-        expect(mockedFindOne).toBeCalledWith({ someFiltrationKey: 'value' }, { _id: 1, tenantKey: 1 }, {});
+        expect(mockedFindOne).toHaveBeenCalledWith({ someFiltrationKey: 'value' }, { _id: 1, tenantKey: 1 }, {});
     });
 });

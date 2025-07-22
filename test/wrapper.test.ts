@@ -63,7 +63,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register new service in DiContainer with access to queues`, async () => {
         const registerInternalQueueWorkersSpy = jest.spyOn(queueUtils, 'registerInternalQueueWorkers');
         await applySpeedGooseCacheLayer(mongoose, { sharedCacheStrategy: SharedCacheStrategies.IN_MEMORY });
-        expect(registerInternalQueueWorkersSpy).toBeCalled();
+        expect(registerInternalQueueWorkersSpy).toHaveBeenCalled();
     });
 
     it(`should set redis caching strategy if it was set in config`, async () => {

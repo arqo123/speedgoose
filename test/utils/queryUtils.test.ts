@@ -118,14 +118,14 @@ describe(`shouldHydrateResult`, () => {
     test(`should return false if hydration is disabled for given caching strategy`, () => {
         mockedCacheStrategyInstance.mockReturnValue(false);
 
-        expect(mockedGetCacheStrategyInstance).toBeCalledTimes(1);
+        expect(mockedGetCacheStrategyInstance).toHaveBeenCalledTimes(1);
         expect(shouldHydrateResult(generateTestFindQuery({}))).toBeFalsy();
     });
 
     test(`should return true if hydration is enabled and  for given caching strategy`, () => {
         mockedCacheStrategyInstance.mockReturnValue(true);
 
-        expect(mockedGetCacheStrategyInstance).toBeCalledTimes(1);
+        expect(mockedGetCacheStrategyInstance).toHaveBeenCalledTimes(1);
         expect(shouldHydrateResult(generateTestFindQuery({}))).toBeTruthy();
     });
 

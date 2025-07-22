@@ -21,6 +21,7 @@ export const getTestDBUri = async (): Promise<string> => {
 export const UserSchema = new mongoose.Schema({
     name: String,
     email: String,
+    age: Number,
     fieldA: String,
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     parents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
