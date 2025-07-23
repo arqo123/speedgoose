@@ -88,7 +88,8 @@
         "prettier": "3.6.2",
         "semantic-release": "^24.2.7",
         "ts-jest": "^29.0.3",
-        "typescript": "5.8.3"
+        "typescript": "5.8.3",
+        "rimraf": "^5.0.5"
     },
     "bugs": {
         "url": "https://github.com/arqo123/speedgoose/issues"
