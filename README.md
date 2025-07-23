@@ -22,6 +22,7 @@ It's caching on two levels. Shared - with Redis. And local inside memory. Suppor
 -   It supports deep hydration, for caching not only the root document instances but also those that are populated.
 -   Supports custom eventing. For example, if you want to remove given results from cache, but removal logic is not based on removing documents from DB but rather field based (like deleted: true), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
 -   Supports multitenancy by clearing cached results only for a related tenant.
+-   It has a `cachePopulate` method that solves the N+1 problem with Mongoose population.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## Release Note: 
@@ -100,6 +101,12 @@ const result = await model.aggregate<AggregationResultType>([]).cachePipeline()
 ```ts
 const isQueryCached = await model<SomeModelType>.find({}).sort({fieldA : 1}).isCached()
 const isPipelineCached = await model.aggregate<AggregationResultType>([]).isCached()
+```
+
+4. With cache-based population
+
+```ts
+const result = await model.find<ResultType>({}).cachePopulate({path: 'user'})
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -263,18 +270,119 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
 ```
  
 
+<!-- CACHE POPULATE -->
+
+## :recycle: Cache-based Population
+
+Speedgoose introduces a powerful `cachePopulate` method to solve the common N+1 problem in MongoDB population. Instead of making separate database queries for each populated document, `cachePopulate` leverages caching to significantly reduce database load and improve response times.
+
+### How It Works
+
+The `cachePopulate` method intercepts Mongoose `populate` calls and first attempts to retrieve the referenced documents from the cache. If some documents are not found in the cache, it fetches them from the database in a single, efficient query and then caches them for future use. This process is transparent to the developer and requires minimal code changes.
+
+Here's a flowchart illustrating the logic:
+
+```mermaid
+graph TD
+    A[Query with .cachePopulate()] --> B{Are populated documents in cache?}
+    B -->|Yes| C[Retrieve from cache]
+    B -->|No| D[Fetch from database]
+    D --> E[Cache new documents]
+    E --> C
+    C --> F[Return populated results]
+```
+
+### Usage Examples
+
+Using `cachePopulate` is as simple as replacing `.populate()` with `.cachePopulate()` in your queries.
+
+**Basic Population:**
+
+```typescript
+// From
+const result = await MyModel.find({}).populate('user');
+
+// To
+const result = await MyModel.find({}).cachePopulate({ path: 'user' });
+```
+
+**Multiple Populations:**
+
+You can cache multiple population paths by providing an array of options:
+
+```typescript
+const result = await MyModel.find({}).cachePopulate([
+    { path: 'user' },
+    { path: 'comments' }
+]);
+```
+
+**Selecting Specific Fields:**
+
+Just like with Mongoose's `populate`, you can use the `select` option to specify which fields of the populated document to return.
+
+```typescript
+const result = await MyModel.find({}).cachePopulate({
+    path: 'user',
+    select: 'name email' // or { name: 1, email: 1 }
+});
+```
+
+**Custom TTL:**
+
+You can set a custom Time-To-Live (TTL) for the cached populated documents.
+
+```typescript
+const result = await MyModel.find({}).cachePopulate({
+    path: 'user',
+    ttl: 300 // 5 minutes
+});
+```
+
+**TTL Inheritance:**
+
+The `ttlInheritance` option controls how the TTL is applied when a global TTL is also configured.
+
+*   `'fallback'` (default): The `ttl` from `cachePopulate` is used only if no global TTL is set.
+*   `'override'`: The `ttl` from `cachePopulate` always takes precedence over the global TTL.
+
+```typescript
+const result = await MyModel.find({}).cachePopulate({
+    path: 'user',
+    ttl: 300,
+    ttlInheritance: TtlInheritance.OVERRIDE
+});
+```
+
+### Supported Options
+
+The `cachePopulate` method accepts an object or an array of objects with the following properties:
+
+| Option          | Type                               | Description                                                                                                                            |
+| --------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`          | `string`                           | The field to populate.                                                                                                                 |
+| `select`        | `string` or `object`               | Specifies which document fields to include or exclude.                                                                                 |
+| `ttl`           | `number`                           | The Time-To-Live for the cached populated documents, in seconds.                                                                       |
+| `ttlInheritance`| `'override'` or `'fallback'`       | Controls how the `ttl` option interacts with a globally configured TTL. Defaults to `'fallback'`.                                      |
+
+### Parent Cache Invalidation
+
+A key feature of `cachePopulate` is its intelligent cache invalidation. When a populated document is updated or deleted, Speedgoose automatically invalidates the cache for any parent documents that reference it. This ensures that your application always serves fresh data.
+
+For example, if a `User` document is updated, any `Article` documents that have that user populated will have their `cachePopulate` cache cleared for the `user` field. This is handled automatically by the `SpeedGooseCacheAutoCleaner` plugin.
+
 <!-- ROADMAP -->
 
 ## :dart: Roadmap
 
 -   [ ] Separated documentation
--   [ ] Add more examples
+-   [x] Add more examples
 -   [x] Deep hydration for nested documents 
--   [ ] Cache-based population
+-   [x] Cache-based population
 -   [x] Manual cache clearing for custom keys
 -   [x] Refreshing TTL on read
 -   [x] Support for clustered servers 
--   [ ] Flowchart of logic
+-   [x] Flowchart of logic
 -   [ ] Tests
     -   [x] commonUtils
     -   [x] debuggerUtils
@@ -297,6 +405,7 @@ clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promi
     -   [ ] Memcached https://github.com/arqo123/speedgoose/issues/49
 
 See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full list of proposed features (and known issues).
+
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 

@@ -22,6 +22,11 @@ export type SpeedGooseCacheAutoCleanerOptions = {
 
 export type CustomDebugger = (label?: string, ...dataToLog: unknown[]) => void;
 
+export enum TtlInheritance {
+    FALLBACK = 'fallback',
+    OVERRIDE = 'override'
+}
+
 export enum SpeedGooseDebuggerOperations {
     EVENTS = 'event',
     CACHE_QUERY = 'cacheQuery',
@@ -105,7 +110,7 @@ export type SpeedGoosePopulateOptions = {
     /** Optional TTL for individual populated documents. */
     ttl?: number;
     /** Controls TTL inheritance behavior */
-    ttlInheritance?: 'override' | 'fallback';
+    ttlInheritance?: TtlInheritance | 'fallback' | 'override'; // union type for backward compatibility
     /** Controls the scope of cache invalidation when a child document changes. */
     invalidationScope?: 'parents' | 'full'; // 'parents' = tylko dokumenty rodziców, 'full' = rodzice + zapytania
 };
