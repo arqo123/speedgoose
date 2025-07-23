@@ -7,7 +7,7 @@ import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperation
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
 import { getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
 import { logCacheClear } from './debugUtils';
-import { isResultWithIds, getMongooseModelNameFromDocument } from './mongooseUtils';
+import { isResultWithIds } from './mongooseUtils';
 import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {

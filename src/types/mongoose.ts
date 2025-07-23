@@ -2,7 +2,6 @@ import { SpeedGooseCacheOperationParams, SpeedGoosePopulateOptions } from './typ
 
 declare module 'mongoose' {
     //@ts-expect-error overwriting of mongoose Query interface
-    // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
     interface Query<ResultType, DocType, THelpers = {}, RawDocType = DocType> extends Query<ResultType, DocType> {
         cacheQuery(params?: SpeedGooseCacheOperationParams): Promise<Query<ResultType, DocType, unknown>>;
         isCached(params?: SpeedGooseCacheOperationParams): Promise<boolean>;

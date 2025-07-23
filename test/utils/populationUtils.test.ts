@@ -3,7 +3,7 @@ import { applySpeedGooseCacheLayer } from '../../src/wrapper';
 import { UserModel, setupTestDB, clearTestCache } from '../testUtils';
 import { calculatePopulationTtl, fetchAndCacheMissedDocuments, getDocumentCacheKey, handleCachedPopulation, normalizeSelect, stitchAndRelateDocuments } from '../../src/utils/populationUtils';
 import { getCacheStrategyInstance } from '../../src/utils/commonUtils';
-import { CacheNamespaces, CachedResult, TtlInheritance } from '../../src/types/types';
+import { CachedResult, TtlInheritance } from '../../src/types/types';
 
 interface IUser extends Document {
     name: string;

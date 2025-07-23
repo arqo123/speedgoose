@@ -1,7 +1,7 @@
-import { Document, Model, Query, Schema, SchemaType } from 'mongoose';
+import { Document, Model, Query } from 'mongoose';
 import { getMongooseModelByName } from './mongooseUtils';
 import { getCacheStrategyInstance } from './commonUtils';
-import { CacheNamespaces, SpeedGoosePopulateOptions, CachedResult, SpeedGooseDebuggerOperations, TtlInheritance } from '../types/types';
+import { CacheNamespaces, SpeedGoosePopulateOptions, CachedResult, TtlInheritance } from '../types/types';
 import mpath from 'mpath';
 import { isLeanQuery } from './queryUtils';
 
