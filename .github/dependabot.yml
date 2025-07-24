@@ -4,7 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    target-branch: "main"
+    target-branch: "master"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "fix(deps)"
       include: "scope"
