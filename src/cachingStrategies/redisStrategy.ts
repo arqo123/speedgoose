@@ -120,14 +120,19 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
-        const stream = this.client.scanStream({
-            match: `*->${parentIdentifier}`,
-            count: 100
-        });
-        
+        // Scan all child keys
+        const stream = this.client.scanStream({ match: '*', count: 100 });
         for await (const keys of stream) {
-            if (keys.length) {
-                await this.client.del(...keys);
+            for (const key of keys) {
+                // For each key, check if it's a child relationship set
+                // (Assume child relationship keys follow a known pattern, e.g., 'child:*')
+                // If not, skip
+                // You may need to adjust the pattern below to match your actual child key format
+                if (!key.startsWith('child:')) continue;
+                const parents = await this.client.smembers(key);
+                if (parents && parents.includes(parentIdentifier)) {
+                    await this.client.del(key);
+                }
             }
         }
     }

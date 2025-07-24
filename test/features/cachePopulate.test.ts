@@ -20,6 +20,11 @@ describe('cachePopulate', () => {
         applySpeedGooseCacheLayer(mongoose, {});
     });
 
+    afterAll(async () => {
+        await mongoose.connection.close();
+        await mongoose.disconnect();
+    });
+
     beforeEach(async () => {
         await clearTestCache();
         await UserModel.deleteMany({});

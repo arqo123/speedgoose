@@ -9,13 +9,20 @@ import { registerMongooseTestModel } from './setupTestEnv';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { SpeedGooseCacheAutoCleaner } from '../src/plugin/SpeedGooseCacheAutoCleaner';
 
-let mongoServer: MongoMemoryServer;
+let mongoServer: MongoMemoryServer | null;
 
 export const getTestDBUri = async (): Promise<string> => {
     if (!mongoServer) {
         mongoServer = await MongoMemoryServer.create();
     }
     return mongoServer.getUri();
+};
+
+export const stopTestDB = async () => {
+    if (mongoServer) {
+        await mongoServer.stop();
+        mongoServer = null;
+    }
 };
 
 export const UserSchema = new mongoose.Schema({
@@ -47,7 +54,6 @@ export const clearTestCache = async () => {
     await clearAllCaches();
 };
 
- 
 /**
  * Generates a test query for findOne operations
  */

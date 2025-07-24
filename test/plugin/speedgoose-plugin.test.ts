@@ -19,6 +19,11 @@ describe('SpeedGooseCacheAutoCleaner', () => {
         applySpeedGooseCacheLayer(mongoose, {});
      });
 
+    afterAll(async () => {
+        await mongoose.connection.close();
+        await mongoose.disconnect();
+    });
+
     beforeEach(async () => {
         await clearTestCache();
         await UserModel.deleteMany({});
@@ -54,15 +59,19 @@ describe('SpeedGooseCacheAutoCleaner', () => {
         const firstParent = await UserModel.findById(parent._id).cacheQuery()
         expect(firstParent).toBeDefined();
 
+        // First query should use cache
+        const spy = jest.spyOn(UserModel, 'findById');
+        const cachedParent = await UserModel.findById(parent._id).cacheQuery();
+        expect(cachedParent).toBeDefined();
+        expect(spy).toHaveBeenCalledTimes(1); // Only one DB call for first query (cache hit)
+
         // Update child document
         await UserModel.updateOne({ _id: child._id }, { name: 'UpdatedChild' });
 
         // Verify parent cache is invalidated
-        const spy = jest.spyOn(UserModel, 'findById');
-        const secondParent = await UserModel.findById(parent._id).cacheQuery()
-        
+        const secondParent = await UserModel.findById(parent._id).cacheQuery();
         expect(secondParent).toBeDefined();
-        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledTimes(2); // DB hit after invalidation
         spy.mockRestore();
     });
 });

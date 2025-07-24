@@ -36,12 +36,12 @@
         }
     },
     "scripts": {
-        "test": "jest",
-        "test:debug": "jest --runInBand",
+        "test": "jest --forceExit",
+        "test:debug": "jest --runInBand --forceExit",
         "test-watch": "nodemon --exec 'npm test'",
         "clean": "rimraf ./lib/*",
         "lint:base": "eslint --ext .ts",
-        "lint:fix": "eslint . --fix & prettier . --write",
+        "lint:fix": "eslint . --fix && prettier . --write",
         "lint": "yarn lint:base .",
         "lint:ci": "yarn lint:base --quiet . && tsc -p tsconfig.json",
         "build": "yarn clean && tsc ",
