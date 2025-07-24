@@ -18,7 +18,7 @@ describe(`getDebugger`, () => {
             },
         });
         const debug = getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
-        expect(mockedDebug).not.toBeCalled();
+        expect(mockedDebug).not.toHaveBeenCalled();
         expect(debug).toBe(emptyDebugCallback);
     });
 
@@ -29,7 +29,7 @@ describe(`getDebugger`, () => {
 
         const debug = getDebugger('testModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
 
-        expect(mockedDebug).not.toBeCalled();
+        expect(mockedDebug).not.toHaveBeenCalled();
         expect(debug).toBe(emptyDebugCallback);
     });
 
@@ -59,7 +59,7 @@ describe(`getDebugger`, () => {
         const enabledModelDebugger = getDebugger('enabledModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
         const disabledModelDebugger = getDebugger('disabledModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
         // Should be only called once for the enabled one
-        expect(mockedDebug).toBeCalledTimes(1);
+        expect(mockedDebug).toHaveBeenCalledTimes(1);
         expect(typeof enabledModelDebugger).toEqual('function');
         expect(disabledModelDebugger).toBe(emptyDebugCallback);
     });
@@ -79,7 +79,7 @@ describe(`getDebugger`, () => {
         const debuggerForDisabledOperation = getDebugger('disabledModel', SpeedGooseDebuggerOperations.CACHE_PIPELINE);
 
         // Should be only called once for the enabled one
-        expect(mockedDebug).toBeCalledTimes(1);
+        expect(mockedDebug).toHaveBeenCalledTimes(1);
         expect(typeof debuggerForEnabledOperation).toEqual('function');
         expect(debuggerForDisabledOperation).toBe(emptyDebugCallback);
     });
@@ -92,9 +92,9 @@ describe('setupDebugger', () => {
 
             if (testCase.config.debugConfig?.enabled) {
                 setupDebugger(testCase.config);
-                expect(mockedDebugEnable).toBeCalledWith(testCase.expectedNamespaces?.toString());
+                expect(mockedDebugEnable).toHaveBeenCalledWith(testCase.expectedNamespaces?.toString());
             } else {
-                expect(mockedDebugEnable).not.toBeCalled();
+                expect(mockedDebugEnable).not.toHaveBeenCalled();
             }
         });
     });

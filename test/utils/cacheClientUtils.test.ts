@@ -9,14 +9,21 @@ import { generateTestDocument, getMongooseTestModel, getValuesFromSet } from '..
 import * as commonUtils from '../../src/utils/commonUtils';
 import { clearCacheForKey, refreshTTLTimeIfNeeded } from '../../src/utils/cacheClientUtils';
 import { generateCacheKeyForModelName } from '../../src/utils/cacheKeyUtils';
-import { isResultWithId, isResultWithIds } from '../../src/utils/mongooseUtils';
+// TestModel is already imported via getMongooseTestModel
 import { TestModel } from '../types';
 import * as queueUtils from '../../src/utils/queueUtils';
+import { isResultWithId, isResultWithIds } from '../../src/utils/mongooseUtils';
+import mongoose from 'mongoose';
+
 
 const mockedGetHydrationCache = jest.spyOn(commonUtils, 'getHydrationCache');
 const mockedAddValueToInternalCachedSet = jest.spyOn(cacheClientUtils, 'addValueToInternalCachedSet');
 const mockedLogCacheClear = jest.spyOn(debugUtils, 'logCacheClear');
 const mockedScheduleTTlRefreshing = jest.spyOn(queueUtils, 'scheduleTTlRefreshing');
+
+beforeEach(() => {
+    jest.useFakeTimers();
+});
 
 describe('createInMemoryCacheClientWithNamespace', () => {
     const cacheClient = cacheClientUtils.createInMemoryCacheClientWithNamespace('testNamespace');
@@ -66,8 +73,8 @@ describe('setKeyInHydrationCaches', () => {
     });
 
     test(`keys after set should be accessible with the getHydrationCache method`, async () => {
-        expect(mockedGetHydrationCache).toBeCalled();
-        expect(mockedAddValueToInternalCachedSet).toBeCalled();
+        expect(mockedGetHydrationCache).toHaveBeenCalled();
+        expect(mockedAddValueToInternalCachedSet).toHaveBeenCalled();
 
         expect(await commonUtils.getHydrationCache().get('testKey1')).toEqual(document1);
         expect(await commonUtils.getHydrationCache().get('testKey2')).toEqual(document2);
@@ -86,8 +93,8 @@ describe('setKeyInHydrationCaches', () => {
         const document4 = generateTestDocument({ _id: id1, name: 'someBrandNewDocumentToOverwrite' });
         await cacheClientUtils.setKeyInHydrationCaches('testKey1', document4, {});
 
-        expect(mockedGetHydrationCache).toBeCalled();
-        expect(mockedAddValueToInternalCachedSet).toBeCalled();
+        expect(mockedGetHydrationCache).toHaveBeenCalled();
+        expect(mockedAddValueToInternalCachedSet).toHaveBeenCalled();
 
         expect(await commonUtils.getHydrationCache().get('testKey1')).not.toEqual(document1);
         expect(await commonUtils.getHydrationCache().get('testKey1')).toEqual(document4);
@@ -136,7 +143,7 @@ describe(`clearCacheForKey`, () => {
     test(`should log informations with debugger`, async () => {
         mockedLogCacheClear.mockClear();
         await clearCacheForKey('testKey');
-        expect(mockedLogCacheClear).toBeCalledTimes(1);
+        expect(mockedLogCacheClear).toHaveBeenCalledTimes(1);
         expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing results cache for key`, 'testKey');
     });
 
@@ -165,7 +172,7 @@ describe(`clearCacheForRecordId`, () => {
     test(`should log informations with debugger`, async () => {
         mockedLogCacheClear.mockClear();
         await cacheClientUtils.clearCacheForRecordId('recordId');
-        expect(mockedLogCacheClear).toBeCalledTimes(2);
+        expect(mockedLogCacheClear).toHaveBeenCalledTimes(2);
         expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing results and hydration cache for recordId`, 'recordId');
         expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing hydration cache for recordId`, 'recordId');
     });
@@ -196,7 +203,7 @@ describe(`clearCachedResultsForModel`, () => {
     test(`should log informations with debugger`, async () => {
         mockedLogCacheClear.mockClear();
         await cacheClientUtils.clearCachedResultsForModel(testCase.modelName, testCase.multitenantValue);
-        expect(mockedLogCacheClear).toBeCalledTimes(1);
+        expect(mockedLogCacheClear).toHaveBeenCalledTimes(1);
         expect(mockedLogCacheClear).toHaveBeenCalledWith(`Clearing model cache for key`, modelCacheKey);
     });
 
@@ -229,8 +236,8 @@ describe(`setKeyInResultsCaches`, () => {
         for (const testCase of testCases) {
             const contextSpy = jest.spyOn(testCase.context, 'debug');
             await cacheClientUtils.setKeyInResultsCaches(testCase.context, testCase.result, testCase.model);
-            expect(contextSpy).toBeCalledWith(`Setting key in cache`, testCase.context.cacheKey);
-            expect(contextSpy).toBeCalledWith(`Cache key set`, testCase.context.cacheKey);
+            expect(contextSpy).toHaveBeenCalledWith(`Setting key in cache`, testCase.context.cacheKey);
+            expect(contextSpy).toHaveBeenCalledWith(`Cache key set`, testCase.context.cacheKey);
         }
     });
 
@@ -240,7 +247,7 @@ describe(`setKeyInResultsCaches`, () => {
 
         for (const testCase of testCases) {
             await cacheClientUtils.setKeyInResultsCaches(testCase.context, testCase.result, testCase.model);
-            expect(mockedCacheStrategyInstance).toBeCalledWith(CacheNamespaces.RESULTS_NAMESPACE, testCase.context.cacheKey, testCase.result, testCase.context.ttl);
+            expect(mockedCacheStrategyInstance).toHaveBeenCalledWith(CacheNamespaces.RESULTS_NAMESPACE, testCase.context.cacheKey, testCase.result, testCase.context.ttl);
         }
     });
 
@@ -290,7 +297,6 @@ describe(`setKeyInResultsCaches`, () => {
 
 describe('refreshTTLTimeIfNeeded', () => {
     beforeEach(() => {
-        jest.useFakeTimers();
         jest.clearAllMocks();
     });
 
@@ -321,6 +327,7 @@ describe('refreshTTLTimeIfNeeded', () => {
 });
 
 
+
 describe(`isCached`, () => {
   it('should return false when key is not cached', async () => {
     const isCached = await cacheClientUtils.isCached('nonExistentKey');
@@ -340,4 +347,8 @@ describe(`isCached`, () => {
     const isCached = await cacheClientUtils.isCached(context.cacheKey);
     expect(isCached).toBe(true);
   });
+});
+
+afterEach(() => {
+    mongoose.model('User').removeAllListeners();
 });

@@ -1,3 +1,5 @@
+
+
 import * as commonUtils from '../../src/utils/commonUtils';
 import { isCountQuery, isDistinctQuery, isLeanQuery, prepareAggregateOperationParams, prepareQueryOperationContext, shouldHydrateResult, stringifyPopulatedPaths, stringifyQueryParam } from '../../src/utils/queryUtils';
 import { generateAggregateParamsOperationTestData } from '../assets/utils/prepareAggregateOperationContextAssets';
@@ -116,14 +118,14 @@ describe(`shouldHydrateResult`, () => {
     test(`should return false if hydration is disabled for given caching strategy`, () => {
         mockedCacheStrategyInstance.mockReturnValue(false);
 
-        expect(mockedGetCacheStrategyInstance).toBeCalledTimes(1);
+        expect(mockedGetCacheStrategyInstance).toHaveBeenCalledTimes(1);
         expect(shouldHydrateResult(generateTestFindQuery({}))).toBeFalsy();
     });
 
     test(`should return true if hydration is enabled and  for given caching strategy`, () => {
         mockedCacheStrategyInstance.mockReturnValue(true);
 
-        expect(mockedGetCacheStrategyInstance).toBeCalledTimes(1);
+        expect(mockedGetCacheStrategyInstance).toHaveBeenCalledTimes(1);
         expect(shouldHydrateResult(generateTestFindQuery({}))).toBeTruthy();
     });
 
@@ -132,13 +134,13 @@ describe(`shouldHydrateResult`, () => {
 
         expect(shouldHydrateResult(generateTestFindQuery({}).countDocuments())).toBeFalsy();
         expect(shouldHydrateResult(generateTestFindQuery({}).lean())).toBeFalsy();
-        expect(shouldHydrateResult(generateTestDistinctQuery({}))).toBeFalsy();
+        expect(shouldHydrateResult(generateTestDistinctQuery("fieldName"))).toBeFalsy();
     });
 });
 
 describe(`isDistinctQuery`, () => {
     test(`should return true if query was called with distinct method`, () => {
-        expect(isDistinctQuery(generateTestDistinctQuery({}))).toBeTruthy();
+        expect(isDistinctQuery(generateTestDistinctQuery("fieldName"))).toBeTruthy();
     });
 
     test(`should return false if query was called without distinct method`, () => {

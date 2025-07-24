@@ -1,5 +1,8 @@
 import Keyv from 'keyv';
-import { Document, Model } from 'mongoose';
+import { Container } from 'typedi';
+import { Document, Model, ObjectId } from 'mongoose';
+import { SpeedGooseConfig } from '../types/types';
+import { GlobalDiContainerRegistryNames } from '../types/types';
 import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from '../types/types';
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
 import { getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
@@ -59,7 +62,7 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
 export const clearCacheForRecordId = async (recordId: string): Promise<void> => {
     recordId = String(recordId);
     logCacheClear(`Clearing results and hydration cache for recordId`, recordId);
-    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), clearHydrationCache(recordId)]);
+    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), clearHydrationCache(recordId), getCacheStrategyInstance().clearDocumentsCache(recordId)]);
 };
 
 /**
@@ -121,4 +124,44 @@ export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationConte
             scheduleTTlRefreshing(context, cachedValue);
         }, 0);
     }
+};
+
+export const clearParentCache = async (modelName: string, docId: string| ObjectId): Promise<void> => {
+     const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${docId}`;
+    
+    const cacheStrategy = getCacheStrategyInstance();
+    const parentIdentifiers = await cacheStrategy.getParentsOfChild(childIdentifier);
+    
+    const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
+    const CACHE_PARENT_LIMIT = Math.max(1,
+        Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100
+    );
+    
+    if (parentIdentifiers.length > 0) {
+        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
+
+        // Process in batches with delay up to CACHE_PARENT_LIMIT
+        const BATCH_SIZE = 25;
+
+        // Process batches with proper limit enforcement
+        const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
+        
+        for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+            const batchStart = batchIndex * BATCH_SIZE;
+            const batchEnd = Math.min(batchStart + BATCH_SIZE, CACHE_PARENT_LIMIT);
+            const batch = parentIdentifiers.slice(batchStart, batchEnd);
+            
+            await Promise.all(batch.map(async parentIdWithModel => {
+                const id = parentIdWithModel.split(':').pop();
+                await clearCacheForRecordId(id!);
+            }));
+            
+            // Add delay between batches except last
+            if (batchIndex < batchCount - 1) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+        }
+    }
+
+    await cacheStrategy.removeChildRelationships(childIdentifier);
 };

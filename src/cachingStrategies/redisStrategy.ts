@@ -1,11 +1,9 @@
 import Redis, { RedisOptions } from 'ioredis';
 import Container from 'typedi';
-import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { getConfig } from '../utils/commonUtils';
-import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from './commonCacheStrategyAbstract';
+import { CommonCacheStrategyAbstract } from './commonCacheStrategyAbstract';
 
-@staticImplements<CommonCacheStrategyStaticMethods>()
 export class RedisStrategy extends CommonCacheStrategyAbstract {
     public client: Redis;
 
@@ -71,6 +69,72 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         const keyWithNamespace = `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`;
 
         await this.client.expire(keyWithNamespace, ttl);
+    }
+
+    public async getDocuments<T>(keys: string[]): Promise<Map<string, CachedResult<T>>> {
+        const resultsMap = new Map<string, CachedResult<T>>();
+        if (keys.length === 0) return resultsMap;
+
+        const values = await this.client.mget(keys);
+        values.forEach((value, index) => {
+            if (value) {
+                resultsMap.set(keys[index], JSON.parse(value));
+            }
+        });
+        return resultsMap;
+    }
+
+    public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
+        if (documents.size === 0) return;
+
+        const pipeline = this.client.pipeline();
+        for (const [key, value] of documents.entries()) {
+            pipeline.set(key, JSON.stringify(value), 'EX', ttl);
+        }
+        await pipeline.exec();
+    }
+    
+    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void> {
+        await this.client.sadd(childIdentifier, parentIdentifier);
+    }
+    
+    public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
+        return this.client.smembers(childIdentifier);
+    }
+    
+    public async removeChildRelationships(childIdentifier: string): Promise<void> {
+        await this.client.del(childIdentifier);
+    }
+
+    public async clearDocumentsCache(namespace: string): Promise<void> {
+        const stream = this.client.scanStream({
+            match: `${namespace}:*`,
+            count: 100
+        });
+        
+        for await (const keys of stream) {
+            if (keys.length) {
+                await this.client.del(...keys);
+            }
+        }
+    }
+
+    public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
+        // Scan all child keys
+        const stream = this.client.scanStream({ match: '*', count: 100 });
+        for await (const keys of stream) {
+            for (const key of keys) {
+                // For each key, check if it's a child relationship set
+                // (Assume child relationship keys follow a known pattern, e.g., 'child:*')
+                // If not, skip
+                // You may need to adjust the pattern below to match your actual child key format
+                if (!key.startsWith('child:')) continue;
+                const parents = await this.client.smembers(key);
+                if (parents && parents.includes(parentIdentifier)) {
+                    await this.client.del(key);
+                }
+            }
+        }
     }
 
     private setClient(uri: string, redisOptions?: RedisOptions): void {

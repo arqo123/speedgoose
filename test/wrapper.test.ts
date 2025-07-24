@@ -41,7 +41,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
         const mongoose = Container.get<Mongoose>(GlobalDiContainerRegistryNames.MONGOOSE_GLOBAL_ACCESS);
         expect(mongoose).toBeInstanceOf(Object);
         // We have one test model registered
-        expect(Object.keys(mongoose.models).length).toEqual(1);
+        expect(Object.keys(mongoose.models).length).toEqual(3);
     });
 
     it(`should extend mongoose query interfaces with cacheQuery() function`, async () => {
@@ -63,7 +63,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register new service in DiContainer with access to queues`, async () => {
         const registerInternalQueueWorkersSpy = jest.spyOn(queueUtils, 'registerInternalQueueWorkers');
         await applySpeedGooseCacheLayer(mongoose, { sharedCacheStrategy: SharedCacheStrategies.IN_MEMORY });
-        expect(registerInternalQueueWorkersSpy).toBeCalled();
+        expect(registerInternalQueueWorkersSpy).toHaveBeenCalled();
     });
 
     it(`should set redis caching strategy if it was set in config`, async () => {

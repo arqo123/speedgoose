@@ -55,7 +55,7 @@ describe('publishRecordIdOnChannel', () => {
         const mockedPublish = jest.spyOn(redisInstance, 'publish').mockImplementation(mockedPublishImplementation);
 
         await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, 'someRecordId');
-        expect(mockedPublish).toBeCalled();
+        expect(mockedPublish).toHaveBeenCalled();
     });
 });
 

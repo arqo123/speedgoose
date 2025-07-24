@@ -21,7 +21,7 @@ describe('getCachedSetsQueue', () => {
 describe('registerInternalQueueWorkers', () => {
     it(`should register new service in DiContainer with access to queues`, async () => {
         registerInternalQueueWorkers();
-        expect(containerSetSpy).toBeCalled();
+        expect(containerSetSpy).toHaveBeenCalled();
     });
 });
 

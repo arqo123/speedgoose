@@ -9,6 +9,8 @@ import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from '.
 export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     private resultsCacheClient: Keyv<CachedResult<unknown>>;
     private recordResultsSetsClient: Keyv<Set<string>>;
+    private documentsCacheClient: Keyv<CachedResult<unknown>>;
+    private relationsCacheClient: Keyv<Set<string>>;
 
     public static async register(): Promise<void> {
         const strategy = new InMemoryStrategy();
@@ -79,9 +81,70 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     private setClients(): void {
         this.resultsCacheClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RESULTS_NAMESPACE);
         this.recordResultsSetsClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RECORD_RESULTS_SETS);
+        this.documentsCacheClient = createInMemoryCacheClientWithNamespace(
+            CacheNamespaces.DOCUMENTS);
+        this.relationsCacheClient = createInMemoryCacheClientWithNamespace(
+            CacheNamespaces.RELATIONS_CHILD_TO_PARENT
+        );
     }
 
     private async init(): Promise<void> {
         this.setClients();
+    }
+
+    public async getDocuments<T>(keys: string[]): Promise<Map<string, CachedResult<T>>> {
+        const resultsMap = new Map<string, CachedResult<T>>();
+        const promises = keys.map(async key => {
+            const value = await this.documentsCacheClient.get(key);
+            if (value) {
+                resultsMap.set(key, value as CachedResult<T>);
+            }
+        });
+        await Promise.all(promises);
+        return resultsMap;
+    }
+
+    public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
+        const promises = [];
+        for (const [key, value] of documents.entries()) {
+            promises.push(this.documentsCacheClient.set(key, value, ttl * 1000));
+        }
+        await Promise.all(promises);
+    }
+
+    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void> {
+        const parents = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
+        parents.add(parentIdentifier);
+        await this.relationsCacheClient.set(childIdentifier, parents);
+    }
+
+    public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
+        const parents = await this.relationsCacheClient.get(childIdentifier);
+        return parents ? Array.from(parents) : [];
+    }
+
+    public async removeChildRelationships(childIdentifier: string): Promise<void> {
+        await this.relationsCacheClient.delete(childIdentifier);
+    }
+
+    public async clearDocumentsCache(namespace: string): Promise<void> {
+        const keysToDelete: string[] = [];
+        for await (const [key] of this.documentsCacheClient.iterator()) {
+            if (key.includes(`${namespace}`)) {
+                keysToDelete.push(key);
+            }
+        }
+        await Promise.all(keysToDelete.map(key => this.documentsCacheClient.delete(key)));
+    }
+
+    public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
+        const keysToDelete: string[] = [];
+        for await (const [key] of this.relationsCacheClient.iterator()) {
+            const parents = await this.relationsCacheClient.get(key);
+            if (parents?.has(parentIdentifier)) {
+                keysToDelete.push(key);
+            }
+        }
+        await Promise.all(keysToDelete.map(key => this.relationsCacheClient.delete(key)));
     }
 }

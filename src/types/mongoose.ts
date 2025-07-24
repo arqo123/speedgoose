@@ -1,13 +1,13 @@
-import { SpeedGooseCacheOperationParams } from './types';
+import { SpeedGooseCacheOperationParams, SpeedGoosePopulateOptions } from './types';
 
 declare module 'mongoose' {
     //@ts-expect-error overwriting of mongoose Query interface
-    // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
     interface Query<ResultType, DocType, THelpers = {}, RawDocType = DocType> extends Query<ResultType, DocType> {
         cacheQuery(params?: SpeedGooseCacheOperationParams): Promise<Query<ResultType, DocType, unknown>>;
         isCached(params?: SpeedGooseCacheOperationParams): Promise<boolean>;
+        /** New method for cached population */
+        cachePopulate(options: SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): this;
         mongooseCollection: Collection;
-        //add proper types for operations
         op: string;
     }
     //@ts-expect-error overwriting of mongoose Aggregate interface
