@@ -1,3 +1,11 @@
+## [2.1.5](https://github.com/arqo123/speedgoose/compare/v2.1.4...v2.1.5) (2025-07-24)
+
+
+### Bug Fixes
+
+* **deps)(deps:** bump ioredis from 5.4.1 to 5.6.1 ([#105](https://github.com/arqo123/speedgoose/issues/105)) ([f2def60](https://github.com/arqo123/speedgoose/commit/f2def60ecd5cb61a6ea55a4b47ed8240bcfd0c2b))
+* **release:** update commit-analyzer configuration for improved release rules ([02675a3](https://github.com/arqo123/speedgoose/commit/02675a331c547d595c87d80dea376f5fc67b3005))
+
 ## [2.1.4](https://github.com/arqo123/speedgoose/compare/v2.1.3...v2.1.4) (2025-07-24)
 
 
