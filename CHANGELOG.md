@@ -1,3 +1,10 @@
+## [2.1.4](https://github.com/arqo123/speedgoose/compare/v2.1.3...v2.1.4) (2025-07-24)
+
+
+### Bug Fixes
+
+* **deps:** update target branch to master and change commit message prefix ([8b8c4c0](https://github.com/arqo123/speedgoose/commit/8b8c4c0f7a204ae722b46a0fd70c3f0e4f806960))
+
 ## [2.1.3](https://github.com/arqo123/speedgoose/compare/v2.1.2...v2.1.3) (2025-07-18)
 
 
