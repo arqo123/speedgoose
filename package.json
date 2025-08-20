@@ -72,7 +72,7 @@
         "@typescript-eslint/eslint-plugin": "8.38.0",
         "@typescript-eslint/parser": "8.38.0",
         "auto-changelog": "^2.4.0",
-        "eslint": "9.31.0",
+        "eslint": "9.33.0",
         "eslint-config-prettier": "10.1.8",
         "eslint-plugin-prettier": "5.5.3",
         "eslint-plugin-unused-imports": "4.1.4",
