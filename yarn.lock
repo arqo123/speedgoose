@@ -559,10 +559,10 @@
   resolved "https://registry.yarnpkg.com/@ioredis/as-callback/-/as-callback-3.0.0.tgz#b96c9b05e6701e85ec6a5e62fa254071b0aec97f"
   integrity sha512-Kqv1rZ3WbgOrS+hgzJ5xG5WQuhvzzSTRYvNeyPMLOAM78MHSnuKI20JeJGbpuAt//LCuP0vsexZcorqW7kWhJg==
 
-"@ioredis/commands@^1.1.1", "@ioredis/commands@^1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@ioredis/commands/-/commands-1.2.0.tgz#6d61b3097470af1fdbbe622795b8921d42018e11"
-  integrity sha512-Sx1pU8EM64o2BrqNpEO1CNLtKQwyhuXuqyfH7oGKCk+1a33d2r5saW8zNwm3j6BTExtjrv2BxTgzzkMwts6vGg==
+"@ioredis/commands@1.4.0", "@ioredis/commands@^1.2.0":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@ioredis/commands/-/commands-1.4.0.tgz#9f657d51cdd5d2fdb8889592aa4a355546151f25"
+  integrity sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ==
 
 "@isaacs/cliui@^8.0.2":
   version "8.0.2"
@@ -3630,11 +3630,11 @@ ioredis-mock@^8.2.2:
     semver "^7.5.4"
 
 ioredis@^5.2.2:
-  version "5.6.1"
-  resolved "https://registry.yarnpkg.com/ioredis/-/ioredis-5.6.1.tgz#1ed7dc9131081e77342503425afceaf7357ae599"
-  integrity sha512-UxC0Yv1Y4WRJiGQxQkP0hfdL0/5/6YvdfOOClRgJ0qppSarkhneSa6UvkMkms0AkdGimSH3Ikqm+6mkMmX7vGA==
+  version "5.8.0"
+  resolved "https://registry.yarnpkg.com/ioredis/-/ioredis-5.8.0.tgz#a1c4ef6be2e274cc8e99c9e22794ef1ef06dc24a"
+  integrity sha512-AUXbKn9gvo9hHKvk6LbZJQSKn/qIfkWXrnsyL9Yrf+oeXmla9Nmf6XEumOddyhM8neynpK5oAV6r9r99KBuwzA==
   dependencies:
-    "@ioredis/commands" "^1.1.1"
+    "@ioredis/commands" "1.4.0"
     cluster-key-slot "^1.1.0"
     debug "^4.3.4"
     denque "^2.1.0"
