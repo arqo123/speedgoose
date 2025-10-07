@@ -70,7 +70,7 @@
         "@types/debug": "^4.1.7",
         "@types/jest": "30.0.0",
         "@typescript-eslint/eslint-plugin": "8.38.0",
-        "@typescript-eslint/parser": "8.38.0",
+        "@typescript-eslint/parser": "8.46.0",
         "auto-changelog": "^2.4.0",
         "eslint": "9.33.0",
         "eslint-config-prettier": "10.1.8",
