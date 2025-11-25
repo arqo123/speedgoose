@@ -1,4 +1,4 @@
-import { Schema, Document } from 'mongoose';
+import { Document, Schema } from 'mongoose';
 import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
 import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
@@ -11,9 +11,9 @@ const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany'];
 const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 
 const appendQueryBasedListeners = (schema: Schema): void => {
- 
+
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
+    schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function () {
         const action = this as any;
         const model = action.model;
         const updatedRecord = await getRecordAffectedByAction(action);
@@ -22,16 +22,15 @@ const appendQueryBasedListeners = (schema: Schema): void => {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName });
             try {
-                await clearParentCache(model.modelName, updatedRecord._id as string);
+                await clearParentCache(model.modelName, String(updatedRecord._id));
             } catch (err) {
                 console.error('Error clearing parent cache:', err);
             }
         }
-        next();
     });
 
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function (next) {
+    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function () {
         const action = this as any;
         const model = action.model;
         const affectedRecords = await getRecordsAffectedByAction(action);
@@ -45,59 +44,56 @@ const appendQueryBasedListeners = (schema: Schema): void => {
             // Clear parent caches for all affected records
             await Promise.all(affectedRecords.map(async record => {
                 try {
-                    await clearParentCache(model.modelName, record._id as string);
+                    await clearParentCache(model.modelName, String(record._id));
                 } catch (err) {
                     console.error('Error clearing parent cache:', err);
                 }
             }));
         }
-        next();
     });
 };
 
 const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
-    schema.pre('save', { document: true }, async function (next) {
+    schema.pre('save', { document: true }, async function () {
         this.$locals.wasNew = this.isNew;
         this.$locals.wasDeleted = wasRecordDeleted(this, options);
-        const model = getMongooseModelFromDocument(this);
+        const model = getMongooseModelFromDocument(this as any);
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{
-                record: this,
+                record: this as any,
                 wasNew: this.isNew,
                 wasDeleted: this.$locals.wasDeleted,
                 modelName: model.modelName,
             });
             try {
-                await clearParentCache(model.modelName, this._id as string);
+                await clearParentCache(model.modelName, String(this._id));
             } catch (err) {
                 console.error('Error clearing parent cache:', err);
             }
         }
-        next();
     });
 
-    schema.post('insertMany', { document: true }, async function (insertedDocuments, next) {
+    schema.post('insertMany', { document: true }, async function (insertedDocuments) {
         if (insertedDocuments.length > 0) {
             //@ts-expect-error current type returned in the event is type Query - not document
             const records = insertedDocuments as DocumentWithIdAndTenantValue[];
             this.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records, wasNew: true, wasDeleted: false, modelName: this.modelName });
         }
-        next();
     });
 
-    schema.post(/deleteOne/, { document: true }, async function (record: Document, next) {
-        const model = getMongooseModelFromDocument(record);
+    schema.post(/deleteOne/, { document: true }, async function (record) {
+        const doc = record as unknown as Document;
+        const model = getMongooseModelFromDocument(doc);
         if (model) {
-            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
-            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record, wasDeleted: true, modelName: model.modelName });
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(doc._id));
+            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record: doc, wasDeleted: true, modelName: model.modelName });
             try {
-                await clearParentCache(model.modelName, record._id as string);
+                await clearParentCache(model.modelName, String(doc._id));
             } catch (err) {
                 console.error('Error clearing parent cache:', err);
             }
         }
-        next();
     });
 };
 
