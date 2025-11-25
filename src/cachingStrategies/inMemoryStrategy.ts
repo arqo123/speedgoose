@@ -129,7 +129,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async clearDocumentsCache(namespace: string): Promise<void> {
         const keysToDelete: string[] = [];
-        for await (const [key] of this.documentsCacheClient.iterator()) {
+        for await (const [key] of this.documentsCacheClient.iterator(undefined)) {
             if (key.includes(`${namespace}`)) {
                 keysToDelete.push(key);
             }
@@ -139,7 +139,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
         const keysToDelete: string[] = [];
-        for await (const [key] of this.relationsCacheClient.iterator()) {
+        for await (const [key] of this.relationsCacheClient.iterator(undefined)) {
             const parents = await this.relationsCacheClient.get(key);
             if (parents?.has(parentIdentifier)) {
                 keysToDelete.push(key);
