@@ -103,7 +103,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(
     for (const doc of documents) {
         const ids = mpath.get(path, doc);
         const getCacheValue = (id: any) => docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select));
-        const populatedValue = Array.isArray(ids) ? ids.map(getCacheValue) : getCacheValue(ids);
+        const populatedValue = Array.isArray(ids) ? ids.map(getCacheValue).filter(Boolean) : getCacheValue(ids);
 
         const hydratedValue = hydratePopulatedData(populatedValue, populatedModel, isLean);
         mpath.set(path, hydratedValue, doc);

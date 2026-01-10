@@ -472,6 +472,32 @@ it('should handle population and caching for array of references', async () => {
     collectionFindSpy.mockRestore();
 });
 
+it('should correctly populate an array of references with broken relations', async () => {
+    // Create parent users
+    const parent1 = await UserModel.create({ name: 'Parent1', email: 'parent1@example.com' });
+    const parent2 = await UserModel.create({ name: 'Parent2', email: 'parent2@example.com' });
+    const randomParentId = new mongoose.Types.ObjectId(); // The ID of the parent that does not exist in the DB
+
+    // Create child user referencing both parents
+    const child = await UserModel.create({
+        name: 'Child',
+        email: 'child@example.com',
+        parents: [parent1._id, parent2._id, randomParentId],
+    });
+
+    // Query child and populate parents
+    const query = { _id: child._id };
+    const populate = { path: 'parents' };
+    const dbResult = await UserModel.findOne(query).populate(populate).exec();
+    const cachedResult = await UserModel.findOne(query).cachePopulate(populate).exec();
+
+    expect(dbResult).toBeDefined();
+    expect(cachedResult).toBeDefined();
+    // Both requests should return only two parents third one must be ignored
+    expect(dbResult!.parents.length).toBe(2);
+    expect(cachedResult!.parents.length).toBe(2);
+});
+
     // Placeholder: Population with Multiple Models
     it('should handle population and caching for fields referencing different models', async () => {
         // Create instances of different models
