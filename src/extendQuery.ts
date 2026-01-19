@@ -31,14 +31,23 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
     /**
      * Function to add populate options for cached population
      */
-    mongoose.Query.prototype.cachePopulate = function (options: SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]) {
+    mongoose.Query.prototype.cachePopulate = function (options: string | SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]) {
         if (!this._mongooseOptions.speedGoosePopulate) {
             this._mongooseOptions.speedGoosePopulate = [];
         }
-        const opts = Array.isArray(options) ? options : [options];
+
+        const opts = adaptatePopulateOptions(options);
         this._mongooseOptions.speedGoosePopulate.push(...opts);
         return this;
     };
+};
+
+const adaptatePopulateOptions = options => {
+    if (typeof options === 'string') {
+        return options.split(' ').map(path => ({ path }));
+    }
+
+    return Array.isArray(options) ? options : [options];
 };
 
 const prepareQueryResults = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext, result: CachedResult<T>): Promise<CachedResult<T> | CachedResult<T>[]> => {

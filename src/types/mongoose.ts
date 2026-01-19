@@ -6,7 +6,7 @@ declare module 'mongoose' {
         cacheQuery(params?: SpeedGooseCacheOperationParams): Promise<Query<ResultType, DocType, unknown>>;
         isCached(params?: SpeedGooseCacheOperationParams): Promise<boolean>;
         /** New method for cached population */
-        cachePopulate(options: SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): this;
+        cachePopulate(options: string | SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): this;
         mongooseCollection: Collection;
         op: string;
     }
