@@ -153,16 +153,16 @@ describe(`clearCacheForKey`, () => {
             value: 'rabbit',
         };
 
-        const strategy = await getCacheStrategyInstance();
+        const strategy = getCacheStrategyInstance();
         //setting value to clear
         await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key, testCase.value);
         //checking if the value is set
         expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key)).toEqual(testCase.value);
-        //ok rabbit is still there. Lets do some magic
+        //ok rabbit is still there. Let's do some magic
         await clearCacheForKey(testCase.key);
         const cachedValue = await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.key);
         // expect(cachedValue).not.toEqual(testCase.value)
-        expect(cachedValue).toBeUndefined();
+        expect(cachedValue).toBeNull();
     });
 });
 
@@ -219,7 +219,7 @@ describe(`clearCachedResultsForModel`, () => {
 
         await cacheClientUtils.clearCachedResultsForModel(testCase.modelName, testCase.multitenantValue);
         expect(await strategy.getValuesFromCachedSet(modelCacheKey)).toEqual([]);
-        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.cacheQueryKey)).toBeUndefined();
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, testCase.cacheQueryKey)).toBeNull();
     });
 });
 

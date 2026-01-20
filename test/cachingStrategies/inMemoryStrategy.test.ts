@@ -12,6 +12,15 @@ describe('InMemoryStrategy.isHydrationEnabled', () => {
     });
 });
 
+describe('InMemoryStrategy.getValueFromCache', () => {
+    test(`should return null in case the value was not found in the cache`, async () => {
+        const strategy = getCacheStrategyInstance();
+        const result = await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, 'randomKey');
+
+        expect(result).toBeNull();
+    });
+});
+
 describe('InMemoryStrategy.refreshTTLForCachedResult', () => {
     test(`should call re-set entry with passed data and`, async () => {
         const strategy = getCacheStrategyInstance();

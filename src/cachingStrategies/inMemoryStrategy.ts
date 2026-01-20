@@ -21,8 +21,9 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
         const keyWithNamespace = `${namespace}:${key}`;
+        const result = await this.resultsCacheClient.get(keyWithNamespace)
 
-        return this.resultsCacheClient.get(keyWithNamespace);
+        return result || null;
     }
 
     public async isValueCached(namespace: string, key: string): Promise<boolean> {
