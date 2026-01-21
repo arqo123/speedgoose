@@ -1,11 +1,3 @@
-## [2.1.6](https://github.com/arqo123/speedgoose/compare/v2.1.5...v2.1.6) (2026-01-21)
-
-
-### Bug Fixes
-
-* **deps)(deps-dev:** bump eslint from 9.31.0 to 9.33.0 ([#112](https://github.com/arqo123/speedgoose/issues/112)) ([fbb327d](https://github.com/arqo123/speedgoose/commit/fbb327dad5d5031367e1cbe808a7dafdab65594f))
-* **getValueFromCache:** should return null in case the value was not found in the cache ([#154](https://github.com/arqo123/speedgoose/issues/154)) ([0d72949](https://github.com/arqo123/speedgoose/commit/0d7294947b8499612049977d6b34ae0cc0c98bb5))
-
 ## [2.1.5](https://github.com/arqo123/speedgoose/compare/v2.1.4...v2.1.5) (2025-07-24)
 
 
