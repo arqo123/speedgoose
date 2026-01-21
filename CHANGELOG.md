@@ -1,3 +1,10 @@
+## [2.1.8](https://github.com/arqo123/speedgoose/compare/v2.1.7...v2.1.8) (2026-01-21)
+
+
+### Bug Fixes
+
+* **cachePopulate:** correctly populate an array of references with broken relations ([#152](https://github.com/arqo123/speedgoose/issues/152)) ([4b41679](https://github.com/arqo123/speedgoose/commit/4b41679373094e50d0d738778a5550896da1e732))
+
 ## [2.1.7](https://github.com/arqo123/speedgoose/compare/v2.1.6...v2.1.7) (2026-01-21)
 
 
