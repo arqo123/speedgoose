@@ -27,6 +27,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Update npm to latest (OIDC requires >= 11.5.1)
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: yarn install
 
