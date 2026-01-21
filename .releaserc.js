@@ -20,7 +20,10 @@ module.exports = {
       }
     }],
     "@semantic-release/release-notes-generator",
-    "@semantic-release/npm",
+    ["@semantic-release/npm", {
+      "pkgRoot": ".",
+      "npmPublish": false
+    }],
     "@semantic-release/github",
     [
       "@semantic-release/changelog",
