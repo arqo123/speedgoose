@@ -1,3 +1,10 @@
+## [2.1.7](https://github.com/arqo123/speedgoose/compare/v2.1.6...v2.1.7) (2026-01-21)
+
+
+### Bug Fixes
+
+* **ci:** detect new release from semantic-release output ([5895d52](https://github.com/arqo123/speedgoose/commit/5895d528f23800622ab597eb7977168e01043abc))
+
 ## [2.1.6](https://github.com/arqo123/speedgoose/compare/v2.1.5...v2.1.6) (2026-01-21)
 
 
