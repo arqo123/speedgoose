@@ -43,6 +43,12 @@ jobs:
             echo "new_release=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Configure npm for OIDC
+        if: steps.semantic.outputs.new_release == 'true'
+        run: |
+          echo "//registry.npmjs.org/:_authToken=" >> ~/.npmrc
+          npm config set //registry.npmjs.org/:_authToken ""
+
       - name: Publish to npm with OIDC
         if: steps.semantic.outputs.new_release == 'true'
         run: npm publish --provenance --access public
