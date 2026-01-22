@@ -378,7 +378,7 @@ The `SpeedGoosePopulateOptions` object has these properties:
 | `select`        | `string` or `object`         | Specifies which document fields to include or exclude.                                                                                 |
 | `ttl`           | `number`                     | The Time-To-Live for the cached populated documents, in seconds.                                                                       |
 | `ttlInheritance`| `'override'` or `'fallback'` | Controls how the `ttl` option interacts with a globally configured TTL. Defaults to `'fallback'`.                                      |
-| `invalidationScope`| `'parents' or 'full';`         |  Controls the scope of cache invalidation when a child document changes.                                      |
+| `invalidationScope`| `'parents'` or `'full'`         |  Controls the scope of cache invalidation when a child document changes.                                      |
 
 ### Parent Cache Invalidation
 
