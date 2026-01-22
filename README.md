@@ -365,7 +365,12 @@ const result = await MyModel.find({}).cachePopulate({
 
 ### Supported Options
 
-The `cachePopulate` method accepts an object or an array of objects with the following properties:
+The `cachePopulate` method could accept arguments in a different form:
+1) Space-delimited string. For example `.cachePopulate('field1 field2')`.
+2) `SpeedGoosePopulateOptions`.
+3) An array of `SpeedGoosePopulateOptions`.
+
+The `SpeedGoosePopulateOptions` object has these properties:
 
 | Option          | Type                               | Description                                                                                                                            |
 | --------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
