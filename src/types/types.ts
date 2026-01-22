@@ -112,7 +112,7 @@ export type SpeedGoosePopulateOptions = {
     /** Controls TTL inheritance behavior */
     ttlInheritance?: TtlInheritance | 'fallback' | 'override'; // union type for backward compatibility
     /** Controls the scope of cache invalidation when a child document changes. */
-    invalidationScope?: 'parents' | 'full'; // 'parents' = tylko dokumenty rodziców, 'full' = rodzice + zapytania
+    invalidationScope?: 'parents' | 'full'; // 'parents' - only parent documents , 'full' - parents + children
 };
 
 export enum CacheNamespaces {
