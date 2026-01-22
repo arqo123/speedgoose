@@ -42,7 +42,7 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
     };
 };
 
-const adaptatePopulateOptions = options => {
+const adaptatePopulateOptions = (options: string | SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): SpeedGoosePopulateOptions[] => {
     if (typeof options === 'string') {
         return options.split(' ').map(path => ({ path }));
     }
