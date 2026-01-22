@@ -36,13 +36,13 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
             this._mongooseOptions.speedGoosePopulate = [];
         }
 
-        const opts = adaptatePopulateOptions(options);
+        const opts = normalizePopulateOptions(options);
         this._mongooseOptions.speedGoosePopulate.push(...opts);
         return this;
     };
 };
 
-const adaptatePopulateOptions = (options: string | SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): SpeedGoosePopulateOptions[] => {
+const normalizePopulateOptions = (options: string | SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): SpeedGoosePopulateOptions[] => {
     if (typeof options === 'string') {
         return options.split(' ').filter(Boolean).map(path => ({ path }));
     }
