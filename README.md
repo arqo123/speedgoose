@@ -106,7 +106,7 @@ const isPipelineCached = await model.aggregate<AggregationResultType>([]).isCach
 4. With cache-based population
 
 ```ts
-const result = await model.find<ResultType>({}).cachePopulate({path: 'user'})
+const result = await model.find<ResultType>({}).cachePopulate('user')
 ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -303,14 +303,23 @@ Using `cachePopulate` is as simple as replacing `.populate()` with `.cachePopula
 const result = await MyModel.find({}).populate('user');
 
 // To
+const result = await MyModel.find({}).cachePopulate('user');
+
+// or 
 const result = await MyModel.find({}).cachePopulate({ path: 'user' });
 ```
 
 **Multiple Populations:**
 
-You can cache multiple population paths by providing an array of options:
+You can cache multiple population paths in two ways:
 
 ```typescript
+// 1) Pass a space-delimited string
+const result = await MyModel.find({}).cachePopulate("user comments");
+
+// 2) Pass an array of configuration objects
+// The second approach is the best when you need to specify different options (such as field selection or deep population) for each path.
+// You can read about it down below.
 const result = await MyModel.find({}).cachePopulate([
     { path: 'user' },
     { path: 'comments' }
@@ -356,14 +365,20 @@ const result = await MyModel.find({}).cachePopulate({
 
 ### Supported Options
 
-The `cachePopulate` method accepts an object or an array of objects with the following properties:
+The `cachePopulate` method could accept arguments in a different form:
+1) Space-delimited string. For example `.cachePopulate('field1 field2')`.
+2) `SpeedGoosePopulateOptions`.
+3) An array of `SpeedGoosePopulateOptions`.
 
-| Option          | Type                               | Description                                                                                                                            |
-| --------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`          | `string`                           | The field to populate.                                                                                                                 |
-| `select`        | `string` or `object`               | Specifies which document fields to include or exclude.                                                                                 |
-| `ttl`           | `number`                           | The Time-To-Live for the cached populated documents, in seconds.                                                                       |
-| `ttlInheritance`| `'override'` or `'fallback'`       | Controls how the `ttl` option interacts with a globally configured TTL. Defaults to `'fallback'`.                                      |
+The `SpeedGoosePopulateOptions` object has these properties:
+
+| Option          | Type                         | Description                                                                                                                            |
+| --------------- |------------------------------| -------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`          | `string`                     | The field to populate.                                                                                                                 |
+| `select`        | `string` or `object`         | Specifies which document fields to include or exclude.                                                                                 |
+| `ttl`           | `number`                     | The Time-To-Live for the cached populated documents, in seconds.                                                                       |
+| `ttlInheritance`| `'override'` or `'fallback'` | Controls how the `ttl` option interacts with a globally configured TTL. Defaults to `'fallback'`.                                      |
+| `invalidationScope`| `'parents'` or `'full'`         |  Controls the scope of cache invalidation when a child document changes.                                      |
 
 ### Parent Cache Invalidation
 

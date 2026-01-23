@@ -190,6 +190,31 @@ describe('cachePopulate', () => {
         expect((result!.relationField as unknown as IUser).name).toBe('Relation');
     })
 
+    it('should handle population with multiple paths when passed as a single string', async () => {
+        // Create parent and relation user documents
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const relation = await UserModel.create({ name: 'Relation', email: 'relation@example.com' });
+
+        // Create child user referencing both parent and relationField
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+            relationField: relation._id,
+        });
+
+        // Query child and populate both parent and relationField
+        const result = await UserModel.findOne({ _id: child._id })
+            .cachePopulate('parent relationField')
+            .exec();
+
+        expect(result).toBeDefined();
+        expect(result!.parent).toBeInstanceOf(mongoose.Document);
+        expect(result!.relationField).toBeInstanceOf(mongoose.Document);
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
+        expect((result!.relationField as unknown as IUser).name).toBe('Relation');
+    });
+
     it('should return the same populated data on subsequent queries with multiple paths (cache hit)', async () => {
         // Create parent and relation user documents
         const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
