@@ -11,7 +11,7 @@ export const wasRecordDeleted = <T>(record: Document<T>, options: SpeedGooseCach
 };
 
 const getMultitenantKeyProjection = (): Record<string, number> => {
-    const multitenantKey = getConfig().multitenancyConfig?.multitenantKey;
+    const multitenantKey = getConfig()?.multitenancyConfig?.multitenantKey;
 
     return multitenantKey ? { [multitenantKey]: 1 } : {};
 };
