@@ -23,7 +23,6 @@ export const getReferenceModelNameFromSchema = (schema: SchemaType): string => {
 const getFieldsToHydrate = <T>(model: Model<T>): FieldWithReferenceModel[] =>
     Object.entries<SchemaType>({
         ...(model?.schema?.paths ?? {}),
-        //@ts-expect-error singleNestedPaths might be not available in some of mongoose versions
         ...(model?.schema?.singleNestedPaths ?? {}),
     })
         .map(([path, schemaFieldType]) => ({ path, referenceModelName: getReferenceModelNameFromSchema(schemaFieldType) }))

@@ -4,8 +4,14 @@ import { SpeedGooseConfig, GlobalDiContainerRegistryNames, CacheStrategiesTypes,
 
 export const getConfig = (): SpeedGooseConfig => Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
 
-export const objectSerializer = <T>(record: T): T => record;
-export const objectDeserializer = <T>(record: T): T => record;
+export const objectSerializer = <Value>(data: { value?: Value; expires?: number }): string => JSON.stringify(data);
+export const objectDeserializer = <Value>(data: string): { value?: Value; expires?: number } | undefined => {
+    try {
+        return JSON.parse(data);
+    } catch {
+        return undefined;
+    }
+};
 
 export const getHydrationCache = (): Keyv<CachedDocument<unknown>> => Container.get<Keyv<CachedDocument<unknown>>>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS);
 

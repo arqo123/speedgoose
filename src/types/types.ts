@@ -39,6 +39,8 @@ export type SpeedGooseConfig = {
     redisUri?: string;
     /** Connection options for redis. */
     redisOptions?: RedisOptions;
+    /** Connect using existing Redis (or Valkey?) client. If redisClient is set, redisUri and redisOptions will be ignored. */
+    redisClient?: any;
     /** Config for multitenancy. */
     multitenancyConfig?: {
         /** If set, then cache will working for multitenancy. It has to be multitenancy field indicator, that is set in the root of every mongodb record. */
