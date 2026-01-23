@@ -29,8 +29,18 @@ export const emptyDebugCallback = (): object => ({});
 
 export const getDebugger = (modelName: string, debuggerOperation: SpeedGooseDebuggerOperations): CustomDebugger => {
     if (isDebuggingEnabled(modelName, debuggerOperation)) {
-        const debug = DebuggerUtils.debug(`${DEFAULT_DEBUGGER_NAMESPACE}:${modelName}:${debuggerOperation}`);
+        const config = getConfig();
+        const namespace = `${DEFAULT_DEBUGGER_NAMESPACE}:${modelName}:${debuggerOperation}`;
 
+        // Use custom logger if provided
+        if (config?.debugConfig?.customLogger) {
+            return (label: string, ...dataToLog: unknown[]) => {
+                config.debugConfig!.customLogger!(namespace, label, ...dataToLog);
+            };
+        }
+
+        // Fallback to debug library
+        const debug = DebuggerUtils.debug(namespace);
         return (label: string, ...dataToLog: unknown[]) => debug(getLabelBackgroundColor(debug), label, '\x1b[0m', ...dataToLog);
     }
     return emptyDebugCallback;

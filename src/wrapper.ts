@@ -23,6 +23,7 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
         enabled: config?.debugConfig?.enabled ?? false,
         debugModels: config?.debugConfig?.debugModels ?? undefined,
         debugOperations: config?.debugConfig?.debugOperations ?? undefined,
+        customLogger: config?.debugConfig?.customLogger ?? undefined,
     };
     config.sharedCacheStrategy = config.sharedCacheStrategy ?? SharedCacheStrategies.REDIS;
     config.defaultTtl = config.defaultTtl ?? 60;
