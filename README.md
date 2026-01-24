@@ -286,7 +286,7 @@ Here's a flowchart illustrating the logic:
 
 ```mermaid
 graph TD
-    A[Query with .cachePopulate()] --> B{Are populated documents in cache?}
+    A["Query with .cachePopulate()"] --> B{Are populated documents in cache?}
     B -->|Yes| C[Retrieve from cache]
     B -->|No| D[Fetch from database]
     D --> E[Cache new documents]
