@@ -1,3 +1,10 @@
+## [2.1.9](https://github.com/arqo123/speedgoose/compare/v2.1.8...v2.1.9) (2026-01-24)
+
+
+### Bug Fixes
+
+* **docs:** fix Mermaid diagram syntax in README ([8a73313](https://github.com/arqo123/speedgoose/commit/8a733139584fcfcf9e7529e2820b1432683d8f86))
+
 ## [2.1.8](https://github.com/arqo123/speedgoose/compare/v2.1.7...v2.1.8) (2026-01-21)
 
 
