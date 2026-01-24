@@ -54,6 +54,8 @@ applySpeedGooseCacheLayer(mongoose, {
 });
 ```
 
+> 💡 **Pro tip:** For best performance, consider using [DragonflyDB](https://dragonflydb.io/) as a drop-in Redis replacement. It's fully compatible with speedgoose and offers significantly better performance.
+
 2. To enable auto-clearing for a given schema, just add the plugin to it (required)
 
 ```ts
@@ -415,9 +417,9 @@ For example, if a `User` document is updated, any `Article` documents that have 
     -   [x] Redis caching strategy
 -   [x] Multitenancy (tenant field indicator) support
 -   [x] Debugging mode
--   [ ] Support for more cache storage
+-   [x] Support for more cache storage
     -   [x] In memory
-    -   [ ] Memcached https://github.com/arqo123/speedgoose/issues/49
+    -   [x] Redis
 
 See the [open issues](https://github.com/arqo123/speedgoose/issues) for a full list of proposed features (and known issues).
 
