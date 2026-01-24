@@ -137,12 +137,16 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         }
     }
 
-    private setClient(uri: string, redisOptions?: RedisOptions): void {
-        this.client = new Redis(uri, redisOptions ?? {});
+    private setClient(uri: string, redisOptions?: RedisOptions, redisClient?: any): void {
+        if (redisClient) {
+            this.client = redisClient;
+        } else {
+            this.client = new Redis(uri, redisOptions ?? {});
+        }
     }
 
     private async init(): Promise<void> {
         const config = getConfig();
-        this.setClient(config.redisUri, config.redisOptions);
+        this.setClient(config.redisUri, config.redisOptions, config.redisClient);
     }
 }
