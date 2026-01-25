@@ -1,3 +1,10 @@
+## [2.1.10](https://github.com/arqo123/speedgoose/compare/v2.1.9...v2.1.10) (2026-01-25)
+
+
+### Bug Fixes
+
+* add isCachingEnabled check to SpeedGooseCacheAutoCleaner hooks ([#155](https://github.com/arqo123/speedgoose/issues/155)) ([8925da9](https://github.com/arqo123/speedgoose/commit/8925da9cd75e1712b9222c5582e419f9caf6ac07)), closes [#151](https://github.com/arqo123/speedgoose/issues/151)
+
 ## [2.1.9](https://github.com/arqo123/speedgoose/compare/v2.1.8...v2.1.9) (2026-01-24)
 
 
