@@ -45,7 +45,7 @@ const appendQueryBasedListeners = (schema: Schema): void => {
             // Clear parent caches for all affected records
             await Promise.all(affectedRecords.map(async record => {
                 try {
-                    await clearParentCache(model.modelName, record._id as string);
+                    await clearParentCache(model.modelName, String(record._id));
                 } catch (err) {
                     console.error('Error clearing parent cache:', err);
                 }
@@ -59,7 +59,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
     schema.pre('save', { document: true }, async function (next) {
         this.$locals.wasNew = this.isNew;
         this.$locals.wasDeleted = wasRecordDeleted(this, options);
-        const model = getMongooseModelFromDocument(this);
+        const model = getMongooseModelFromDocument(this as Document);
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{
@@ -92,7 +92,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record, wasDeleted: true, modelName: model.modelName });
             try {
-                await clearParentCache(model.modelName, record._id as string);
+                await clearParentCache(model.modelName, String(record._id));
             } catch (err) {
                 console.error('Error clearing parent cache:', err);
             }
