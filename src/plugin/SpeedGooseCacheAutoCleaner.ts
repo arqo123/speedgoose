@@ -1,4 +1,5 @@
 import { Schema, Document } from 'mongoose';
+import { isCachingEnabled } from '../utils/commonUtils';
 import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
 import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
@@ -14,6 +15,7 @@ const appendQueryBasedListeners = (schema: Schema): void => {
  
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
+        if (!isCachingEnabled()) return next();
         const action = this as any;
         const model = action.model;
         const updatedRecord = await getRecordAffectedByAction(action);
@@ -32,6 +34,7 @@ const appendQueryBasedListeners = (schema: Schema): void => {
 
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function (next) {
+        if (!isCachingEnabled()) return next();
         const action = this as any;
         const model = action.model;
         const affectedRecords = await getRecordsAffectedByAction(action);
@@ -57,6 +60,7 @@ const appendQueryBasedListeners = (schema: Schema): void => {
 
 const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
     schema.pre('save', { document: true }, async function (next) {
+        if (!isCachingEnabled()) return next();
         this.$locals.wasNew = this.isNew;
         this.$locals.wasDeleted = wasRecordDeleted(this, options);
         const model = getMongooseModelFromDocument(this);
@@ -78,6 +82,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
     });
 
     schema.post('insertMany', { document: true }, async function (insertedDocuments, next) {
+        if (!isCachingEnabled()) return next();
         if (insertedDocuments.length > 0) {
             //@ts-expect-error current type returned in the event is type Query - not document
             const records = insertedDocuments as DocumentWithIdAndTenantValue[];
@@ -87,6 +92,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
     });
 
     schema.post(/deleteOne/, { document: true }, async function (record: Document, next) {
+        if (!isCachingEnabled()) return next();
         const model = getMongooseModelFromDocument(record);
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));

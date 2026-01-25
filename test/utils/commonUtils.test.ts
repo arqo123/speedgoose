@@ -7,6 +7,13 @@ describe(`getConfig`, () => {
     test(`should return test config registered in DiContainer`, () => {
         expect(getConfig()).toMatchObject(TEST_SPEEDGOOSE_CONFIG);
     });
+
+    test(`should return null when config is not registered in DiContainer`, () => {
+        Container.remove(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
+        expect(getConfig()).toBeNull();
+        // Restore config for other tests
+        Container.set(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, TEST_SPEEDGOOSE_CONFIG);
+    });
 });
 
 describe(`objectSerializer`, () => {
@@ -39,6 +46,13 @@ describe(`isCachingEnabled`, () => {
         Container.set(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, <SpeedGooseConfig>{ enabled: false });
 
         expect(isCachingEnabled()).toBeFalsy();
+    });
+
+    it(`should return false when config is not registered in DI container`, () => {
+        Container.remove(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
+        expect(isCachingEnabled()).toBe(false);
+        // Restore config for other tests
+        Container.set(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, TEST_SPEEDGOOSE_CONFIG);
     });
 });
 

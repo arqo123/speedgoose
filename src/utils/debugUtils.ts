@@ -6,7 +6,7 @@ export const DEFAULT_DEBUGGER_NAMESPACE = 'speedgoose';
 const CACHE_CLEAR = 'cacheClear';
 
 const isDebuggingEnabled = (modelName: string, debuggerOperation: SpeedGooseDebuggerOperations): boolean => {
-    const { enabled, debugModels, debugOperations } = getConfig().debugConfig ?? {};
+    const { enabled, debugModels, debugOperations } = getConfig()?.debugConfig ?? {};
 
     if (!enabled) {
         return false;
