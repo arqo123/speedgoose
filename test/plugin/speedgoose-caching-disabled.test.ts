@@ -52,7 +52,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
             // This should NOT throw "Service with speedGooseConfigAccess identifier was not found"
             await expect(
                 TestModel.findByIdAndUpdate(doc._id, { name: 'Updated' })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on findOneAndUpdate', async () => {
@@ -60,7 +60,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
 
             await expect(
                 TestModel.findOneAndUpdate({ _id: doc._id }, { name: 'Updated' })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on updateOne', async () => {
@@ -68,7 +68,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
 
             await expect(
                 TestModel.updateOne({ _id: doc._id }, { name: 'Updated' })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on updateMany', async () => {
@@ -77,7 +77,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
 
             await expect(
                 TestModel.updateMany({}, { name: 'Updated' })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on deleteOne', async () => {
@@ -85,7 +85,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
 
             await expect(
                 TestModel.deleteOne({ _id: doc._id })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on deleteMany', async () => {
@@ -94,7 +94,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
 
             await expect(
                 TestModel.deleteMany({})
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on findByIdAndDelete', async () => {
@@ -102,13 +102,13 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
 
             await expect(
                 TestModel.findByIdAndDelete(doc._id)
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should not throw error on document save', async () => {
             const doc = new TestModel({ name: 'Test', email: 'test@test.com' });
 
-            await expect(doc.save()).resolves.not.toThrow();
+            await expect(doc.save()).resolves.toBeDefined();
         });
 
         it('should not throw error on insertMany', async () => {
@@ -117,7 +117,7 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
                     { name: 'Test1', email: 'test1@test.com' },
                     { name: 'Test2', email: 'test2@test.com' },
                 ])
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
 
         it('should complete operations successfully when caching is disabled', async () => {
@@ -172,11 +172,11 @@ describe('SpeedGooseCacheAutoCleaner with caching disabled (Issue #151)', () => 
             // These should NOT throw "Service with speedGooseConfigAccess identifier was not found"
             await expect(
                 TestModelNoConfig.findByIdAndUpdate(doc._id, { value: 100 })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
 
             await expect(
                 TestModelNoConfig.updateMany({}, { value: 200 })
-            ).resolves.not.toThrow();
+            ).resolves.toBeDefined();
         });
     });
 });
