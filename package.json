@@ -24,7 +24,8 @@
     ],
     "lint-staged": {
         "*.{js,ts}": [
-            "eslint"
+            "eslint",
+            "prettier --write"
         ]
     },
     "lint-prepush": {
@@ -52,11 +53,11 @@
         "update:apply": "ncu -u && yarn install"
     },
     "dependencies": {
-        "debug": "^4.3.4",
-        "fastq": "^1.13.0",
-        "ioredis": "^5.2.2",
+        "debug": "^4.4.3",
+        "fastq": "^1.20.1",
+        "ioredis": "^5.9.2",
         "keyv": "^4.5.4",
-        "mongoose": "^8.8.0",
+        "mongoose": "^8.21.1",
         "mpath": "^0.9.0",
         "typedi": "^0.10.0"
     },
@@ -65,30 +66,29 @@
         "@commitlint/config-conventional": "19.8.1",
         "@semantic-release/changelog": "^6.0.3",
         "@semantic-release/git": "^10.0.1",
-        "@semantic-release/github": "^11.0.3",
+        "@semantic-release/github": "^11.0.6",
         "@semantic-release/npm": "^12.0.2",
         "@types/debug": "^4.1.7",
         "@types/jest": "30.0.0",
-        "@typescript-eslint/eslint-plugin": "8.38.0",
-        "@typescript-eslint/parser": "8.38.0",
+        "@typescript-eslint/eslint-plugin": "8.53.1",
+        "@typescript-eslint/parser": "8.53.1",
         "auto-changelog": "^2.4.0",
-        "eslint": "9.33.0",
+        "eslint": "9.39.2",
         "eslint-config-prettier": "10.1.8",
-        "eslint-plugin-prettier": "5.5.3",
-        "eslint-plugin-unused-imports": "4.1.4",
+        "eslint-plugin-prettier": "5.5.5",
+        "eslint-plugin-unused-imports": "4.3.0",
         "husky": "9.1.7",
-        "ioredis-mock": "^8.2.2",
-        "jest": "30.0.4",
+        "ioredis-mock": "^8.13.1",
+        "jest": "30.2.0",
         "jest-extended": "6.0.0",
         "lint-prepush": "3.0.2",
-        "lint-staged": "16.1.2",
-        "mongodb-memory-server": "^10.1.4",
-        "npm-check-updates": "^18.0.1",
-        "precise-commits": "^1.0.2",
-        "prettier": "3.6.2",
-        "semantic-release": "^24.2.7",
-        "ts-jest": "^29.0.3",
-        "typescript": "5.8.3",
+        "lint-staged": "16.2.7",
+        "mongodb-memory-server": "^10.4.3",
+        "npm-check-updates": "^18.3.1",
+        "prettier": "3.8.1",
+        "semantic-release": "^24.2.9",
+        "ts-jest": "^29.4.6",
+        "typescript": "5.9.3",
         "rimraf": "^5.0.5"
     },
     "bugs": {
