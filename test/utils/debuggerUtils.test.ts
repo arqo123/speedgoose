@@ -99,3 +99,122 @@ describe('setupDebugger', () => {
         });
     });
 });
+
+describe('custom logger', () => {
+    beforeEach(() => {
+        mockedDebug.mockClear();
+    });
+
+    test('should call custom logger when provided', () => {
+        const customLogger = jest.fn();
+        mockedGetConfig.mockReturnValue({
+            redisUri: 'uri',
+            debugConfig: {
+                enabled: true,
+                customLogger,
+            },
+        });
+
+        const debug = getDebugger('TestModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
+        debug('test label', { some: 'data' });
+
+        expect(customLogger).toHaveBeenCalledWith(
+            'speedgoose:TestModel:cacheQuery',
+            'test label',
+            { some: 'data' }
+        );
+        expect(mockedDebug).not.toHaveBeenCalled();
+    });
+
+    test('should pass multiple data arguments to custom logger', () => {
+        const customLogger = jest.fn();
+        mockedGetConfig.mockReturnValue({
+            redisUri: 'uri',
+            debugConfig: {
+                enabled: true,
+                customLogger,
+            },
+        });
+
+        const debug = getDebugger('TestModel', SpeedGooseDebuggerOperations.CACHE_PIPELINE);
+        debug('pipeline label', 'arg1', 123, { nested: 'object' });
+
+        expect(customLogger).toHaveBeenCalledWith(
+            'speedgoose:TestModel:cachePipeline',
+            'pipeline label',
+            'arg1',
+            123,
+            { nested: 'object' }
+        );
+    });
+
+    test('should use debug library when customLogger is not provided', () => {
+        mockedGetConfig.mockReturnValue({
+            redisUri: 'uri',
+            debugConfig: {
+                enabled: true,
+            },
+        });
+
+        const debug = getDebugger('TestModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
+
+        expect(mockedDebug).toHaveBeenCalledWith('speedgoose:TestModel:cacheQuery');
+        expect(typeof debug).toEqual('function');
+    });
+
+    test('should return emptyDebugCallback when debugging is disabled even with customLogger', () => {
+        const customLogger = jest.fn();
+        mockedGetConfig.mockReturnValue({
+            redisUri: 'uri',
+            debugConfig: {
+                enabled: false,
+                customLogger,
+            },
+        });
+
+        const debug = getDebugger('TestModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
+
+        expect(debug).toBe(emptyDebugCallback);
+        expect(customLogger).not.toHaveBeenCalled();
+    });
+
+    test('should respect debugModels filter with custom logger', () => {
+        const customLogger = jest.fn();
+        mockedGetConfig.mockReturnValue({
+            redisUri: 'uri',
+            debugConfig: {
+                enabled: true,
+                debugModels: ['AllowedModel'],
+                customLogger,
+            },
+        });
+
+        const allowedDebug = getDebugger('AllowedModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
+        const disallowedDebug = getDebugger('DisallowedModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
+
+        allowedDebug('allowed log');
+        expect(customLogger).toHaveBeenCalledWith('speedgoose:AllowedModel:cacheQuery', 'allowed log');
+
+        expect(disallowedDebug).toBe(emptyDebugCallback);
+    });
+
+    test('should respect debugOperations filter with custom logger', () => {
+        const customLogger = jest.fn();
+        mockedGetConfig.mockReturnValue({
+            redisUri: 'uri',
+            debugConfig: {
+                enabled: true,
+                debugOperations: [SpeedGooseDebuggerOperations.CACHE_QUERY],
+                customLogger,
+            },
+        });
+
+        const allowedDebug = getDebugger('TestModel', SpeedGooseDebuggerOperations.CACHE_QUERY);
+        const disallowedDebug = getDebugger('TestModel', SpeedGooseDebuggerOperations.CACHE_PIPELINE);
+
+        allowedDebug('allowed log');
+        expect(customLogger).toHaveBeenCalledWith('speedgoose:TestModel:cacheQuery', 'allowed log');
+
+        expect(disallowedDebug).toBe(emptyDebugCallback);
+    });
+});

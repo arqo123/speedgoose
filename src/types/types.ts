@@ -56,6 +56,8 @@ export type SpeedGooseConfig = {
         debugModels?: string[];
         /** An array of operations to debug, if not set then debugger will log all operations */
         debugOperations?: SpeedGooseDebuggerOperations[];
+        /** Custom logger function - when provided, logs will be sent here instead of the debug library */
+        customLogger?: (namespace: string, message: string, ...data: unknown[]) => void;
     };
     /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS */
     sharedCacheStrategy?: SharedCacheStrategies;
