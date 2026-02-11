@@ -82,9 +82,9 @@ describe('registerRedisClient', () => {
 
 describe('registerRedisClient with pre-built client', () => {
     beforeEach(() => {
+        getRedisListenerInstance()?.removeAllListeners();
         Container.remove(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
         Container.remove(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS);
-        getRedisListenerInstance()?.removeAllListeners();
     });
 
     it(`should store the pre-built client as REDIS_GLOBAL_ACCESS`, async () => {
