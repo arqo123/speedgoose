@@ -93,7 +93,7 @@ export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: Spee
     setupDebugger(config);
     registerGlobalConfigAccess(config);
     registerGlobalMongooseAccess(mongoose);
-    await registerRedisClient(config.redisUri);
+    await registerRedisClient(config.redisUri, config.redisOptions, config.redisClient);
     await registerCacheStrategyInstance(config);
     registerInternalQueueWorkers();
     registerHydrationCaches();

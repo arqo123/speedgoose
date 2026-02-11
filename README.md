@@ -67,6 +67,8 @@ $ npm install speedgoose
 $ yarn add speedgoose
 ```
 
+> **⚠️ Mongoose compatibility:** Speedgoose v2.3.0+ requires **mongoose 9.x**. If your project uses mongoose 8.x, pin speedgoose to `2.2.x`. See the [Compatibility](#compatibility) table above.
+
 1. Simple wrap your mongoose with the library (required)
 
 ```ts
@@ -79,6 +81,28 @@ applySpeedGooseCacheLayer(mongoose, {
 ```
 
 > 💡 **Pro tip:** For best performance, consider using [DragonflyDB](https://dragonflydb.io/) as a drop-in Redis replacement. It's fully compatible with speedgoose and offers significantly better performance.
+
+**Using a pre-built ioredis client:**
+
+If you already have a configured ioredis client (e.g., with TLS, Sentinel, or cluster settings), you can pass it directly instead of a URI:
+
+```ts
+import Redis from 'ioredis';
+import { applySpeedGooseCacheLayer } from 'speedgoose';
+import mongoose from 'mongoose';
+
+const myRedisClient = new Redis({
+    host: 'my-redis.example.com',
+    port: 6380,
+    tls: { rejectUnauthorized: false },
+});
+
+applySpeedGooseCacheLayer(mongoose, {
+    redisClient: myRedisClient,
+});
+```
+
+> When `redisClient` is provided, `redisUri` and `redisOptions` are ignored. Speedgoose will use your client directly for cache operations and PubSub publishing, and call `duplicate()` on it for the PubSub subscriber connection.
 
 2. To enable auto-clearing for a given schema, just add the plugin to it (required)
 
@@ -220,8 +244,10 @@ applySpeedGooseCacheLayer(mongoose, {
 ```ts
     /** Connection string for Redis containing URL, credentials, and port. It's required to make cache sync working */
     redisUri?: string;
-    /** Connection options for Redis. If redisOptions set, redisUri will be ignored */
-    redisOptions?: string;
+    /** Connection options for Redis. */
+    redisOptions?: RedisOptions;
+    /** Pre-built ioredis client. When provided, redisUri and redisOptions are ignored. */
+    redisClient?: Redis;
     /** Config for multitenancy. */
     multitenancyConfig?: {
         /** If set, then the cache will work for multitenancy. It has to be a multitenancy field indicator, that is set at the root of every MongoDB record. */
