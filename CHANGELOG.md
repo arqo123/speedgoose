@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/arqo123/speedgoose/compare/v2.3.0...v2.4.0) (2026-02-11)
+
+
+### Features
+
+* support pre-built ioredis client in config ([#159](https://github.com/arqo123/speedgoose/issues/159)) ([249e075](https://github.com/arqo123/speedgoose/commit/249e075dd9795fbd28a126387254dbec81f64cc2)), closes [#147](https://github.com/arqo123/speedgoose/issues/147)
+
 # [2.3.0](https://github.com/arqo123/speedgoose/compare/v2.2.0...v2.3.0) (2026-02-11)
 
 
