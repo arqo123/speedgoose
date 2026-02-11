@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/arqo123/speedgoose/compare/v2.1.10...v2.2.0) (2026-02-11)
+
+
+### Features
+
+* add support for custom loggers ([#156](https://github.com/arqo123/speedgoose/issues/156)) ([543a350](https://github.com/arqo123/speedgoose/commit/543a35014dc00c83fa051f20ca53aa73e18ffeae)), closes [#70](https://github.com/arqo123/speedgoose/issues/70)
+
 ## [2.1.10](https://github.com/arqo123/speedgoose/compare/v2.1.9...v2.1.10) (2026-01-25)
 
 
