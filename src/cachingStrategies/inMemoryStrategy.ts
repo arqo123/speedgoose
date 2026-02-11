@@ -19,11 +19,11 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         Container.set<InMemoryStrategy>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS, strategy);
     }
 
-    public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
+    public async getValueFromCache(namespace: string, key: string): Promise<CachedResult | null> {
         const keyWithNamespace = `${namespace}:${key}`;
         const result = await this.resultsCacheClient.get(keyWithNamespace)
 
-        return result || null;
+        return (result ?? null) as CachedResult | null;
     }
 
     public async isValueCached(namespace: string, key: string): Promise<boolean> {
