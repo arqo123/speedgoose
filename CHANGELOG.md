@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/arqo123/speedgoose/compare/v2.2.0...v2.3.0) (2026-02-11)
+
+
+### Features
+
+* mongoose 9 support ([#158](https://github.com/arqo123/speedgoose/issues/158)) ([5a3368c](https://github.com/arqo123/speedgoose/commit/5a3368cc996247e0694f09f2ddacf2d61f6b7636))
+
 # [2.2.0](https://github.com/arqo123/speedgoose/compare/v2.1.10...v2.2.0) (2026-02-11)
 
 
