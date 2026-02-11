@@ -79,3 +79,52 @@ describe('registerRedisClient', () => {
         expect(redisInstance2).toBeInstanceOf(Redis);
     });
 });
+
+describe('registerRedisClient with pre-built client', () => {
+    beforeEach(() => {
+        Container.remove(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
+        Container.remove(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS);
+        getRedisListenerInstance()?.removeAllListeners();
+    });
+
+    it(`should store the pre-built client as REDIS_GLOBAL_ACCESS`, async () => {
+        const existingClient = new Redis();
+
+        await registerRedisClient(undefined, undefined, existingClient);
+
+        const storedInstance = Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
+        expect(storedInstance).toBe(existingClient);
+    });
+
+    it(`should call duplicate() on the pre-built client for the listener`, async () => {
+        const existingClient = new Redis();
+        const duplicateSpy = jest.spyOn(existingClient, 'duplicate');
+
+        await registerRedisClient(undefined, undefined, existingClient);
+
+        expect(duplicateSpy).toHaveBeenCalled();
+        const listenerInstance = Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS);
+        expect(listenerInstance).toBeInstanceOf(Redis);
+        expect(listenerInstance).not.toBe(existingClient);
+    });
+
+    it(`should ignore redisUri when existingClient is provided`, async () => {
+        const existingClient = new Redis();
+
+        await registerRedisClient('some-uri-that-should-be-ignored', undefined, existingClient);
+
+        const storedInstance = Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
+        expect(storedInstance).toBe(existingClient);
+    });
+
+    it(`should not replace existing client on second call (idempotency)`, async () => {
+        const existingClient1 = new Redis();
+        const existingClient2 = new Redis();
+
+        await registerRedisClient(undefined, undefined, existingClient1);
+        await registerRedisClient(undefined, undefined, existingClient2);
+
+        const storedInstance = Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS);
+        expect(storedInstance).toBe(existingClient1);
+    });
+});

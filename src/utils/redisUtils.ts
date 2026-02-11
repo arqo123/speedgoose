@@ -17,10 +17,19 @@ const listenOnMessages = async (redisClient: Redis): Promise<void> => {
     redisClient.on('message', redisPubSubMessageHandler);
 };
 
-export const registerRedisClient = async (uri: string, redisOptions?: RedisOptions): Promise<Redis> => {
+export const registerRedisClient = async (uri?: string, redisOptions?: RedisOptions, existingClient?: Redis): Promise<Redis> => {
     const registeredClient = getRedisInstance();
     if (registeredClient) {
         return registeredClient;
+    } else if (existingClient) {
+        const redisListenerClient = existingClient.duplicate();
+
+        Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS, existingClient);
+        Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS, redisListenerClient);
+
+        await listenOnMessages(redisListenerClient);
+
+        return existingClient;
     } else if (uri) {
         const redisClient = new Redis(uri, redisOptions ?? {});
         const redisListenerClient = new Redis(uri, redisOptions ?? {});
