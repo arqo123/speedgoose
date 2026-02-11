@@ -1,11 +1,11 @@
 import Keyv from 'keyv';
 import './mongoose';
-import { Aggregate, Document, ObjectId } from 'mongoose';
+import { Document, ObjectId } from 'mongoose';
 import { RedisStrategy } from '../cachingStrategies/redisStrategy';
 import { InMemoryStrategy } from '../cachingStrategies/inMemoryStrategy';
 import { RedisOptions } from 'ioredis';
 
-export type AggregationResult = Aggregate<unknown, unknown>;
+export type AggregationResult = unknown[];
 export type CachedDocument<T> = Document<string | ObjectId> & T;
 export type CachedLeanDocument<T> = T & { _id: ObjectId | string };
 export type DocumentWithIdAndTenantValue = { _id: string; [tenantId: string]: string };

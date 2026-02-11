@@ -25,8 +25,32 @@ It's caching on two levels. Shared - with Redis. And local inside memory. Suppor
 -   It has a `cachePopulate` method that solves the N+1 problem with Mongoose population.
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-## Release Note: 
-For now the latests version is on top of mongoose 8.8.0 and is tagged as beta. If you're facing any issues please use version 2.0.13 - it's compatible with mongoose 7.
+## Compatibility
+
+| Speedgoose | Mongoose | Node.js |
+|------------|----------|---------|
+| 2.x (latest) | 9.x   | >= 20.19 |
+| 2.x        | 8.x      | >= 16    |
+| 1.x        | 7.x      | >= 14    |
+
+## Performance
+
+Speedgoose delivers **massive speedups** on cached reads. Benchmarks below were run against an in-memory MongoDB (mongodb-memory-server) with 500 users and 1,000 posts with relations, using the IN_MEMORY cache strategy.
+
+| Operation | Uncached | Cached | Speedup |
+|-----------|----------|--------|---------|
+| `findOne` | ~1.4 ms  | ~0.03 ms | **~50x** |
+| `find` (20 results) | ~1.5 ms | ~0.02 ms | **~75x** |
+| `aggregate` ($group) | ~3.9 ms | ~0.02 ms | **~200x** |
+| `populate` (10 docs) | ~4.4 ms | ~0.02 ms | **~230x** |
+
+> Results may vary depending on hardware, dataset size, and query complexity. With Redis or DragonflyDB as the shared cache, latencies will be slightly higher than in-memory but still significantly faster than hitting MongoDB directly.
+
+Run the benchmarks yourself:
+
+```console
+yarn benchmark
+```
 
 <!-- GETTING STARTED -->
 
@@ -400,7 +424,7 @@ For example, if a `User` document is updated, any `Article` documents that have 
 -   [x] Refreshing TTL on read
 -   [x] Support for clustered servers 
 -   [x] Flowchart of logic
--   [ ] Tests
+-   [x] Tests
     -   [x] commonUtils
     -   [x] debuggerUtils
     -   [x] mongooseUtils
@@ -409,12 +433,14 @@ For example, if a `User` document is updated, any `Article` documents that have 
     -   [x] cacheKeyUtils
     -   [x] hydrationUtils
     -   [x] redisUtils
-    -   [ ] extendAggregate
-    -   [ ] extendQuery
-    -   [ ] mongooseModelEvents
+    -   [x] extendAggregate
+    -   [x] extendQuery
+    -   [x] mongooseModelEvents
     -   [x] wrapper
     -   [x] inMemory caching strategy
     -   [x] Redis caching strategy
+    -   [x] Integration / real-world app tests
+    -   [x] Performance benchmarks
 -   [x] Multitenancy (tenant field indicator) support
 -   [x] Debugging mode
 -   [x] Support for more cache storage

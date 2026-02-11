@@ -8,7 +8,7 @@ export const addCachingToAggregate = (mongoose: Mongoose): void => {
     /**
      * Caches given aggregation operation.
      */
-    mongoose.Aggregate.prototype.cachePipeline = function <R>(params: SpeedGooseCacheOperationParams = {}): Promise<Aggregate<R[], R>> {
+    mongoose.Aggregate.prototype.cachePipeline = function <R extends unknown[] = unknown[]>(params: SpeedGooseCacheOperationParams = {}): Promise<R> {
         return isCachingEnabled() ? execAggregationWithCache<R>(this, params) : this.exec();
     };
 
@@ -22,7 +22,7 @@ export const addCachingToAggregate = (mongoose: Mongoose): void => {
     };
 };
 
-const execAggregationWithCache = async <R>(aggregation: Aggregate<R[], R>, context: SpeedGooseCacheOperationContext): Promise<Aggregate<R[], R>> => {
+const execAggregationWithCache = async <R extends unknown[] = unknown[]>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): Promise<R> => {
     prepareAggregateOperationParams(aggregation, context);
 
     context?.debug(`Reading cache for key`, context.cacheKey);
@@ -32,15 +32,15 @@ const execAggregationWithCache = async <R>(aggregation: Aggregate<R[], R>, conte
         context?.debug(`Returning cache for key`, context.cacheKey);
 
         refreshTTLTimeIfNeeded(context, cachedValue);
-        return cachedValue as Aggregate<R[], R>;
+        return cachedValue as R;
     }
 
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
-    const result = (await aggregation.exec());
+    const result = await aggregation.exec();
 
     if (result !== undefined) {
-        await setKeyInResultsCaches(context, result as CachedResult<R>, aggregation._model);
+        await setKeyInResultsCaches(context, result as CachedResult, aggregation._model);
 
-        return result as R[];
+        return result;
     }
 };

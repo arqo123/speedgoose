@@ -12,10 +12,10 @@ const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany'];
 const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 
 const appendQueryBasedListeners = (schema: Schema): void => {
- 
+
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, MONGOOSE_UPDATE_ONE_ACTIONS], async function (next) {
-        if (!isCachingEnabled()) return next();
+    schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, ...MONGOOSE_UPDATE_ONE_ACTIONS], async function () {
+        if (!isCachingEnabled()) return;
         const action = this as any;
         const model = action.model;
         const updatedRecord = await getRecordAffectedByAction(action);
@@ -29,12 +29,11 @@ const appendQueryBasedListeners = (schema: Schema): void => {
                 console.error('Error clearing parent cache:', err);
             }
         }
-        next();
     });
 
     //@ts-expect-error this event work, but it's just not added into types
-    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function (next) {
-        if (!isCachingEnabled()) return next();
+    schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function () {
+        if (!isCachingEnabled()) return;
         const action = this as any;
         const model = action.model;
         const affectedRecords = await getRecordsAffectedByAction(action);
@@ -54,13 +53,12 @@ const appendQueryBasedListeners = (schema: Schema): void => {
                 }
             }));
         }
-        next();
     });
 };
 
 const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAutoCleanerOptions): void => {
-    schema.pre('save', { document: true }, async function (next) {
-        if (!isCachingEnabled()) return next();
+    schema.pre('save', async function () {
+        if (!isCachingEnabled()) return;
         this.$locals.wasNew = this.isNew;
         this.$locals.wasDeleted = wasRecordDeleted(this, options);
         const model = getMongooseModelFromDocument(this as Document);
@@ -68,7 +66,7 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(this._id));
             model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{
                 record: this,
-                wasNew: this.isNew,
+                wasNew: this.$locals.wasNew,
                 wasDeleted: this.$locals.wasDeleted,
                 modelName: model.modelName,
             });
@@ -78,21 +76,19 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
                 console.error('Error clearing parent cache:', err);
             }
         }
-        next();
     });
 
-    schema.post('insertMany', { document: true }, async function (insertedDocuments, next) {
-        if (!isCachingEnabled()) return next();
+    schema.post('insertMany', async function (insertedDocuments) {
+        if (!isCachingEnabled()) return;
         if (insertedDocuments.length > 0) {
             //@ts-expect-error current type returned in the event is type Query - not document
             const records = insertedDocuments as DocumentWithIdAndTenantValue[];
             this.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records, wasNew: true, wasDeleted: false, modelName: this.modelName });
         }
-        next();
     });
 
-    schema.post(/deleteOne/, { document: true }, async function (record: Document, next) {
-        if (!isCachingEnabled()) return next();
+    schema.post(/deleteOne/, async function (record: Document) {
+        if (!isCachingEnabled()) return;
         const model = getMongooseModelFromDocument(record);
         if (model) {
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
@@ -103,7 +99,6 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
                 console.error('Error clearing parent cache:', err);
             }
         }
-        next();
     });
 };
 

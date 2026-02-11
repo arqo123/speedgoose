@@ -40,7 +40,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
     context.debug = getDebugger(query.model.modelName, SpeedGooseDebuggerOperations.CACHE_QUERY);
 };
 
-export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R[], R>, context: SpeedGooseCacheOperationContext): void => {
+export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): void => {
     const config = getConfig();
 
     if (config?.defaultTtl) {

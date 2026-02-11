@@ -14,7 +14,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         Container.set<RedisStrategy>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS, strategy);
     }
 
-    public async getValueFromCache(namespace: string, key: string): Promise<CachedResult> {
+    public async getValueFromCache(namespace: string, key: string): Promise<CachedResult | null> {
         const keyWithNamespace = `${namespace}:${key}`;
 
         const result = await this.client.get(keyWithNamespace);
