@@ -1,3 +1,10 @@
+## [2.4.1](https://github.com/arqo123/speedgoose/compare/v2.4.0...v2.4.1) (2026-02-12)
+
+
+### Bug Fixes
+
+* handle null/undefined array ObjectId refs in cachePopulate ([#160](https://github.com/arqo123/speedgoose/issues/160)) ([9b2ed4e](https://github.com/arqo123/speedgoose/commit/9b2ed4eeb7a3a7bba1e982d039935d389240214d))
+
 # [2.4.0](https://github.com/arqo123/speedgoose/compare/v2.3.0...v2.4.0) (2026-02-11)
 
 
