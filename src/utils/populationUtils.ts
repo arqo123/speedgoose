@@ -140,7 +140,7 @@ export const handleSinglePopulation = async <T extends Document>(
     // FIX: This is the corrected logic to robustly find the referenced model name
     // for both single references (`ref: 'Model'`) and array references (`[{ ref: 'Model' }]`).
     const schemaField = query.model.schema.path(path) as any; // Use `any` to access options dynamically
-    const refModelName = schemaField.options.ref ?? schemaField.options?.type?.[0]?.ref ?? schemaField.caster?.options?.ref;
+    const refModelName = schemaField.options.ref ?? schemaField.options?.type?.[0]?.ref ?? schemaField.embeddedSchemaType?.options?.ref;
     if (!refModelName) return; // Path is not a valid population path.
 
     const populatedModel = getMongooseModelByName(refModelName);
