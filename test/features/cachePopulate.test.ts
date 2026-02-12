@@ -637,5 +637,112 @@ it('should correctly populate an array of references with broken relations', asy
         expect((parentSelectObjExtra as any).age).toBe(42);
         expect((parentNoSelectObj as any).age).toBe(42);
     });
-    
+
+    it('should not crash when array ref field is an empty array', async () => {
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parents: []
+        });
+
+        const result = await UserModel.findOne({ _id: child._id })
+            .cachePopulate({ path: 'parents' })
+            .exec();
+
+        expect(result).toBeDefined();
+        expect(result!.parents).toEqual([]);
+    });
+
+    it('should not crash when array ref field is undefined', async () => {
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+        });
+
+        const result = await UserModel.findOne({ _id: child._id })
+            .cachePopulate({ path: 'parents' })
+            .exec();
+
+        expect(result).toBeDefined();
+        expect(result!.parents).toEqual([]);
+    });
+
+    it('should handle find() returning mixed docs where some have array field set and others do not', async () => {
+        const parent1 = await UserModel.create({ name: 'Parent1', email: 'p1@example.com' });
+        const parent2 = await UserModel.create({ name: 'Parent2', email: 'p2@example.com' });
+
+        const childWith = await UserModel.create({
+            name: 'ChildWith',
+            email: 'childwith@example.com',
+            parents: [parent1._id, parent2._id]
+        });
+        const childWithout = await UserModel.create({
+            name: 'ChildWithout',
+            email: 'childwithout@example.com',
+        });
+
+        const results = await UserModel.find({ _id: { $in: [childWith._id, childWithout._id] } })
+            .cachePopulate({ path: 'parents' })
+            .exec();
+
+        expect(results).toHaveLength(2);
+        const withParents = results.find(r => r.name === 'ChildWith')!;
+        const withoutParents = results.find(r => r.name === 'ChildWithout')!;
+        expect(withParents.parents).toHaveLength(2);
+        expect((withParents.parents[0] as unknown as IUser).name).toBe('Parent1');
+        expect(withoutParents.parents).toEqual([]);
+    });
+
+    it('should populate both single and array refs in the same query', async () => {
+        const parentSingle = await UserModel.create({ name: 'SingleParent', email: 'single@example.com' });
+        const parentArr1 = await UserModel.create({ name: 'ArrParent1', email: 'arr1@example.com' });
+        const parentArr2 = await UserModel.create({ name: 'ArrParent2', email: 'arr2@example.com' });
+
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parentSingle._id,
+            parents: [parentArr1._id, parentArr2._id]
+        });
+
+        const result = await UserModel.findOne({ _id: child._id })
+            .cachePopulate([
+                { path: 'parent' },
+                { path: 'parents' }
+            ])
+            .exec();
+
+        expect(result).toBeDefined();
+        expect((result!.parent as unknown as IUser).name).toBe('SingleParent');
+        expect(result!.parents).toHaveLength(2);
+        expect((result!.parents[0] as unknown as IUser).name).toBe('ArrParent1');
+    });
+
+    it('should handle array refs with null entries mixed with valid ids', async () => {
+        const parent1 = await UserModel.create({ name: 'Parent1', email: 'p1@example.com' });
+        const parent2 = await UserModel.create({ name: 'Parent2', email: 'p2@example.com' });
+
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parents: [parent1._id, parent2._id]
+        });
+
+        // Manually inject a null into the parents array via raw update
+        await mongoose.connection.collection('users').updateOne(
+            { _id: child._id },
+            { $set: { parents: [parent1._id, null, parent2._id] } }
+        );
+
+        const result = await UserModel.findOne({ _id: child._id })
+            .cachePopulate({ path: 'parents' })
+            .exec();
+
+        expect(result).toBeDefined();
+        // Should have the 2 valid parents, null should be filtered out
+        expect(result!.parents.length).toBe(2);
+        expect((result!.parents[0] as unknown as IUser).name).toBe('Parent1');
+        expect((result!.parents[1] as unknown as IUser).name).toBe('Parent2');
+    });
+
 });

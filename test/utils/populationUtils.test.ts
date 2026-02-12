@@ -547,6 +547,40 @@ describe('populationUtils', () => {
             expect(childDocs[1].parent).toBeDefined();
         });
 
+        it('should handle undefined single ref without crashing', async () => {
+            const child = await UserModel.create({ name: 'Child', email: 'child@example.com' });
+            const childDoc = await UserModel.findById(child._id);
+            const docsFromCache = new Map();
+            // parent is undefined on the doc — should not throw
+            await stitchAndRelateDocuments([childDoc], 'parent', UserModel, undefined, docsFromCache, false);
+            expect(childDoc.parent).toBeUndefined();
+        });
+
+        it('should handle empty array ref without crashing', async () => {
+            const child = await UserModel.create({ name: 'Child', email: 'child@example.com', parents: [] });
+            const childDoc = await UserModel.findById(child._id);
+            const docsFromCache = new Map();
+            await stitchAndRelateDocuments([childDoc], 'parents', UserModel, undefined, docsFromCache, false);
+            expect(childDoc.parents).toEqual([]);
+        });
+
+        it('should handle null entries in array ref without crashing', async () => {
+            const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+            const child = await UserModel.create({ name: 'Child', email: 'child@example.com', parents: [parent._id] });
+            // Inject null into the array at the raw level
+            await mongoose.connection.collection('users').updateOne(
+                { _id: child._id },
+                { $set: { parents: [parent._id, null] } }
+            );
+            const childDoc = await UserModel.findById(child._id);
+            const docsFromCache = new Map();
+            docsFromCache.set(getDocumentCacheKey('User', parent._id.toString()), parent.toObject());
+            await stitchAndRelateDocuments([childDoc], 'parents', UserModel, undefined, docsFromCache, false);
+            // Should only have the valid parent, null filtered out
+            expect((childDoc.parents as any[]).length).toBe(1);
+            expect((childDoc.parents[0] as any).name).toBe('Parent');
+        });
+
         it('should handle missing cache values gracefully', async () => {
             const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
             const child = await UserModel.create({ name: 'Child', email: 'child@example.com', parent: parent._id });

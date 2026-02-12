@@ -102,7 +102,11 @@ export const stitchAndRelateDocuments = async <T extends Document>(
 
     for (const doc of documents) {
         const ids = mpath.get(path, doc);
-        const getCacheValue = (id: any) => docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select));
+        if (ids == null) continue;
+        const getCacheValue = (id: any) =>
+            id != null
+                ? docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select))
+                : undefined;
         const populatedValue = Array.isArray(ids) ? ids.map(getCacheValue).filter(Boolean) : getCacheValue(ids);
 
         const hydratedValue = hydratePopulatedData(populatedValue, populatedModel, isLean);
@@ -136,11 +140,17 @@ export const handleSinglePopulation = async <T extends Document>(
     // FIX: This is the corrected logic to robustly find the referenced model name
     // for both single references (`ref: 'Model'`) and array references (`[{ ref: 'Model' }]`).
     const schemaField = query.model.schema.path(path) as any; // Use `any` to access options dynamically
-    const refModelName = schemaField.options.ref ?? schemaField.options?.type?.[0]?.ref;
+    const refModelName = schemaField.options.ref ?? schemaField.options?.type?.[0]?.ref ?? schemaField.caster?.options?.ref;
     if (!refModelName) return; // Path is not a valid population path.
 
     const populatedModel = getMongooseModelByName(refModelName);
-    const idsToPopulate = [...new Set(documents.flatMap(doc => mpath.get(path, doc)))].filter(Boolean) as string[];
+    const idsToPopulate = [...new Set(
+        documents.flatMap(doc => {
+            const val = mpath.get(path, doc);
+            if (val == null) return [];
+            return Array.isArray(val) ? val.flat() : [val];
+        }).filter(Boolean).map((id: any) => id.toString())
+    )];
 
     if (idsToPopulate.length === 0) return;
 
