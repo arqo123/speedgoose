@@ -24,7 +24,9 @@ const getModelCacheKeysFromContext = (context: MongooseInternalEventContext): st
     const records = isManyDocumentsContext(context) ? context.records : context.record ? [context.record as DocumentWithIdAndTenantValue] : [];
 
     if (records.length === 0) {
-        context?.debug?.(`No records in context for tenant-aware cache clear; falling back to empty-tenant key for model`, context.modelName);
+        if (multitenantKey) {
+            context?.debug?.(`No records in context for tenant-aware cache clear; falling back to empty-tenant key for model`, context.modelName);
+        }
         return [generateCacheKeyForModelName(context.modelName)];
     }
 

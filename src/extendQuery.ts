@@ -56,7 +56,7 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
 
     if (context?.ttl !== undefined && context.ttl <= 0) {
         context?.debug(`Skipping cache read/write because ttl <= 0`, context.cacheKey);
-        return query.exec() as unknown as Query<CachedResult<T> | CachedResult<T>[], Document<T>>;
+        return query.exec() as unknown as CachedResult<T> | CachedResult<T>[];
     }
 
     context?.debug(`Reading cache for key`, context.cacheKey);
