@@ -57,6 +57,11 @@ const prepareQueryResults = async <T>(query: Query<T, T>, context: SpeedGooseCac
 const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext): Promise<Query<CachedResult<T> | CachedResult<T>[], Document<T>>> => {
     prepareQueryOperationContext(query, context);
 
+    if (context?.ttl !== undefined && context.ttl <= 0) {
+        context?.debug(`Skipping cache read/write because ttl <= 0`, context.cacheKey);
+        return query.exec();
+    }
+
     context?.debug(`Reading cache for key`, context.cacheKey);
     const cachedValue = (await getResultsFromCache(context.cacheKey)) as CachedResult<T>;
 

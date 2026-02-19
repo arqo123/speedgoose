@@ -105,6 +105,24 @@ describe('extendQuery', () => {
                 expect(isCachedResult).toBe(true);
             });
 
+            it('should bypass cache completely when ttl is set to 0', async () => {
+                const user = await UserModel.create({ name: 'NoCacheTTLUser', email: 'nottlcache@test.com' });
+                const readSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache');
+                const writeSpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
+
+                const firstResult = await UserModel.findOne({ _id: user._id }).cacheQuery({ ttl: 0 });
+                const secondResult = await UserModel.findOne({ _id: user._id }).cacheQuery({ ttl: 0 });
+
+                expect(firstResult).toBeDefined();
+                expect(secondResult).toBeDefined();
+                expect(readSpy).not.toHaveBeenCalled();
+                expect(writeSpy).not.toHaveBeenCalled();
+                expect(await UserModel.findOne({ _id: user._id }).isCached()).toBe(false);
+
+                readSpy.mockRestore();
+                writeSpy.mockRestore();
+            });
+
             it('should accept custom cacheKey param', async () => {
                 const user = await UserModel.create({ name: 'CustomKeyUser', email: 'customkey@test.com' });
                 const customKey = 'my-custom-cache-key';

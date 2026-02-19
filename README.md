@@ -269,7 +269,9 @@ applySpeedGooseCacheLayer(mongoose, {
      * Available strategies: SharedCacheStrategies.REDIS and SharedCacheStrategies.IN_MEMORY */
     sharedCacheStrategy?: SharedCacheStrategies,
     /** Indicates if caching is enabled or disabled, by default is enabled */
-    enabled?: boolean
+    enabled?: boolean,
+    /** If true, clears model-level cache also on update events. Useful for aggregates that don't include record _id (e.g. $group with _id: null). Default: false */
+    clearModelCacheOnUpdate?: boolean
     }
 ```
 
@@ -320,6 +322,10 @@ clearCacheForKeys(cacheKey: string) : Promise<void>
 */
 clearCachedResultsForModel(modelName: string, multitenantValue?: string) : Promise<void>
 ```
+
+If your app relies on aggregate caches that do not include document identifiers (for example `$group: { _id: null }`), you can either:
+- enable `clearModelCacheOnUpdate: true` to invalidate model cache automatically on updates,
+- or call `clearCachedResultsForModel(modelName, tenantId)` manually in your update flow.
  
 
 <!-- CACHE POPULATE -->

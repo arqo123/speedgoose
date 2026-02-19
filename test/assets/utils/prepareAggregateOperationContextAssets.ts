@@ -31,7 +31,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 120,
-            cacheKey: '{"pipeline":[{"$match":{"someField":"someValue"}}],"collection":"testmodels"}',
+            cacheKey: '{"collection":"testmodels","options":{},"pipeline":[{"$match":{"someField":"someValue"}}]}',
             multitenantValue: 'tenantTestValue',
             debug: expect.any(Function),
         },
@@ -50,7 +50,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"pipeline":[{"$match":{"someField":"someValue"}}],"collection":"testmodels"}',
+            cacheKey: '{"collection":"testmodels","options":{},"pipeline":[{"$match":{"someField":"someValue"}}]}',
             multitenantValue: 'tenantTestValue',
             debug: expect.any(Function),
         },
@@ -123,7 +123,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 90,    
-            cacheKey: '{\"pipeline\":[{\"$match\":{\"someField\":\"someValue\",\"abc\":\"regex:/abc/\"}}],\"collection\":\"testmodels\"}',
+            cacheKey: '{\"collection\":\"testmodels\",\"options\":{},\"pipeline\":[{\"$match\":{\"abc\":\"regex:/abc/\",\"someField\":\"someValue\"}}]}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },

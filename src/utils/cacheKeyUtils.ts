@@ -1,27 +1,130 @@
 import { Document, Aggregate, Query } from 'mongoose';
 import { CachedDocument, DocumentWithIdAndTenantValue } from '../types/types';
-import { customStringifyReplacer, getConfig } from './commonUtils';
+import { getConfig } from './commonUtils';
 import { stringifyPopulatedPaths, stringifyQueryParam } from './queryUtils';
 
+const POPULATE_INTERNAL_KEYS = new Set(['_docs', '_childDocs', '_queryProjection', '_fullPath', '_localModel']);
+
+const isObjectIdLike = (value: unknown): value is { toHexString: () => string } =>
+    Boolean(
+        value &&
+        typeof value === 'object' &&
+        typeof (value as { toHexString?: () => string }).toHexString === 'function' &&
+        (((value as { _bsontype?: string })._bsontype === 'ObjectId') || ((value as { constructor?: { name?: string } }).constructor?.name === 'ObjectId'))
+    );
+
+const normalizePopulateValue = (value: unknown): unknown => {
+    if (value == null) {
+        return value;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(option => normalizePopulateValue(option));
+    }
+
+    if (typeof value !== 'object') {
+        return value;
+    }
+
+    return Object.entries(value as Record<string, unknown>)
+        .filter(([key, nestedValue]) => !POPULATE_INTERNAL_KEYS.has(key) && typeof nestedValue !== 'function' && typeof nestedValue !== 'symbol')
+        .sort(([left], [right]) => left.localeCompare(right))
+        .reduce<Record<string, unknown>>((acc, [key, nestedValue]) => {
+            const normalized = normalizePopulateValue(nestedValue);
+            if (normalized !== undefined) {
+                acc[key] = normalized;
+            }
+            return acc;
+        }, {});
+};
+
+const normalizeForStableStringify = (value: unknown, seen: WeakSet<object>): unknown => {
+    if (value === null) {
+        return null;
+    }
+
+    if (value instanceof RegExp) {
+        return `regex:${value.toString()}`;
+    }
+
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+
+    if (typeof value === 'bigint') {
+        return value.toString();
+    }
+
+    if (isObjectIdLike(value)) {
+        return `objectId:${value.toHexString()}`;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(item => {
+            const normalized = normalizeForStableStringify(item, seen);
+            return normalized === undefined ? null : normalized;
+        });
+    }
+
+    if (typeof value === 'object') {
+        if (seen.has(value as object)) {
+            return '[Circular]';
+        }
+
+        seen.add(value as object);
+        const normalizedObject = Object.entries(value as Record<string, unknown>)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .reduce<Record<string, unknown>>((acc, [key, nestedValue]) => {
+                const normalized = normalizeForStableStringify(nestedValue, seen);
+                if (normalized !== undefined) {
+                    acc[key] = normalized;
+                }
+                return acc;
+            }, {});
+        /*
+         * Intentionally remove object from "seen" after processing.
+         * This keeps cache-key generation deterministic for shared object references
+         * and only treats active traversal loops as circular.
+         */
+        seen.delete(value as object);
+        return normalizedObject;
+    }
+
+    if (typeof value === 'function' || typeof value === 'symbol' || value === undefined) {
+        return undefined;
+    }
+
+    return value;
+};
+
+export const stableSerialize = (value: unknown): string => JSON.stringify(normalizeForStableStringify(value, new WeakSet<object>()));
+
 export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string =>
-    JSON.stringify(
+    stableSerialize(
         {
             query: query.getQuery(),
             collection: query.mongooseCollection.name,
             op: query.op,
-            projection: { ...query.projection(), ...(query.getOptions().projection as Record<string, number>) },
-            options: { ...query.getOptions(), projection: undefined },
+            projection: {
+                ...((query.projection() as Record<string, number> | undefined) ?? {}),
+                ...((query.getOptions().projection as Record<string, number> | undefined) ?? {}),
+            },
+            options: { ...query.getOptions(), projection: undefined, session: undefined },
+            mongooseOptions: {
+                lean: query?._mongooseOptions?.lean,
+                populate: normalizePopulateValue(query?._mongooseOptions?.populate),
+            },
+            speedGoosePopulate: normalizePopulateValue(query?._mongooseOptions?.speedGoosePopulate),
         },
-        customStringifyReplacer,
     );
 
 export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): string =>
-    JSON.stringify(
+    stableSerialize(
         {
             pipeline: aggregation.pipeline(),
             collection: aggregation._model.collection.name,
+            options: { ...(aggregation.options ?? {}), session: undefined },
         },
-        customStringifyReplacer,
     );
 
 export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
