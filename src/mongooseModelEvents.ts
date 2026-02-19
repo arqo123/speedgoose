@@ -24,6 +24,7 @@ const getModelCacheKeysFromContext = (context: MongooseInternalEventContext): st
     const records = isManyDocumentsContext(context) ? context.records : context.record ? [context.record as DocumentWithIdAndTenantValue] : [];
 
     if (records.length === 0) {
+        context?.debug?.(`No records in context for tenant-aware cache clear; falling back to empty-tenant key for model`, context.modelName);
         return [generateCacheKeyForModelName(context.modelName)];
     }
 
@@ -86,18 +87,22 @@ const listenOnInternalEvents = (mongoose: Mongoose, callback: MongooseDocumentEv
             }
 
             const handler = async (context: MongooseInternalEventContext): Promise<void> => {
-                prepareDocumentEventContext(context);
+                try {
+                    prepareDocumentEventContext(context);
 
-                if (event === MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED) {
-                    await callback(context);
-                } else {
-                    const shouldClearInBatch = shouldClearModelCache(context);
-                    if (shouldClearInBatch) {
-                        await clearModelCache(context);
-                        context.modelCacheAlreadyCleared = true;
+                    if (event === MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED) {
+                        await callback(context);
+                    } else {
+                        const shouldClearInBatch = shouldClearModelCache(context);
+                        if (shouldClearInBatch) {
+                            await clearModelCache(context);
+                            context.modelCacheAlreadyCleared = true;
+                        }
+                        const records = (context as MongooseManyObjectOperationEventContext).records;
+                        await Promise.all(records.map(record => callback(prepareContextForSingleRecord(record, context))));
                     }
-                    const records = (context as MongooseManyObjectOperationEventContext).records;
-                    await Promise.all(records.map(record => callback(prepareContextForSingleRecord(record, context))));
+                } catch (err) {
+                    context?.debug?.(`SpeedGoose: error in internal event handler for ${event}`, err);
                 }
             };
             (handler as unknown as Record<symbol, unknown>)[INTERNAL_EVENT_HANDLER_FLAG] = true;
