@@ -29,7 +29,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 120,
-            cacheKey: '{"query":{"tenantId":"tenantTestValue"},"collection":"users","op":"find","projection":{},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{},"query":{"tenantId":"tenantTestValue"}}',
             multitenantValue: 'tenantTestValue',
             debug: expect.any(Function),
         },
@@ -49,7 +49,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{},"collection":"users","op":"find","projection":{},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{},"query":{}}',
             debug: expect.any(Function),
         },
     },
@@ -95,7 +95,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x"},"collection":"users","op":"find","projection":{"projectionField1":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"projectionField1":1},"query":{"field1":"x"}}',
             debug: expect.any(Function),
         },
     },
@@ -117,7 +117,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x"},"collection":"users","op":"find","projection":{"selectedField":1,"selectedSecondField":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"selectedField":1,"selectedSecondField":1},"query":{"field1":"x"}}',
             debug: expect.any(Function),
         },
     },
@@ -139,7 +139,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x"},"collection":"users","op":"find","projection":{"projectedFieldFromOptions":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"projectedFieldFromOptions":1},"query":{"field1":"x"}}',
             debug: expect.any(Function),
         },
     },
@@ -161,7 +161,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x"},"collection":"users","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"}}',
             debug: expect.any(Function),
         },
     },
@@ -184,7 +184,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x"},"collection":"users","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"}}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
@@ -208,7 +208,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x"},"collection":"users","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"}}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
@@ -232,7 +232,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"query":{"field1":"x","some":{"nested":{"object":"regex:/Chapter (\\\\d+)\\\\.\\\\d*/"}}},"collection":"users","op":"find","projection":{"projectionFromOptions":1,"selectedField":1},"options":{}}',
+            cacheKey: '{"collection":"users","mongooseOptions":{},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x","some":{"nested":{"object":"regex:/Chapter (\\\\d+)\\\\.\\\\d*/"}}}}',
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },

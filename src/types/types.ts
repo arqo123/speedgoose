@@ -67,6 +67,8 @@ export type SpeedGooseConfig = {
     enabled?: boolean;
     /** Maximum number of parent records to process in cache invalidation batches */
     cacheParentLimit?: number;
+    /** If enabled, clears model-level cache on update events (not only create/delete). Disabled by default. */
+    clearModelCacheOnUpdate?: boolean;
 };
 
 export type SpeedGooseCacheOperationParams = {
@@ -95,13 +97,16 @@ export type MongooseDocumentEventsContext = {
     wasDeleted?: boolean;
     modelName?: string;
     debug?: CustomDebugger;
+    modelCacheAlreadyCleared?: boolean;
 };
 
 export type MongooseManyObjectOperationEventContext = {
     records: DocumentWithIdAndTenantValue[];
     modelName?: string;
+    wasNew?: boolean;
     wasDeleted?: boolean;
     debug?: CustomDebugger;
+    modelCacheAlreadyCleared?: boolean;
 };
 
 export type MongooseInternalEventContext = MongooseDocumentEventsContext | MongooseManyObjectOperationEventContext;

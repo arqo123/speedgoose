@@ -71,10 +71,7 @@ describe('extendAggregate', () => {
         });
 
         it('should work with $group pipeline', async () => {
-            const pipeline = [
-                { $group: { _id: '$age', count: { $sum: 1 } } },
-                { $sort: { _id: 1 } },
-            ];
+            const pipeline = [{ $group: { _id: '$age', count: { $sum: 1 } } }, { $sort: { _id: 1 } }];
 
             const result = await generateTestAggregateQuery(pipeline).cachePipeline();
             expect(result).toHaveLength(2);
@@ -116,6 +113,26 @@ describe('extendAggregate', () => {
             // Verify it is cached
             const isCachedResult = await generateTestAggregateQuery(pipeline).isCached();
             expect(isCachedResult).toBe(true);
+        });
+
+        it('should bypass cache completely when ttl is set to 0', async () => {
+            const pipeline = [{ $match: { age: 30 } }];
+            const readSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache');
+            const writeSpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
+
+            try {
+                const firstResult = await generateTestAggregateQuery(pipeline).cachePipeline({ ttl: 0 });
+                const secondResult = await generateTestAggregateQuery(pipeline).cachePipeline({ ttl: 0 });
+
+                expect(firstResult).toHaveLength(2);
+                expect(secondResult).toHaveLength(2);
+                expect(readSpy).not.toHaveBeenCalled();
+                expect(writeSpy).not.toHaveBeenCalled();
+                expect(await generateTestAggregateQuery(pipeline).isCached()).toBe(false);
+            } finally {
+                readSpy.mockRestore();
+                writeSpy.mockRestore();
+            }
         });
 
         it('should accept custom cacheKey param', async () => {
@@ -242,6 +259,40 @@ describe('extendAggregate', () => {
             expect(cacheReturn2).toBeTruthy();
 
             cacheSpy.mockRestore();
+        });
+
+        it('should generate different cache entries for same pipeline when aggregate options are different', async () => {
+            const pipeline = [{ $match: { age: { $gte: 60 } } }];
+
+            const firstResult = await UserModel.aggregate(pipeline)
+                .option({ allowDiskUse: true, collation: { locale: 'en' } })
+                .cachePipeline();
+            const secondResult = await UserModel.aggregate(pipeline)
+                .option({ allowDiskUse: false, collation: { locale: 'en' } })
+                .cachePipeline();
+
+            expect(firstResult).toEqual(secondResult);
+
+            const cachedWithDiskUse = await UserModel.aggregate(pipeline)
+                .option({ allowDiskUse: true, collation: { locale: 'en' } })
+                .isCached();
+            const cachedWithoutDiskUse = await UserModel.aggregate(pipeline)
+                .option({ allowDiskUse: false, collation: { locale: 'en' } })
+                .isCached();
+
+            expect(cachedWithDiskUse).toBe(true);
+            expect(cachedWithoutDiskUse).toBe(true);
+        });
+
+        it('should generate the same cache key for semantically identical aggregate options with different order', async () => {
+            const pipeline = [{ $match: { age: { $gte: 60 } } }];
+            const firstAggregation = UserModel.aggregate(pipeline).option({ allowDiskUse: true, collation: { locale: 'en', strength: 2 } });
+            const secondAggregation = UserModel.aggregate(pipeline).option({ collation: { strength: 2, locale: 'en' }, allowDiskUse: true });
+
+            await firstAggregation.cachePipeline();
+
+            const sameKeyCached = await secondAggregation.isCached();
+            expect(sameKeyCached).toBe(true);
         });
     });
 

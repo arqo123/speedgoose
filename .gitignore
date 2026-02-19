@@ -28,3 +28,6 @@ coverage
 
 memory-bank
 .roo
+
+# smoke test app
+smoke-test/

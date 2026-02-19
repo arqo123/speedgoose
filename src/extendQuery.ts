@@ -1,11 +1,5 @@
 import { Mongoose, Query, Document } from 'mongoose';
-import {
-    CachedDocument,
-    CachedResult,
-    SpeedGooseCacheOperationContext,
-    SpeedGooseCacheOperationParams,
-    SpeedGoosePopulateOptions
-} from './types/types';
+import { CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams, SpeedGoosePopulateOptions } from './types/types';
 import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { hydrateResults } from './utils/hydrationUtils';
@@ -18,14 +12,14 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
     mongoose.Query.prototype.cacheQuery = function <T>(params: SpeedGooseCacheOperationParams = {}): Promise<Query<CachedResult<T> | CachedResult<T>[], Document<T>>> {
         return isCachingEnabled() ? execQueryWithCache<T>(this, params) : this.exec();
     };
-    
+
     /**
      * Function to check if given query is cached.
      */
     mongoose.Query.prototype.isCached = function <T>(context: SpeedGooseCacheOperationParams = {}): Promise<boolean> {
         prepareQueryOperationContext(this, context);
 
-        return isCached(context.cacheKey)
+        return isCached(context.cacheKey);
     };
 
     /**
@@ -44,7 +38,10 @@ export const addCachingToQuery = (mongoose: Mongoose): void => {
 
 const normalizePopulateOptions = (options: string | SpeedGoosePopulateOptions | SpeedGoosePopulateOptions[]): SpeedGoosePopulateOptions[] => {
     if (typeof options === 'string') {
-        return options.split(' ').filter(Boolean).map(path => ({ path }));
+        return options
+            .split(' ')
+            .filter(Boolean)
+            .map(path => ({ path }));
     }
 
     return Array.isArray(options) ? options : [options];
@@ -56,6 +53,11 @@ const prepareQueryResults = async <T>(query: Query<T, T>, context: SpeedGooseCac
 
 const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext): Promise<Query<CachedResult<T> | CachedResult<T>[], Document<T>>> => {
     prepareQueryOperationContext(query, context);
+
+    if (context?.ttl !== undefined && context.ttl <= 0) {
+        context?.debug(`Skipping cache read/write because ttl <= 0`, context.cacheKey);
+        return query.exec() as unknown as CachedResult<T> | CachedResult<T>[];
+    }
 
     context?.debug(`Reading cache for key`, context.cacheKey);
     const cachedValue = (await getResultsFromCache(context.cacheKey)) as CachedResult<T>;

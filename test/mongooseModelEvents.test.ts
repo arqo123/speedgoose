@@ -10,10 +10,12 @@ import { TEST_MODEL_NAME } from './constants';
 
 const mockedClearCacheForRecordId = jest.spyOn(cacheClientUtils, 'clearCacheForRecordId');
 const mockedGetCacheStrategyInstance = jest.spyOn(commonUtils, 'getCacheStrategyInstance');
+const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig');
 const mockedGetDebugger = jest.spyOn(debugUtils, 'getDebugger');
 
 beforeEach(() => {
     jest.clearAllMocks();
+    mockedGetConfig.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -23,6 +25,7 @@ afterEach(() => {
 describe('registerListenerForInternalEvents', () => {
     it('should register listeners on all models for both event types', () => {
         const testModel = getMongooseTestModel();
+        clearTestEventListeners();
         const onSpy = jest.spyOn(testModel, 'on');
 
         registerListenerForInternalEvents(mongoose);
@@ -30,7 +33,20 @@ describe('registerListenerForInternalEvents', () => {
         const registeredEvents = onSpy.mock.calls.map(call => call[0]);
         expect(registeredEvents).toContain(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED);
         expect(registeredEvents).toContain(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED);
+        expect(onSpy).toHaveBeenCalledTimes(2);
 
+        onSpy.mockRestore();
+    });
+
+    it('should not register duplicate listeners when called multiple times', () => {
+        const testModel = getMongooseTestModel();
+        clearTestEventListeners();
+        const onSpy = jest.spyOn(testModel, 'on');
+
+        registerListenerForInternalEvents(mongoose);
+        registerListenerForInternalEvents(mongoose);
+
+        expect(onSpy).toHaveBeenCalledTimes(2);
         onSpy.mockRestore();
     });
 
@@ -143,6 +159,55 @@ describe('SINGLE_DOCUMENT_CHANGED event', () => {
         // (it may be called inside clearCacheForRecordId, but we mocked that)
         expect(clearResultsCacheWithSetSpy).not.toHaveBeenCalled();
     });
+
+    it('should clear model cache for updates when clearModelCacheOnUpdate=true', async () => {
+        const testModel = getMongooseTestModel();
+        const recordId = new ObjectId().toString();
+        mockedGetConfig.mockReturnValue({ clearModelCacheOnUpdate: true } as any);
+
+        const clearResultsCacheWithSetSpy = jest.fn().mockResolvedValue(undefined);
+        mockedGetCacheStrategyInstance.mockReturnValue({
+            clearResultsCacheWithSet: clearResultsCacheWithSetSpy,
+        } as any);
+
+        mockedClearCacheForRecordId.mockResolvedValue(undefined);
+
+        testModel.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, {
+            record: { _id: recordId },
+            modelName: TEST_MODEL_NAME,
+            wasNew: false,
+            wasDeleted: false,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(mockedClearCacheForRecordId).toHaveBeenCalledWith(recordId);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_`);
+    });
+
+    it('should clear tenant-specific model cache when multitenancy is enabled', async () => {
+        const testModel = getMongooseTestModel();
+        const recordId = new ObjectId().toString();
+        mockedGetConfig.mockReturnValue({ multitenancyConfig: { multitenantKey: 'tenantId' } } as any);
+
+        const clearResultsCacheWithSetSpy = jest.fn().mockResolvedValue(undefined);
+        mockedGetCacheStrategyInstance.mockReturnValue({
+            clearResultsCacheWithSet: clearResultsCacheWithSetSpy,
+        } as any);
+
+        mockedClearCacheForRecordId.mockResolvedValue(undefined);
+
+        testModel.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, {
+            record: { _id: recordId, tenantId: 'tenant-a' },
+            modelName: TEST_MODEL_NAME,
+            wasNew: false,
+            wasDeleted: true,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_tenant-a`);
+    });
 });
 
 describe('MANY_DOCUMENTS_CHANGED event', () => {
@@ -194,8 +259,72 @@ describe('MANY_DOCUMENTS_CHANGED event', () => {
         await new Promise(resolve => setTimeout(resolve, 50));
 
         expect(mockedClearCacheForRecordId).toHaveBeenCalledTimes(2);
-        // Model cache should be cleared for each record since wasDeleted is true
+        // Model cache should be cleared once for the whole batch
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledTimes(1);
         expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_`);
+    });
+
+    it('should clear model cache once for update-many when clearModelCacheOnUpdate=true', async () => {
+        const testModel = getMongooseTestModel();
+        const recordId1 = new ObjectId().toString();
+        const recordId2 = new ObjectId().toString();
+        mockedGetConfig.mockReturnValue({ clearModelCacheOnUpdate: true } as any);
+
+        const clearResultsCacheWithSetSpy = jest.fn().mockResolvedValue(undefined);
+        mockedGetCacheStrategyInstance.mockReturnValue({
+            clearResultsCacheWithSet: clearResultsCacheWithSetSpy,
+        } as any);
+
+        mockedClearCacheForRecordId.mockResolvedValue(undefined);
+
+        testModel.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, {
+            records: [{ _id: recordId1 }, { _id: recordId2 }],
+            modelName: TEST_MODEL_NAME,
+            wasDeleted: false,
+            wasNew: false,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(mockedClearCacheForRecordId).toHaveBeenCalledTimes(2);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledTimes(1);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_`);
+    });
+
+    it('should clear model cache per tenant once for update-many with multitenancy', async () => {
+        const testModel = getMongooseTestModel();
+        const recordId1 = new ObjectId().toString();
+        const recordId2 = new ObjectId().toString();
+        const recordId3 = new ObjectId().toString();
+        mockedGetConfig.mockReturnValue({
+            clearModelCacheOnUpdate: true,
+            multitenancyConfig: { multitenantKey: 'tenantId' },
+        } as any);
+
+        const clearResultsCacheWithSetSpy = jest.fn().mockResolvedValue(undefined);
+        mockedGetCacheStrategyInstance.mockReturnValue({
+            clearResultsCacheWithSet: clearResultsCacheWithSetSpy,
+        } as any);
+
+        mockedClearCacheForRecordId.mockResolvedValue(undefined);
+
+        testModel.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, {
+            records: [
+                { _id: recordId1, tenantId: 'tenant-a' },
+                { _id: recordId2, tenantId: 'tenant-b' },
+                { _id: recordId3, tenantId: 'tenant-a' },
+            ],
+            modelName: TEST_MODEL_NAME,
+            wasDeleted: false,
+            wasNew: false,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(mockedClearCacheForRecordId).toHaveBeenCalledTimes(3);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledTimes(2);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_tenant-a`);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_tenant-b`);
     });
 
     it('should process all records in parallel', async () => {
