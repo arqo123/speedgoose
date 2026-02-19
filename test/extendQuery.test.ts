@@ -110,17 +110,19 @@ describe('extendQuery', () => {
                 const readSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache');
                 const writeSpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
 
-                const firstResult = await UserModel.findOne({ _id: user._id }).cacheQuery({ ttl: 0 });
-                const secondResult = await UserModel.findOne({ _id: user._id }).cacheQuery({ ttl: 0 });
+                try {
+                    const firstResult = await UserModel.findOne({ _id: user._id }).cacheQuery({ ttl: 0 });
+                    const secondResult = await UserModel.findOne({ _id: user._id }).cacheQuery({ ttl: 0 });
 
-                expect(firstResult).toBeDefined();
-                expect(secondResult).toBeDefined();
-                expect(readSpy).not.toHaveBeenCalled();
-                expect(writeSpy).not.toHaveBeenCalled();
-                expect(await UserModel.findOne({ _id: user._id }).isCached()).toBe(false);
-
-                readSpy.mockRestore();
-                writeSpy.mockRestore();
+                    expect(firstResult).toBeDefined();
+                    expect(secondResult).toBeDefined();
+                    expect(readSpy).not.toHaveBeenCalled();
+                    expect(writeSpy).not.toHaveBeenCalled();
+                    expect(await UserModel.findOne({ _id: user._id }).isCached()).toBe(false);
+                } finally {
+                    readSpy.mockRestore();
+                    writeSpy.mockRestore();
+                }
             });
 
             it('should accept custom cacheKey param', async () => {
@@ -183,10 +185,7 @@ describe('extendQuery', () => {
 
         it('should normalize a space-separated string to multiple populate options', () => {
             const query = UserModel.findOne({}).cachePopulate('field1 field2');
-            expect(query._mongooseOptions.speedGoosePopulate).toEqual([
-                { path: 'field1' },
-                { path: 'field2' },
-            ]);
+            expect(query._mongooseOptions.speedGoosePopulate).toEqual([{ path: 'field1' }, { path: 'field2' }]);
         });
 
         it('should wrap a single object in an array', () => {
@@ -213,14 +212,9 @@ describe('extendQuery', () => {
         });
 
         it('should accumulate options across multiple cachePopulate() calls', () => {
-            const query = UserModel.findOne({})
-                .cachePopulate('field1')
-                .cachePopulate('field2');
+            const query = UserModel.findOne({}).cachePopulate('field1').cachePopulate('field2');
 
-            expect(query._mongooseOptions.speedGoosePopulate).toEqual([
-                { path: 'field1' },
-                { path: 'field2' },
-            ]);
+            expect(query._mongooseOptions.speedGoosePopulate).toEqual([{ path: 'field1' }, { path: 'field2' }]);
         });
 
         it('should handle empty string by producing empty array', () => {

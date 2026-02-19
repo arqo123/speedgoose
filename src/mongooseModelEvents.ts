@@ -67,7 +67,7 @@ const prepareDocumentEventContext = (context: MongooseDocumentEventsContext): vo
     context.debug = getDebugger(context.modelName, SpeedGooseDebuggerOperations.EVENTS);
 };
 
-const prepareContextForSingleRecord = (record: DocumentWithIdAndTenantValue, context: MongooseInternalEventContext): MongooseInternalEventContext => {
+const prepareContextForSingleRecord = (record: DocumentWithIdAndTenantValue, context: MongooseInternalEventContext): MongooseDocumentEventsContext => {
     return {
         record: record,
         modelName: context.modelName,

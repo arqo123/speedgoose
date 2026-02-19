@@ -71,10 +71,7 @@ describe('extendAggregate', () => {
         });
 
         it('should work with $group pipeline', async () => {
-            const pipeline = [
-                { $group: { _id: '$age', count: { $sum: 1 } } },
-                { $sort: { _id: 1 } },
-            ];
+            const pipeline = [{ $group: { _id: '$age', count: { $sum: 1 } } }, { $sort: { _id: 1 } }];
 
             const result = await generateTestAggregateQuery(pipeline).cachePipeline();
             expect(result).toHaveLength(2);
@@ -123,17 +120,19 @@ describe('extendAggregate', () => {
             const readSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache');
             const writeSpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
 
-            const firstResult = await generateTestAggregateQuery(pipeline).cachePipeline({ ttl: 0 });
-            const secondResult = await generateTestAggregateQuery(pipeline).cachePipeline({ ttl: 0 });
+            try {
+                const firstResult = await generateTestAggregateQuery(pipeline).cachePipeline({ ttl: 0 });
+                const secondResult = await generateTestAggregateQuery(pipeline).cachePipeline({ ttl: 0 });
 
-            expect(firstResult).toHaveLength(2);
-            expect(secondResult).toHaveLength(2);
-            expect(readSpy).not.toHaveBeenCalled();
-            expect(writeSpy).not.toHaveBeenCalled();
-            expect(await generateTestAggregateQuery(pipeline).isCached()).toBe(false);
-
-            readSpy.mockRestore();
-            writeSpy.mockRestore();
+                expect(firstResult).toHaveLength(2);
+                expect(secondResult).toHaveLength(2);
+                expect(readSpy).not.toHaveBeenCalled();
+                expect(writeSpy).not.toHaveBeenCalled();
+                expect(await generateTestAggregateQuery(pipeline).isCached()).toBe(false);
+            } finally {
+                readSpy.mockRestore();
+                writeSpy.mockRestore();
+            }
         });
 
         it('should accept custom cacheKey param', async () => {
