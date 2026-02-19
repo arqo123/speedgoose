@@ -265,6 +265,7 @@ applySpeedGooseCacheLayer(mongoose, {
         debugModels?: string[],
         /** An array of operations to debug, if not set then the debugger will log all operations */
         debugOperations?: SpeedGooseDebuggerOperations[],
+    },
     /** Cache strategy for shared results, by default it is SharedCacheStrategies.REDIS
      * Available strategies: SharedCacheStrategies.REDIS and SharedCacheStrategies.IN_MEMORY */
     sharedCacheStrategy?: SharedCacheStrategies,

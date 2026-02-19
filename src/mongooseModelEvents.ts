@@ -21,21 +21,21 @@ const getModelCacheKeysFromContext = (context: MongooseInternalEventContext): st
         return [generateCacheKeyForModelName(context.modelName)];
     }
 
-    const records = isManyDocumentsContext(context)
-        ? context.records
-        : context.record
-            ? [context.record as DocumentWithIdAndTenantValue]
-            : [];
+    const records = isManyDocumentsContext(context) ? context.records : context.record ? [context.record as DocumentWithIdAndTenantValue] : [];
 
     if (records.length === 0) {
         return [generateCacheKeyForModelName(context.modelName)];
     }
 
-    const tenantValues = Array.from(new Set(records.map(record => {
-        const value = (record as Record<string, unknown>)?.[multitenantKey];
-        // Missing tenant field is treated the same as empty-tenant scope.
-        return value == null ? '' : String(value);
-    })));
+    const tenantValues = Array.from(
+        new Set(
+            records.map(record => {
+                const value = (record as Record<string, unknown>)?.[multitenantKey];
+                // Missing tenant field is treated the same as empty-tenant scope.
+                return value == null ? '' : String(value);
+            }),
+        ),
+    );
 
     return tenantValues.map(tenantValue => generateCacheKeyForModelName(context.modelName, tenantValue));
 };
@@ -80,9 +80,7 @@ const prepareContextForSingleRecord = (record: DocumentWithIdAndTenantValue, con
 const listenOnInternalEvents = (mongoose: Mongoose, callback: MongooseDocumentEventCallback): void => {
     [MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED].forEach(event => {
         Object.values(mongoose?.models ?? {}).forEach(model => {
-            const hasRegisteredInternalHandler = model.listeners(event).some(
-                listener => Boolean((listener as Record<symbol, unknown>)[INTERNAL_EVENT_HANDLER_FLAG]),
-            );
+            const hasRegisteredInternalHandler = model.listeners(event).some(listener => Boolean((listener as unknown as Record<symbol, unknown>)[INTERNAL_EVENT_HANDLER_FLAG]));
             if (hasRegisteredInternalHandler) {
                 return;
             }
@@ -102,7 +100,7 @@ const listenOnInternalEvents = (mongoose: Mongoose, callback: MongooseDocumentEv
                     await Promise.all(records.map(record => callback(prepareContextForSingleRecord(record, context))));
                 }
             };
-            (handler as Record<symbol, unknown>)[INTERNAL_EVENT_HANDLER_FLAG] = true;
+            (handler as unknown as Record<symbol, unknown>)[INTERNAL_EVENT_HANDLER_FLAG] = true;
             model.on(event, handler);
         });
     });
