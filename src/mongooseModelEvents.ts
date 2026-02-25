@@ -59,10 +59,11 @@ const shouldClearModelCache = (context: MongooseInternalEventContext): boolean =
 };
 
 const clearCacheForRecordCallback = async (context: MongooseDocumentEventsContext): Promise<void> => {
-    await clearCacheForRecordId(context.record._id);
+    const promises: Promise<void>[] = [clearCacheForRecordId(context.record._id)];
     if (shouldClearModelCache(context) && !context.modelCacheAlreadyCleared) {
-        await clearModelCache(context);
+        promises.push(clearModelCache(context));
     }
+    await Promise.all(promises);
 };
 
 const prepareDocumentEventContext = (context: MongooseDocumentEventsContext): void => {
@@ -104,7 +105,11 @@ const listenOnInternalEvents = (mongoose: Mongoose, callback: MongooseDocumentEv
                         await Promise.all(records.map(record => callback(prepareContextForSingleRecord(record, context))));
                     }
                 } catch (err) {
-                    context?.debug?.(`SpeedGoose: error in internal event handler for ${event}`, err);
+                    if (context?.debug) {
+                        context.debug(`SpeedGoose: error in internal event handler for ${event}`, err);
+                    } else {
+                        console.error(`SpeedGoose: error in internal event handler for ${event}`, err);
+                    }
                 }
             };
             (handler as unknown as Record<symbol, unknown>)[INTERNAL_EVENT_HANDLER_FLAG] = true;

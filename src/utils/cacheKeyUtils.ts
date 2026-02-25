@@ -112,10 +112,10 @@ export const generateCacheKeyFromQuery = <T>(query: Query<T, T>): string =>
         },
         options: { ...query.getOptions(), projection: undefined, session: undefined },
         mongooseOptions: {
-            lean: query?._mongooseOptions?.lean,
-            populate: normalizePopulateValue(query?._mongooseOptions?.populate),
+            lean: query?._mongooseOptions?.lean ?? null,
+            populate: normalizePopulateValue(query?._mongooseOptions?.populate) ?? null,
         },
-        speedGoosePopulate: normalizePopulateValue(query?._mongooseOptions?.speedGoosePopulate),
+        speedGoosePopulate: normalizePopulateValue(query?._mongooseOptions?.speedGoosePopulate) ?? null,
     });
 
 export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): string =>
