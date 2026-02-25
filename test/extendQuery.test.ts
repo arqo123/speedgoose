@@ -3,6 +3,7 @@ import { applySpeedGooseCacheLayer } from '../src/wrapper';
 import { UserModel, setupTestDB, clearTestCache } from './testUtils';
 import * as commonUtils from '../src/utils/commonUtils';
 import * as cacheClientUtils from '../src/utils/cacheClientUtils';
+import { clearInflightRequests } from '../src/utils/singleflightUtils';
 
 describe('extendQuery', () => {
     beforeAll(async () => {
@@ -220,6 +221,89 @@ describe('extendQuery', () => {
         it('should handle empty string by producing empty array', () => {
             const query = UserModel.findOne({}).cachePopulate('');
             expect(query._mongooseOptions.speedGoosePopulate).toEqual([]);
+        });
+    });
+
+    describe('singleflight (request coalescing)', () => {
+        afterEach(() => {
+            clearInflightRequests();
+        });
+
+        it('should coalesce concurrent cache misses into a single DB write for the same query', async () => {
+            const user = await UserModel.create({ name: 'SFUser', email: 'sf@test.com' });
+            const setKeySpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
+
+            try {
+                const results = await Promise.all(Array.from({ length: 5 }, () => UserModel.findOne({ _id: user._id }).cacheQuery()));
+
+                for (const result of results) {
+                    expect(result).toBeDefined();
+                    expect(result!.name).toBe('SFUser');
+                }
+
+                expect(setKeySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                setKeySpy.mockRestore();
+            }
+        });
+
+        it('should not coalesce concurrent calls with different cache keys', async () => {
+            await UserModel.create([
+                { name: 'SFUser1', email: 'sf1@test.com' },
+                { name: 'SFUser2', email: 'sf2@test.com' },
+            ]);
+            const setKeySpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
+
+            try {
+                const results = await Promise.all([UserModel.findOne({ name: 'SFUser1' }).cacheQuery(), UserModel.findOne({ name: 'SFUser2' }).cacheQuery()]);
+
+                expect(results[0]!.name).toBe('SFUser1');
+                expect(results[1]!.name).toBe('SFUser2');
+                expect(setKeySpy).toHaveBeenCalledTimes(2);
+            } finally {
+                setKeySpy.mockRestore();
+            }
+        });
+
+        it('should propagate DB errors to all concurrent callers', async () => {
+            const getResultsSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache').mockResolvedValue(null);
+            const execSpy = jest.spyOn(mongoose.Query.prototype, 'exec').mockRejectedValue(new Error('DB down'));
+
+            try {
+                const results = await Promise.allSettled(Array.from({ length: 3 }, () => UserModel.findOne({ name: 'nonexistent' }).cacheQuery()));
+
+                for (const result of results) {
+                    expect(result.status).toBe('rejected');
+                    if (result.status === 'rejected') {
+                        expect(result.reason.message).toBe('DB down');
+                    }
+                }
+            } finally {
+                getResultsSpy.mockRestore();
+                execSpy.mockRestore();
+            }
+        });
+
+        it('should allow new requests after a singleflight completes', async () => {
+            const user = await UserModel.create({ name: 'SFRetry', email: 'sfretry@test.com' });
+            const getResultsSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache').mockResolvedValue(null);
+            const setKeySpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches').mockResolvedValue(undefined);
+
+            try {
+                // First batch of concurrent requests
+                await Promise.all(Array.from({ length: 3 }, () => UserModel.findOne({ _id: user._id }).cacheQuery()));
+
+                expect(setKeySpy).toHaveBeenCalledTimes(1);
+                setKeySpy.mockClear();
+
+                // Second batch — singleflight entry should be gone, so a new DB call happens
+                await Promise.all(Array.from({ length: 3 }, () => UserModel.findOne({ _id: user._id }).cacheQuery()));
+
+                expect(setKeySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                getResultsSpy.mockRestore();
+                setKeySpy.mockRestore();
+            }
         });
     });
 

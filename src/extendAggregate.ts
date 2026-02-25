@@ -3,6 +3,7 @@ import { AggregationResult, CachedResult, SpeedGooseCacheOperationContext, Speed
 import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { prepareAggregateOperationParams } from './utils/queryUtils';
+import { singleflight } from './utils/singleflightUtils';
 
 export const addCachingToAggregate = (mongoose: Mongoose): void => {
     /**
@@ -41,11 +42,11 @@ const execAggregationWithCache = async <R extends unknown[] = unknown[]>(aggrega
     }
 
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
-    const result = await aggregation.exec();
-
-    if (result !== undefined) {
-        await setKeyInResultsCaches(context, result as CachedResult, aggregation._model);
-
+    return singleflight(context.cacheKey, async () => {
+        const result = await aggregation.exec();
+        if (result !== undefined) {
+            await setKeyInResultsCaches(context, result as CachedResult, aggregation._model);
+        }
         return result;
-    }
+    });
 };

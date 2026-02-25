@@ -4,6 +4,7 @@ import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsC
 import { isCachingEnabled } from './utils/commonUtils';
 import { hydrateResults } from './utils/hydrationUtils';
 import { prepareQueryOperationContext, shouldHydrateResult } from './utils/queryUtils';
+import { singleflight } from './utils/singleflightUtils';
 
 export const addCachingToQuery = (mongoose: Mongoose): void => {
     /**
@@ -69,10 +70,15 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
     }
 
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
-    const result = (await query.exec()) as CachedResult<T>;
+    const result = await singleflight(context.cacheKey, async () => {
+        const dbResult = (await query.exec()) as CachedResult<T>;
+        if (dbResult !== undefined) {
+            await setKeyInResultsCaches(context, dbResult, query.model);
+        }
+        return dbResult;
+    });
 
     if (result !== undefined) {
-        await setKeyInResultsCaches(context, result, query.model);
         return prepareQueryResults(query, context, result);
     }
 };
