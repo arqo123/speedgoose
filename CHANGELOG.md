@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/arqo123/speedgoose/compare/v2.4.1...v2.5.0) (2026-02-25)
+
+
+### Features
+
+* cache improvements - ttl bypass, stable keys, tenant-aware invalidation, dedup handlers ([#161](https://github.com/arqo123/speedgoose/issues/161)) ([cae0ab3](https://github.com/arqo123/speedgoose/commit/cae0ab3a513e48e9cf05d3b705ec6ea925a475f0))
+
 ## [2.4.1](https://github.com/arqo123/speedgoose/compare/v2.4.0...v2.4.1) (2026-02-12)
 
 
