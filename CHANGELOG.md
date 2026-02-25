@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/arqo123/speedgoose/compare/v2.5.0...v2.5.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* parallel cache clearing, error handler fallback, stable cache keys ([b6e8c5e](https://github.com/arqo123/speedgoose/commit/b6e8c5e4ec25dea64d75928b69d96faa0d41a2ff))
+
 # [2.5.0](https://github.com/arqo123/speedgoose/compare/v2.4.1...v2.5.0) (2026-02-25)
 
 
