@@ -25,6 +25,11 @@ export const addCachingToAggregate = (mongoose: Mongoose): void => {
 const execAggregationWithCache = async <R extends unknown[] = unknown[]>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): Promise<R> => {
     prepareAggregateOperationParams(aggregation, context);
 
+    if (context?.ttl !== undefined && context.ttl <= 0) {
+        context?.debug(`Skipping cache read/write because ttl <= 0`, context.cacheKey);
+        return aggregation.exec();
+    }
+
     context?.debug(`Reading cache for key`, context.cacheKey);
     const cachedValue = (await getResultsFromCache(context.cacheKey)) as AggregationResult;
 

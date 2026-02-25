@@ -31,6 +31,7 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
     config.enabled = config.enabled ?? true;
     config.multitenancyConfig = config.multitenancyConfig ?? { multitenantKey: undefined };
     config.cacheParentLimit = config.cacheParentLimit ?? 100;
+    config.clearModelCacheOnUpdate = config.clearModelCacheOnUpdate ?? false;
 };
 
 const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {

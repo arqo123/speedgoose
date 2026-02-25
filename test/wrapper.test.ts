@@ -35,6 +35,7 @@ describe(`applySpeedGooseCacheLayer`, () => {
         expect(config.redisUri).toEqual('redis://localhost:6379');
         expect(config.defaultTtl).toEqual(60);
         expect(config.sharedCacheStrategy).toBe(SharedCacheStrategies.IN_MEMORY);
+        expect(config.clearModelCacheOnUpdate).toBe(false);
     });
 
     it(`should register new service in DiContainer with access to mongoose instance`, async () => {

@@ -88,6 +88,12 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
 };
 
 export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperationContext, result: CachedResult<T>, model: Model<T>): Promise<void> => {
+    // Defensive guard: cache writes are also bypassed earlier in query/aggregate execution paths for ttl <= 0.
+    if (context?.ttl !== undefined && context.ttl <= 0) {
+        context?.debug?.(`Skipping cache write because ttl <= 0`, context.cacheKey);
+        return;
+    }
+
     context?.debug(`Setting key in cache`, context.cacheKey);
     await setKeyInResultsCache(result, context);
     await setKeyInModelCache(model, context);
