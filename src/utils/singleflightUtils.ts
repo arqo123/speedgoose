@@ -1,4 +1,6 @@
-const inflightRequests = new Map<string, Promise<unknown>>();
+// Callers must ensure the same key is always used with the same result type T.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const inflightRequests = new Map<string, Promise<any>>();
 
 /**
  * Ensures only one execution of `fn` per unique `key` at any given time.
@@ -11,7 +13,7 @@ const inflightRequests = new Map<string, Promise<unknown>>();
 export const singleflight = <T>(key: string, fn: () => Promise<T>): Promise<T> => {
     const existing = inflightRequests.get(key);
     if (existing) {
-        return existing as Promise<T>;
+        return existing;
     }
 
     const promise = fn().finally(() => {
