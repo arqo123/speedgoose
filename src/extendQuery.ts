@@ -78,7 +78,5 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
         return dbResult;
     });
 
-    if (result !== undefined) {
-        return prepareQueryResults(query, context, result);
-    }
+    return result !== undefined ? prepareQueryResults(query, context, result) : undefined;
 };

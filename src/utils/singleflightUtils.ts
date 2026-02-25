@@ -22,8 +22,10 @@ export const singleflight = <T>(key: string, fn: () => Promise<T>): Promise<T> =
     return promise;
 };
 
+/** @internal — test only */
 export const getInflightCount = (): number => inflightRequests.size;
 
+/** @internal — test only */
 export const clearInflightRequests = (): void => {
     inflightRequests.clear();
 };
