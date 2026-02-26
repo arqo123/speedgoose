@@ -482,7 +482,81 @@ describe('Performance Benchmarks', () => {
         expect(stats.avg_ms).toBeGreaterThan(0);
     }, 60000);
 
-    // ─── Benchmark 8: Cache invalidation overhead ──────────────────────────
+    // ─── Benchmark 8: Bulk updateMany with shared parents (dedup target) ──
+
+    it('bulk updateMany with shared parents (dedup target)', async () => {
+        const iterations = 10;
+        const POSTS_PER_BATCH = 20;
+        const SHARED_AUTHORS = 3; // 20 posts sharing only 3 authors → heavy dedup
+
+        // Warmup
+        for (let i = 0; i < 2; i++) {
+            const authors = [];
+            for (let a = 0; a < SHARED_AUTHORS; a++) {
+                authors.push(await BenchUser.create({ name: `DedupWarmAuthor_${i}_${a}`, email: `dwa${i}_${a}@bench.test`, age: 30 }));
+            }
+            const posts = [];
+            for (let p = 0; p < POSTS_PER_BATCH; p++) {
+                posts.push({
+                    title: `DedupWarmPost_${i}_${p}`,
+                    content: 'warmup',
+                    author: authors[p % SHARED_AUTHORS]._id,
+                    reviewer: authors[(p + 1) % SHARED_AUTHORS]._id,
+                    tags: ['warmup'],
+                });
+            }
+            const insertedPosts = await BenchPost.insertMany(posts);
+            // Cache populate queries so parent relationships are tracked
+            for (const post of insertedPosts) {
+                await (BenchPost.findOne({ _id: post._id }) as any).cachePopulate('author reviewer').cacheQuery();
+            }
+            await BenchPost.updateMany({ _id: { $in: insertedPosts.map(p => p._id) } }, { content: 'warmed up' });
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        const timings: bigint[] = [];
+        for (let i = 0; i < iterations; i++) {
+            // Create shared authors
+            const authors = [];
+            for (let a = 0; a < SHARED_AUTHORS; a++) {
+                authors.push(await BenchUser.create({ name: `DedupAuthor_${i}_${a}`, email: `da${i}_${a}@bench.test`, age: 30 }));
+            }
+
+            // Create posts that share the same few authors
+            const posts = [];
+            for (let p = 0; p < POSTS_PER_BATCH; p++) {
+                posts.push({
+                    title: `DedupPost_${i}_${p}`,
+                    content: `content ${p}`,
+                    author: authors[p % SHARED_AUTHORS]._id,
+                    reviewer: authors[(p + 1) % SHARED_AUTHORS]._id,
+                    tags: ['dedup-test'],
+                });
+            }
+            const insertedPosts = await BenchPost.insertMany(posts);
+
+            // Cache populate queries to establish parent-child relationships
+            for (const post of insertedPosts) {
+                await (BenchPost.findOne({ _id: post._id }) as any).cachePopulate('author reviewer').cacheQuery();
+            }
+
+            const start = process.hrtime.bigint();
+
+            // Bulk update triggers clearParentCacheBulk with shared parents
+            await BenchPost.updateMany({ _id: { $in: insertedPosts.map(p => p._id) } }, { content: 'updated' });
+
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            timings.push(process.hrtime.bigint() - start);
+        }
+
+        const stats = computeStats(timings);
+        printSingleBenchmark(`bulk updateMany shared parents (${POSTS_PER_BATCH} posts, ${SHARED_AUTHORS} authors)`, stats);
+
+        expect(stats.avg_ms).toBeGreaterThan(0);
+    }, 60000);
+
+    // ─── Benchmark 9: Cache invalidation overhead ──────────────────────────
 
     it('cache invalidation overhead', async () => {
         const iterations = 30;

@@ -82,8 +82,7 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
 
     const hydratedDocumentVariations = await getHydrationVariationsCache().get(recordId);
     if (hydratedDocumentVariations?.size > 0) {
-        await clearKeysInCache(Array.from(hydratedDocumentVariations), getHydrationCache());
-        await getHydrationVariationsCache().delete(recordId);
+        await Promise.all([clearKeysInCache(Array.from(hydratedDocumentVariations), getHydrationCache()), getHydrationVariationsCache().delete(recordId)]);
     }
 };
 
@@ -128,6 +127,51 @@ export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationConte
             scheduleTTlRefreshing(context, cachedValue);
         }, 0);
     }
+};
+
+export const clearParentCacheBulk = async (modelName: string, docIds: (string | ObjectId)[]): Promise<void> => {
+    if (docIds.length === 0) return;
+
+    const cacheStrategy = getCacheStrategyInstance();
+    const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
+    const CACHE_PARENT_LIMIT = Math.max(1, Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100);
+
+    const childIdentifiers = docIds.map(docId => `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${docId}`);
+
+    // Fetch all parent sets in parallel
+    const parentSets = await Promise.all(childIdentifiers.map(id => cacheStrategy.getParentsOfChild(id)));
+
+    // Collect unique parent record IDs across all children
+    const uniqueParentRecordIds = new Set<string>();
+    for (const parentIdentifiers of parentSets) {
+        for (const parentIdWithModel of parentIdentifiers) {
+            const id = parentIdWithModel.split(':').pop();
+            if (id) uniqueParentRecordIds.add(id);
+            if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
+        }
+        if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
+    }
+
+    // Invalidate unique parents in batches
+    if (uniqueParentRecordIds.size > 0) {
+        logCacheClear(`Bulk invalidating ${uniqueParentRecordIds.size} unique parents for ${docIds.length} children`, modelName);
+
+        const BATCH_SIZE = 25;
+        const uniqueIds = Array.from(uniqueParentRecordIds);
+        const batchCount = Math.ceil(uniqueIds.length / BATCH_SIZE);
+
+        for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+            const batch = uniqueIds.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
+            await Promise.all(batch.map(id => clearCacheForRecordId(id)));
+
+            if (batchIndex < batchCount - 1) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+        }
+    }
+
+    // Clean up all child relationships in parallel
+    await Promise.all(childIdentifiers.map(id => cacheStrategy.removeChildRelationships(id)));
 };
 
 export const clearParentCache = async (modelName: string, docId: string | ObjectId): Promise<void> => {
