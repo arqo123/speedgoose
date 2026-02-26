@@ -36,8 +36,8 @@ const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOpe
 const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)];
 
-    if (resultsIds) {
-        getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey);
+    if (resultsIds.length > 0) {
+        await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey);
     }
 };
 
@@ -152,26 +152,28 @@ export const clearParentCacheBulk = async (modelName: string, docIds: (string | 
         if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
     }
 
-    // Invalidate unique parents in batches
-    if (uniqueParentRecordIds.size > 0) {
-        logCacheClear(`Bulk invalidating ${uniqueParentRecordIds.size} unique parents for ${docIds.length} children`, modelName);
+    try {
+        // Invalidate unique parents in batches
+        if (uniqueParentRecordIds.size > 0) {
+            logCacheClear(`Bulk invalidating ${uniqueParentRecordIds.size} unique parents for ${docIds.length} children`, modelName);
 
-        const BATCH_SIZE = 25;
-        const uniqueIds = Array.from(uniqueParentRecordIds);
-        const batchCount = Math.ceil(uniqueIds.length / BATCH_SIZE);
+            const BATCH_SIZE = 25;
+            const uniqueIds = Array.from(uniqueParentRecordIds);
+            const batchCount = Math.ceil(uniqueIds.length / BATCH_SIZE);
 
-        for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
-            const batch = uniqueIds.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
-            await Promise.all(batch.map(id => clearCacheForRecordId(id)));
+            for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+                const batch = uniqueIds.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
+                await Promise.all(batch.map(id => clearCacheForRecordId(id)));
 
-            if (batchIndex < batchCount - 1) {
-                await new Promise(resolve => setTimeout(resolve, 10));
+                if (batchIndex < batchCount - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
             }
         }
+    } finally {
+        // Always clean up child relationships, even if invalidation fails
+        await Promise.all(childIdentifiers.map(id => cacheStrategy.removeChildRelationships(id)));
     }
-
-    // Clean up all child relationships in parallel
-    await Promise.all(childIdentifiers.map(id => cacheStrategy.removeChildRelationships(id)));
 };
 
 export const clearParentCache = async (modelName: string, docId: string | ObjectId): Promise<void> => {
@@ -183,35 +185,38 @@ export const clearParentCache = async (modelName: string, docId: string | Object
     const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
     const CACHE_PARENT_LIMIT = Math.max(1, Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100);
 
-    if (parentIdentifiers.length > 0) {
-        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
+    try {
+        if (parentIdentifiers.length > 0) {
+            logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
 
-        // Process in batches with delay up to CACHE_PARENT_LIMIT
-        const BATCH_SIZE = 25;
+            // Process in batches with delay up to CACHE_PARENT_LIMIT
+            const BATCH_SIZE = 25;
 
-        // Process batches with proper limit enforcement
-        const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
+            // Process batches with proper limit enforcement
+            const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
 
-        for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
-            const batchStart = batchIndex * BATCH_SIZE;
-            const batchEnd = Math.min(batchStart + BATCH_SIZE, CACHE_PARENT_LIMIT);
-            const batch = parentIdentifiers.slice(batchStart, batchEnd);
+            for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+                const batchStart = batchIndex * BATCH_SIZE;
+                const batchEnd = Math.min(batchStart + BATCH_SIZE, CACHE_PARENT_LIMIT);
+                const batch = parentIdentifiers.slice(batchStart, batchEnd);
 
-            await Promise.all(
-                batch.map(async parentIdWithModel => {
-                    const id = parentIdWithModel.split(':').pop();
-                    if (id) {
-                        await clearCacheForRecordId(id);
-                    }
-                }),
-            );
+                await Promise.all(
+                    batch.map(async parentIdWithModel => {
+                        const id = parentIdWithModel.split(':').pop();
+                        if (id) {
+                            await clearCacheForRecordId(id);
+                        }
+                    }),
+                );
 
-            // Add delay between batches except last
-            if (batchIndex < batchCount - 1) {
-                await new Promise(resolve => setTimeout(resolve, 10));
+                // Add delay between batches except last
+                if (batchIndex < batchCount - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
             }
         }
+    } finally {
+        // Always clean up child relationships, even if invalidation fails
+        await cacheStrategy.removeChildRelationships(childIdentifier);
     }
-
-    await cacheStrategy.removeChildRelationships(childIdentifier);
 };

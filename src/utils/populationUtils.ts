@@ -74,7 +74,15 @@ export const hydratePopulatedData = <T extends Document>(data: CachedResult<T> |
 /**
  * Stitches populated documents into parent documents and sets up cache relationships.
  */
-export const stitchAndRelateDocuments = async <T extends Document>(documents: T[], path: string, populatedModel: Model<any>, select: string | undefined | Record<string, number>, docsFromCache: Map<string, CachedResult<unknown>>, isLean: boolean) => {
+export const stitchAndRelateDocuments = async <T extends Document>(
+    documents: T[],
+    path: string,
+    populatedModel: Model<any>,
+    select: string | undefined | Record<string, number>,
+    docsFromCache: Map<string, CachedResult<unknown>>,
+    isLean: boolean,
+    parentModelName: string,
+) => {
     const cacheStrategy = getCacheStrategyInstance();
     const relationships: Array<{ childIdentifier: string; parentIdentifier: string }> = [];
 
@@ -92,7 +100,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(documents: T[
         for (const childId of childIds.filter(Boolean)) {
             relationships.push({
                 childIdentifier: `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${populatedModel.modelName}:${childId}`,
-                parentIdentifier: `${(doc.constructor as any).modelName}:${doc._id}`,
+                parentIdentifier: `${parentModelName}:${doc._id}`,
             });
         }
     }
@@ -143,7 +151,7 @@ export const handleSinglePopulation = async <T extends Document>(documents: T[],
         newDocs.forEach((value, key) => docsFromCache.set(key, value));
     }
 
-    await stitchAndRelateDocuments(documents, path, populatedModel, select, docsFromCache, lean);
+    await stitchAndRelateDocuments(documents, path, populatedModel, select, docsFromCache, lean, query.model.modelName);
 };
 
 /**
