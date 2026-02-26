@@ -49,11 +49,7 @@ describe('populationUtils', () => {
 
     describe('handleCachedPopulation', () => {
         it('should return empty array when no documents provided', async () => {
-            const result = await handleCachedPopulation(
-                [] as unknown as Document[],
-                [],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([] as unknown as Document[], [], UserModel.find() as any);
             expect(result).toEqual([]);
         });
 
@@ -65,7 +61,7 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             // Manually cache the parent document
@@ -80,11 +76,7 @@ describe('populationUtils', () => {
             expect(childDoc).toBeDefined();
 
             // Test population
-            const result = await handleCachedPopulation(
-                [childDoc!],
-                [{ path: 'parent' }],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([childDoc!], [{ path: 'parent' }], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -103,12 +95,12 @@ describe('populationUtils', () => {
             const child1 = await UserModel.create({
                 name: 'Child1',
                 email: 'child1@example.com',
-                parent: parent1._id
+                parent: parent1._id,
             });
             const child2 = await UserModel.create({
                 name: 'Child2',
                 email: 'child2@example.com',
-                parent: parent2._id
+                parent: parent2._id,
             });
 
             // Cache parents
@@ -122,11 +114,7 @@ describe('populationUtils', () => {
             const childDocs = await UserModel.find({ _id: { $in: [child1._id, child2._id] } });
 
             // Test population
-            const result = await handleCachedPopulation(
-                childDocs,
-                [{ path: 'parent' }],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation(childDocs, [{ path: 'parent' }], UserModel.find() as any);
 
             expect(result).toHaveLength(2);
             const populatedChild1 = result[0] as IUser;
@@ -143,7 +131,7 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             // Get child document (parent not cached)
@@ -151,11 +139,7 @@ describe('populationUtils', () => {
             expect(childDoc).toBeDefined();
 
             // Test population - should fetch parent from DB
-            const result = await handleCachedPopulation(
-                [childDoc!],
-                [{ path: 'parent' }],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([childDoc!], [{ path: 'parent' }], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -178,7 +162,7 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parents: [parent1._id, parent2._id]
+                parents: [parent1._id, parent2._id],
             });
 
             // Cache parents
@@ -193,11 +177,7 @@ describe('populationUtils', () => {
             expect(childDoc).toBeDefined();
 
             // Test population
-            const result = await handleCachedPopulation(
-                [childDoc!],
-                [{ path: 'parents' }],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([childDoc!], [{ path: 'parents' }], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -212,7 +192,7 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             const childDoc = await UserModel.findById(child._id);
@@ -223,7 +203,7 @@ describe('populationUtils', () => {
                 [childDoc!],
                 [{ path: 'parent', ttl: 120, ttlInheritance: TtlInheritance.FALLBACK }],
                 UserModel.find() as any,
-                90 // context TTL
+                90, // context TTL
             );
 
             // Verify TTL was applied (we can't directly check TTL, but verify caching worked)
@@ -238,7 +218,7 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             const childDoc = await UserModel.findById(child._id);
@@ -249,7 +229,7 @@ describe('populationUtils', () => {
                 [childDoc!],
                 [{ path: 'parent', ttl: 120, ttlInheritance: TtlInheritance.OVERRIDE }],
                 UserModel.find() as any,
-                90 // context TTL
+                90, // context TTL
             );
 
             // Verify caching worked
@@ -263,24 +243,20 @@ describe('populationUtils', () => {
             const parent = await UserModel.create({
                 name: 'Parent',
                 email: 'parent@example.com',
-                fieldA: 'extraField'
+                fieldA: 'extraField',
             });
 
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             const childDoc = await UserModel.findById(child._id);
             expect(childDoc).toBeDefined();
 
             // Test population with select
-            const result = await handleCachedPopulation(
-                [childDoc!],
-                [{ path: 'parent', select: 'name' }],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([childDoc!], [{ path: 'parent', select: 'name' }], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -295,18 +271,14 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             const childDoc = await UserModel.findById(child._id).lean();
             expect(childDoc).toBeDefined();
 
             // Test population with lean query
-            const result = await handleCachedPopulation(
-                [childDoc! as any],
-                [{ path: 'parent' }],
-                UserModel.find().lean() as any
-            );
+            const result = await handleCachedPopulation([childDoc! as any], [{ path: 'parent' }], UserModel.find().lean() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -319,17 +291,13 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: parent._id
+                parent: parent._id,
             });
 
             const childDoc = await UserModel.findById(child._id);
             expect(childDoc).toBeDefined();
 
-            await handleCachedPopulation(
-                [childDoc!],
-                [{ path: 'parent' }],
-                UserModel.find() as any
-            );
+            await handleCachedPopulation([childDoc!], [{ path: 'parent' }], UserModel.find() as any);
 
             // Verify relationships were established
             const cacheStrategy = getCacheStrategyInstance();
@@ -344,21 +312,14 @@ describe('populationUtils', () => {
                 name: 'Child',
                 email: 'child@example.com',
                 parent: parent._id,
-                relationField: relationUser._id
+                relationField: relationUser._id,
             });
 
             const childDoc = await UserModel.findById(child._id);
             expect(childDoc).toBeDefined();
 
             // Test multiple populate options
-            const result = await handleCachedPopulation(
-                [childDoc!],
-                [
-                    { path: 'parent' },
-                    { path: 'relationField' }
-                ],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([childDoc!], [{ path: 'parent' }, { path: 'relationField' }], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -371,15 +332,42 @@ describe('populationUtils', () => {
             const userDoc = await UserModel.findById(user._id);
             expect(userDoc).toBeDefined();
 
-            const result = await handleCachedPopulation(
-                [userDoc!],
-                [],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([userDoc!], [], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedUser = result[0] as IUser;
             expect(populatedUser.name).toBe('User');
+        });
+
+        it('should populate multiple paths in parallel (not sequentially)', async () => {
+            const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+            const relation = await UserModel.create({ name: 'Relation', email: 'relation@example.com' });
+
+            const child = await UserModel.create({
+                name: 'Child',
+                email: 'child@example.com',
+                parent: parent._id,
+                relationField: relation._id,
+            });
+
+            const childDoc = await UserModel.findById(child._id);
+            expect(childDoc).toBeDefined();
+
+            // Spy on handleSinglePopulation to verify both paths are kicked off
+            const cacheStrategy = getCacheStrategyInstance();
+            const getDocsSpy = jest.spyOn(cacheStrategy, 'getDocuments');
+
+            await handleCachedPopulation([childDoc!], [{ path: 'parent' }, { path: 'relationField' }], UserModel.find() as any);
+
+            // Both paths should have been processed
+            const populatedChild = childDoc! as IUser;
+            expect((populatedChild.parent as Record<string, unknown>).name).toBe('Parent');
+            expect((populatedChild.relationField as Record<string, unknown>).name).toBe('Relation');
+
+            // getDocuments should have been called for each populate path
+            expect(getDocsSpy).toHaveBeenCalledTimes(2);
+
+            getDocsSpy.mockRestore();
         });
 
         it('should handle non-existent references gracefully', async () => {
@@ -387,17 +375,13 @@ describe('populationUtils', () => {
             const child = await UserModel.create({
                 name: 'Child',
                 email: 'child@example.com',
-                parent: nonExistentId
+                parent: nonExistentId,
             });
 
             const childDoc = await UserModel.findById(child._id);
             expect(childDoc).toBeDefined();
 
-            const result = await handleCachedPopulation(
-                [childDoc!],
-                [{ path: 'parent' }],
-                UserModel.find() as any
-            );
+            const result = await handleCachedPopulation([childDoc!], [{ path: 'parent' }], UserModel.find() as any);
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
@@ -433,7 +417,6 @@ describe('populationUtils', () => {
     });
 
     describe('normalizeSelect', () => {
-  
         it('should normalize select string with spaces and sort fields', () => {
             expect(normalizeSelect('name email')).toBe('email,name');
             expect(normalizeSelect('email name')).toBe('email,name');
@@ -456,7 +439,6 @@ describe('populationUtils', () => {
     });
 
     describe('calculatePopulationTtl', () => {
-
         it('should use contextTtl when ttlInheritance is override', () => {
             expect(calculatePopulationTtl(120, 90, TtlInheritance.OVERRIDE)).toBe(90);
             expect(calculatePopulationTtl(undefined, 80, TtlInheritance.OVERRIDE)).toBe(80);
@@ -479,7 +461,6 @@ describe('populationUtils', () => {
     });
 
     describe('fetchAndCacheMissedDocuments', () => {
- 
         it('should fetch documents from DB and cache them when not in cache', async () => {
             // Create a user
             const user = await UserModel.create({ name: 'FetchUser', email: 'fetch@example.com' });
@@ -508,7 +489,6 @@ describe('populationUtils', () => {
     });
 
     describe('stitchAndRelateDocuments', () => {
- 
         it('should stitch populated documents into parent documents for single reference', async () => {
             const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
             const child = await UserModel.create({ name: 'Child', email: 'child@example.com', parent: parent._id });
@@ -568,10 +548,7 @@ describe('populationUtils', () => {
             const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
             const child = await UserModel.create({ name: 'Child', email: 'child@example.com', parents: [parent._id] });
             // Inject null into the array at the raw level
-            await mongoose.connection.collection('users').updateOne(
-                { _id: child._id },
-                { $set: { parents: [parent._id, null] } }
-            );
+            await mongoose.connection.collection('users').updateOne({ _id: child._id }, { $set: { parents: [parent._id, null] } });
             const childDoc = await UserModel.findById(child._id);
             const docsFromCache = new Map();
             docsFromCache.set(getDocumentCacheKey('User', parent._id.toString()), parent.toObject());
@@ -579,6 +556,34 @@ describe('populationUtils', () => {
             // Should only have the valid parent, null filtered out
             expect((childDoc.parents as any[]).length).toBe(1);
             expect((childDoc.parents[0] as any).name).toBe('Parent');
+        });
+
+        it('should batch relationship adds instead of per-document calls', async () => {
+            const parent1 = await UserModel.create({ name: 'Parent1', email: 'p1@example.com' });
+            const parent2 = await UserModel.create({ name: 'Parent2', email: 'p2@example.com' });
+            const child1 = await UserModel.create({ name: 'Child1', email: 'c1@example.com', parent: parent1._id });
+            const child2 = await UserModel.create({ name: 'Child2', email: 'c2@example.com', parent: parent2._id });
+
+            const childDocs = await UserModel.find({ _id: { $in: [child1._id, child2._id] } });
+            const docsFromCache = new Map();
+            docsFromCache.set(getDocumentCacheKey('User', parent1._id.toString()), parent1.toObject());
+            docsFromCache.set(getDocumentCacheKey('User', parent2._id.toString()), parent2.toObject());
+
+            const cacheStrategy = getCacheStrategyInstance();
+            const batchSpy = jest.spyOn(cacheStrategy, 'addManyParentToChildRelationships');
+            const singleSpy = jest.spyOn(cacheStrategy, 'addParentToChildRelationship');
+
+            await stitchAndRelateDocuments(childDocs, 'parent', UserModel, undefined, docsFromCache, false);
+
+            // Should use batch method, not individual calls
+            expect(batchSpy).toHaveBeenCalledTimes(1);
+            expect(batchSpy).toHaveBeenCalledWith(
+                expect.arrayContaining([expect.objectContaining({ childIdentifier: expect.stringContaining(parent1._id.toString()) }), expect.objectContaining({ childIdentifier: expect.stringContaining(parent2._id.toString()) })]),
+            );
+            expect(singleSpy).not.toHaveBeenCalled();
+
+            batchSpy.mockRestore();
+            singleSpy.mockRestore();
         });
 
         it('should handle missing cache values gracefully', async () => {

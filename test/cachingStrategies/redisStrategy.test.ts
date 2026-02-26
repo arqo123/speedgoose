@@ -147,34 +147,119 @@ describe('RedisStrategy.refreshTTLForCachedResult', () => {
     });
 });
 
+describe('RedisStrategy.addManyParentToChildRelationships', () => {
+    test('should use pipeline to batch multiple SADD calls', () => {
+        const pipeline = strategy.client.pipeline();
+        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
+
+        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
+        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
+
+        strategy.addManyParentToChildRelationships([
+            { childIdentifier: 'rel:child:Model:id1', parentIdentifier: 'Parent:p1' },
+            { childIdentifier: 'rel:child:Model:id2', parentIdentifier: 'Parent:p2' },
+            { childIdentifier: 'rel:child:Model:id1', parentIdentifier: 'Parent:p3' },
+        ]);
+
+        expect(mockedRedisPipelineMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(3);
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('rel:child:Model:id1', 'Parent:p1');
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('rel:child:Model:id2', 'Parent:p2');
+        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('rel:child:Model:id1', 'Parent:p3');
+        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+    });
+
+    test('should not create pipeline for empty relationships array', async () => {
+        await strategy.addManyParentToChildRelationships([]);
+        expect(mockedRedisPipelineMethod).not.toHaveBeenCalled();
+    });
+});
+
+describe('RedisStrategy.clearRelationshipsForModel', () => {
+    test('should use scanStream with correct pattern and pipeline srem', async () => {
+        const scanStreamSpy = jest.spyOn(strategy.client, 'scanStream');
+
+        // Mock scanStream to return an async iterator
+        const mockKeys = [`${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:Model:child1`, `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:Model:child2`];
+        scanStreamSpy.mockReturnValue({
+            [Symbol.asyncIterator]: async function* () {
+                yield mockKeys;
+            },
+        } as any);
+
+        const pipeline = strategy.client.pipeline();
+        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
+        const mockedPipelineSrem = jest.spyOn(pipeline, 'srem').mockClear();
+        const mockedPipelineExec = jest.spyOn(pipeline, 'exec').mockClear();
+
+        await strategy.clearRelationshipsForModel('Parent:p1');
+
+        // Should scan with correct pattern
+        expect(scanStreamSpy).toHaveBeenCalledWith({
+            match: `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:*`,
+            count: 100,
+        });
+
+        // Should pipeline srem for each key
+        expect(mockedPipelineSrem).toHaveBeenCalledTimes(2);
+        expect(mockedPipelineSrem).toHaveBeenCalledWith(`${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:Model:child1`, 'Parent:p1');
+        expect(mockedPipelineSrem).toHaveBeenCalledWith(`${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:Model:child2`, 'Parent:p1');
+        expect(mockedPipelineExec).toHaveBeenCalledTimes(1);
+
+        scanStreamSpy.mockRestore();
+    });
+});
+
+describe('RedisStrategy.clearDocumentsCache', () => {
+    test('should use scanStream with namespace pattern and delete matched keys', async () => {
+        const scanStreamSpy = jest.spyOn(strategy.client, 'scanStream');
+
+        const mockKeys = ['doc:User:id1', 'doc:User:id2'];
+        scanStreamSpy.mockReturnValue({
+            [Symbol.asyncIterator]: async function* () {
+                yield mockKeys;
+            },
+        } as any);
+
+        await strategy.clearDocumentsCache('doc:User');
+
+        expect(scanStreamSpy).toHaveBeenCalledWith({
+            match: 'doc:User:*',
+            count: 100,
+        });
+        expect(mockedRedisDelMethod).toHaveBeenCalledWith(...mockKeys);
+
+        scanStreamSpy.mockRestore();
+    });
+});
+
 describe('RedisStrategy.isValueCached', () => {
-  
-  beforeEach(async () => {
-    await strategy.client.flushall();
-  });
-  
-  test('should return true if value is cached', async () => {
-    const namespace = 'testNamespace';
-    const key = 'testKey';
-    const value = 'testValue';
-    const ttl = 60;
+    beforeEach(async () => {
+        await strategy.client.flushall();
+    });
 
-    // Add value to cache
-    await strategy.addValueToCache(namespace, key, value, ttl);
+    test('should return true if value is cached', async () => {
+        const namespace = 'testNamespace';
+        const key = 'testKey';
+        const value = 'testValue';
+        const ttl = 60;
 
-    // Check if value is cached
-    const isCached = await strategy.isValueCached(namespace, key);
+        // Add value to cache
+        await strategy.addValueToCache(namespace, key, value, ttl);
 
-    expect(isCached).toBe(true);
-  });
+        // Check if value is cached
+        const isCached = await strategy.isValueCached(namespace, key);
 
-  test('should return false if value is not cached', async () => {
-    const namespace = 'testNamespace';
-    const key = 'testKey';
+        expect(isCached).toBe(true);
+    });
 
-    // Check if value is cached
-    const isCached = await strategy.isValueCached(namespace, key);
+    test('should return false if value is not cached', async () => {
+        const namespace = 'testNamespace';
+        const key = 'testKey';
 
-    expect(isCached).toBe(false);
-  });
+        // Check if value is cached
+        const isCached = await strategy.isValueCached(namespace, key);
+
+        expect(isCached).toBe(false);
+    });
 });

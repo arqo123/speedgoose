@@ -36,8 +36,8 @@ const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOpe
 const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)];
 
-    if (resultsIds) {
-        getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey);
+    if (resultsIds.length > 0) {
+        await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey);
     }
 };
 
@@ -82,8 +82,7 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
 
     const hydratedDocumentVariations = await getHydrationVariationsCache().get(recordId);
     if (hydratedDocumentVariations?.size > 0) {
-        await clearKeysInCache(Array.from(hydratedDocumentVariations), getHydrationCache());
-        await getHydrationVariationsCache().delete(recordId);
+        await Promise.all([clearKeysInCache(Array.from(hydratedDocumentVariations), getHydrationCache()), getHydrationVariationsCache().delete(recordId)]);
     }
 };
 
@@ -95,19 +94,17 @@ export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperation
     }
 
     context?.debug(`Setting key in cache`, context.cacheKey);
-    await setKeyInResultsCache(result, context);
-    await setKeyInModelCache(model, context);
-
+    const writes: Promise<void>[] = [setKeyInResultsCache(result, context), setKeyInModelCache(model, context)];
     if (isResultWithIds(result)) {
-        await setKeyInRecordsCache(result as CachedDocument<T>, context);
+        writes.push(setKeyInRecordsCache(result as CachedDocument<T>, context));
     }
+    await Promise.all(writes);
 
     context?.debug(`Cache key set`, context.cacheKey);
 };
 
 export const setKeyInHydrationCaches = async <T>(key: string, document: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    await setKeyInHydratedDocumentsCache(document, key, params);
-    await setKeyInHydratedDocumentsVariationsCache(document, key);
+    await Promise.all([setKeyInHydratedDocumentsCache(document, key, params), setKeyInHydratedDocumentsVariationsCache(document, key)]);
 };
 
 export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) =>
@@ -132,42 +129,94 @@ export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationConte
     }
 };
 
-export const clearParentCache = async (modelName: string, docId: string| ObjectId): Promise<void> => {
-     const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${docId}`;
-    
+export const clearParentCacheBulk = async (modelName: string, docIds: (string | ObjectId)[]): Promise<void> => {
+    if (docIds.length === 0) return;
+
     const cacheStrategy = getCacheStrategyInstance();
-    const parentIdentifiers = await cacheStrategy.getParentsOfChild(childIdentifier);
-    
     const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
-    const CACHE_PARENT_LIMIT = Math.max(1,
-        Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100
-    );
-    
-    if (parentIdentifiers.length > 0) {
-        logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
+    const CACHE_PARENT_LIMIT = Math.max(1, Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100);
 
-        // Process in batches with delay up to CACHE_PARENT_LIMIT
-        const BATCH_SIZE = 25;
+    const childIdentifiers = docIds.map(docId => `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${docId}`);
 
-        // Process batches with proper limit enforcement
-        const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
-        
-        for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
-            const batchStart = batchIndex * BATCH_SIZE;
-            const batchEnd = Math.min(batchStart + BATCH_SIZE, CACHE_PARENT_LIMIT);
-            const batch = parentIdentifiers.slice(batchStart, batchEnd);
-            
-            await Promise.all(batch.map(async parentIdWithModel => {
-                const id = parentIdWithModel.split(':').pop();
-                await clearCacheForRecordId(id!);
-            }));
-            
-            // Add delay between batches except last
-            if (batchIndex < batchCount - 1) {
-                await new Promise(resolve => setTimeout(resolve, 10));
-            }
+    // Fetch all parent sets in parallel
+    const parentSets = await Promise.all(childIdentifiers.map(id => cacheStrategy.getParentsOfChild(id)));
+
+    // Collect unique parent record IDs across all children
+    const uniqueParentRecordIds = new Set<string>();
+    for (const parentIdentifiers of parentSets) {
+        for (const parentIdWithModel of parentIdentifiers) {
+            const id = parentIdWithModel.split(':').pop();
+            if (id) uniqueParentRecordIds.add(id);
+            if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
         }
+        if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
     }
 
-    await cacheStrategy.removeChildRelationships(childIdentifier);
+    try {
+        // Invalidate unique parents in batches
+        if (uniqueParentRecordIds.size > 0) {
+            logCacheClear(`Bulk invalidating ${uniqueParentRecordIds.size} unique parents for ${docIds.length} children`, modelName);
+
+            const BATCH_SIZE = 25;
+            const uniqueIds = Array.from(uniqueParentRecordIds);
+            const batchCount = Math.ceil(uniqueIds.length / BATCH_SIZE);
+
+            for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+                const batch = uniqueIds.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
+                await Promise.all(batch.map(id => clearCacheForRecordId(id)));
+
+                if (batchIndex < batchCount - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+            }
+        }
+    } finally {
+        // Always clean up child relationships, even if invalidation fails
+        await Promise.all(childIdentifiers.map(id => cacheStrategy.removeChildRelationships(id)));
+    }
+};
+
+export const clearParentCache = async (modelName: string, docId: string | ObjectId): Promise<void> => {
+    const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${modelName}:${docId}`;
+
+    const cacheStrategy = getCacheStrategyInstance();
+    const parentIdentifiers = await cacheStrategy.getParentsOfChild(childIdentifier);
+
+    const config = Container.get<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS);
+    const CACHE_PARENT_LIMIT = Math.max(1, Number.isFinite(config.cacheParentLimit) ? config.cacheParentLimit : 100);
+
+    try {
+        if (parentIdentifiers.length > 0) {
+            logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
+
+            // Process in batches with delay up to CACHE_PARENT_LIMIT
+            const BATCH_SIZE = 25;
+
+            // Process batches with proper limit enforcement
+            const batchCount = Math.ceil(Math.min(parentIdentifiers.length, CACHE_PARENT_LIMIT) / BATCH_SIZE);
+
+            for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+                const batchStart = batchIndex * BATCH_SIZE;
+                const batchEnd = Math.min(batchStart + BATCH_SIZE, CACHE_PARENT_LIMIT);
+                const batch = parentIdentifiers.slice(batchStart, batchEnd);
+
+                await Promise.all(
+                    batch.map(async parentIdWithModel => {
+                        const id = parentIdWithModel.split(':').pop();
+                        if (id) {
+                            await clearCacheForRecordId(id);
+                        }
+                    }),
+                );
+
+                // Add delay between batches except last
+                if (batchIndex < batchCount - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+            }
+        }
+    } finally {
+        // Always clean up child relationships, even if invalidation fails
+        await cacheStrategy.removeChildRelationships(childIdentifier);
+    }
 };

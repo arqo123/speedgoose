@@ -7,6 +7,7 @@ const redisPubSubMessageHandler = async (channel: SpeedGooseRedisChannels, recor
     const parsedRecordIds = JSON.parse(recordIds);
     if (Array.isArray(parsedRecordIds)) {
         await Promise.all(parsedRecordIds.map(recordId => clearHydrationCache(recordId)));
+        return;
     }
     await clearHydrationCache(parsedRecordIds);
 };

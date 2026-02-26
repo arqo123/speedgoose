@@ -93,15 +93,24 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         }
         await pipeline.exec();
     }
-    
+
     public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void> {
         await this.client.sadd(childIdentifier, parentIdentifier);
     }
-    
+
+    public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>): Promise<void> {
+        if (relationships.length === 0) return;
+        const pipeline = this.client.pipeline();
+        for (const { childIdentifier, parentIdentifier } of relationships) {
+            pipeline.sadd(childIdentifier, parentIdentifier);
+        }
+        await pipeline.exec();
+    }
+
     public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
         return this.client.smembers(childIdentifier);
     }
-    
+
     public async removeChildRelationships(childIdentifier: string): Promise<void> {
         await this.client.del(childIdentifier);
     }
@@ -109,9 +118,9 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async clearDocumentsCache(namespace: string): Promise<void> {
         const stream = this.client.scanStream({
             match: `${namespace}:*`,
-            count: 100
+            count: 100,
         });
-        
+
         for await (const keys of stream) {
             if (keys.length) {
                 await this.client.del(...keys);
@@ -120,20 +129,14 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
-        // Scan all child keys
-        const stream = this.client.scanStream({ match: '*', count: 100 });
+        const stream = this.client.scanStream({ match: `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:*`, count: 100 });
         for await (const keys of stream) {
+            if (keys.length === 0) continue;
+            const pipeline = this.client.pipeline();
             for (const key of keys) {
-                // For each key, check if it's a child relationship set
-                // (Assume child relationship keys follow a known pattern, e.g., 'child:*')
-                // If not, skip
-                // You may need to adjust the pattern below to match your actual child key format
-                if (!key.startsWith('child:')) continue;
-                const parents = await this.client.smembers(key);
-                if (parents && parents.includes(parentIdentifier)) {
-                    await this.client.del(key);
-                }
+                pipeline.srem(key, parentIdentifier);
             }
+            await pipeline.exec();
         }
     }
 

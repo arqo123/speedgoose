@@ -3,6 +3,7 @@ import { applySpeedGooseCacheLayer } from '../src/wrapper';
 import { UserModel, setupTestDB, clearTestCache, generateTestAggregateQuery } from './testUtils';
 import * as cacheClientUtils from '../src/utils/cacheClientUtils';
 import * as commonUtils from '../src/utils/commonUtils';
+import { clearInflightRequests } from '../src/utils/singleflightUtils';
 
 describe('extendAggregate', () => {
     beforeAll(async () => {
@@ -192,6 +193,91 @@ describe('extendAggregate', () => {
 
             const result = await generateTestAggregateQuery(pipeline).isCached();
             expect(result).toBe(true);
+        });
+    });
+
+    describe('singleflight (request coalescing)', () => {
+        afterEach(() => {
+            clearInflightRequests();
+        });
+
+        beforeEach(async () => {
+            await UserModel.create([
+                { name: 'SFAlice', email: 'sfalice@test.com', age: 30 },
+                { name: 'SFBob', email: 'sfbob@test.com', age: 25 },
+            ]);
+        });
+
+        it('should coalesce concurrent cache misses into a single DB write for the same pipeline', async () => {
+            const pipeline = [{ $match: { age: 30 } }];
+            const setKeySpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
+
+            try {
+                const results = await Promise.all(Array.from({ length: 5 }, () => generateTestAggregateQuery(pipeline).cachePipeline()));
+
+                for (const result of results) {
+                    expect(result).toHaveLength(1);
+                    expect(result[0].name).toBe('SFAlice');
+                }
+
+                expect(setKeySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                setKeySpy.mockRestore();
+            }
+        });
+
+        it('should not coalesce concurrent calls with different pipelines', async () => {
+            const setKeySpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches');
+
+            try {
+                const results = await Promise.all([generateTestAggregateQuery([{ $match: { age: 30 } }]).cachePipeline(), generateTestAggregateQuery([{ $match: { age: 25 } }]).cachePipeline()]);
+
+                expect(results[0]).toHaveLength(1);
+                expect(results[0][0].name).toBe('SFAlice');
+                expect(results[1]).toHaveLength(1);
+                expect(results[1][0].name).toBe('SFBob');
+                expect(setKeySpy).toHaveBeenCalledTimes(2);
+            } finally {
+                setKeySpy.mockRestore();
+            }
+        });
+
+        it('should propagate DB errors to all concurrent callers', async () => {
+            const getResultsSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache').mockResolvedValue(null);
+            const execSpy = jest.spyOn(mongoose.Aggregate.prototype, 'exec').mockRejectedValue(new Error('Aggregation failed'));
+
+            try {
+                const results = await Promise.allSettled(Array.from({ length: 3 }, () => generateTestAggregateQuery([{ $match: { age: 30 } }]).cachePipeline()));
+
+                for (const result of results) {
+                    expect(result.status).toBe('rejected');
+                    if (result.status === 'rejected') {
+                        expect(result.reason.message).toBe('Aggregation failed');
+                    }
+                }
+            } finally {
+                getResultsSpy.mockRestore();
+                execSpy.mockRestore();
+            }
+        });
+
+        it('should allow new requests after a singleflight completes', async () => {
+            const pipeline = [{ $match: { age: 25 } }];
+            const getResultsSpy = jest.spyOn(cacheClientUtils, 'getResultsFromCache').mockResolvedValue(null);
+            const setKeySpy = jest.spyOn(cacheClientUtils, 'setKeyInResultsCaches').mockResolvedValue(undefined);
+
+            try {
+                await Promise.all(Array.from({ length: 3 }, () => generateTestAggregateQuery(pipeline).cachePipeline()));
+                expect(setKeySpy).toHaveBeenCalledTimes(1);
+
+                setKeySpy.mockClear();
+
+                await Promise.all(Array.from({ length: 3 }, () => generateTestAggregateQuery(pipeline).cachePipeline()));
+                expect(setKeySpy).toHaveBeenCalledTimes(1);
+            } finally {
+                getResultsSpy.mockRestore();
+                setKeySpy.mockRestore();
+            }
         });
     });
 

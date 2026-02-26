@@ -4,7 +4,7 @@ import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
 import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
 import { getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted } from './utils';
-import { clearParentCache } from '../utils/cacheClientUtils';
+import { clearParentCache, clearParentCacheBulk } from '../utils/cacheClientUtils';
 
 const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne'];
 const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate'];
@@ -12,7 +12,6 @@ const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany'];
 const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 
 const appendQueryBasedListeners = (schema: Schema): void => {
-
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, ...MONGOOSE_UPDATE_ONE_ACTIONS], async function () {
         if (!isCachingEnabled()) return;
@@ -44,14 +43,15 @@ const appendQueryBasedListeners = (schema: Schema): void => {
                 affectedRecords.map(record => record._id),
             );
             model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records: affectedRecords, wasDeleted, modelName: model.modelName });
-            // Clear parent caches for all affected records
-            await Promise.all(affectedRecords.map(async record => {
-                try {
-                    await clearParentCache(model.modelName, String(record._id));
-                } catch (err) {
-                    console.error('Error clearing parent cache:', err);
-                }
-            }));
+            // Clear parent caches for all affected records with deduplication
+            try {
+                await clearParentCacheBulk(
+                    model.modelName,
+                    affectedRecords.map(record => String(record._id)),
+                );
+            } catch (err) {
+                console.error('Error clearing parent cache:', err);
+            }
         }
     });
 };
