@@ -21,7 +21,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async getValueFromCache(namespace: string, key: string): Promise<CachedResult | null> {
         const keyWithNamespace = `${namespace}:${key}`;
-        const result = await this.resultsCacheClient.get(keyWithNamespace)
+        const result = await this.resultsCacheClient.get(keyWithNamespace);
 
         return (result ?? null) as CachedResult | null;
     }
@@ -82,11 +82,8 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     private setClients(): void {
         this.resultsCacheClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RESULTS_NAMESPACE);
         this.recordResultsSetsClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.RECORD_RESULTS_SETS);
-        this.documentsCacheClient = createInMemoryCacheClientWithNamespace(
-            CacheNamespaces.DOCUMENTS);
-        this.relationsCacheClient = createInMemoryCacheClientWithNamespace(
-            CacheNamespaces.RELATIONS_CHILD_TO_PARENT
-        );
+        this.documentsCacheClient = createInMemoryCacheClientWithNamespace(CacheNamespaces.DOCUMENTS);
+        this.relationsCacheClient = createInMemoryCacheClientWithNamespace('relations');
     }
 
     private async init(): Promise<void> {
@@ -119,6 +116,18 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         await this.relationsCacheClient.set(childIdentifier, parents);
     }
 
+    public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>): Promise<void> {
+        if (relationships.length === 0) return;
+        const grouped = new Map<string, Set<string>>();
+        for (const { childIdentifier, parentIdentifier } of relationships) {
+            if (!grouped.has(childIdentifier)) {
+                grouped.set(childIdentifier, (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>());
+            }
+            grouped.get(childIdentifier)!.add(parentIdentifier);
+        }
+        await Promise.all(Array.from(grouped.entries()).map(([key, parents]) => this.relationsCacheClient.set(key, parents)));
+    }
+
     public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
         const parents = await this.relationsCacheClient.get(childIdentifier);
         return parents ? Array.from(parents) : [];
@@ -139,13 +148,19 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
-        const keysToDelete: string[] = [];
+        const keysToUpdate: Array<{ key: string; parents: Set<string> }> = [];
         for await (const [key] of this.relationsCacheClient.iterator()) {
             const parents = await this.relationsCacheClient.get(key);
             if (parents?.has(parentIdentifier)) {
-                keysToDelete.push(key);
+                keysToUpdate.push({ key, parents });
             }
         }
-        await Promise.all(keysToDelete.map(key => this.relationsCacheClient.delete(key)));
+        await Promise.all(
+            keysToUpdate.map(({ key, parents }) => {
+                const updated = new Set(parents);
+                updated.delete(parentIdentifier);
+                return updated.size === 0 ? this.relationsCacheClient.delete(key) : this.relationsCacheClient.set(key, updated);
+            }),
+        );
     }
 }

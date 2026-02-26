@@ -22,19 +22,13 @@ export const normalizeSelect = (select?: string | string[] | object): string => 
 
 export const getDocumentCacheKey = (modelName: string, id: string, select?: string | string[] | object): string => {
     const selectKey = normalizeSelect(select);
-    return selectKey
-        ? `${CacheNamespaces.DOCUMENTS}:${modelName}:${id}:select:${selectKey}`
-        : `${CacheNamespaces.DOCUMENTS}:${modelName}:${id}`;
+    return selectKey ? `${CacheNamespaces.DOCUMENTS}:${modelName}:${id}:select:${selectKey}` : `${CacheNamespaces.DOCUMENTS}:${modelName}:${id}`;
 };
 
 /**
  * Calculates the final TTL for a population operation based on inheritance rules.
  */
-export const calculatePopulationTtl = (
-    optionTtl: number | undefined,
-    contextTtl: number | undefined,
-    ttlInheritance: TtlInheritance | 'fallback' | 'override' | undefined,
-): number => {
+export const calculatePopulationTtl = (optionTtl: number | undefined, contextTtl: number | undefined, ttlInheritance: TtlInheritance | 'fallback' | 'override' | undefined): number => {
     const defaultTtl = 60; // Default global TTL
     if (ttlInheritance === 'override') {
         return contextTtl ?? optionTtl ?? defaultTtl;
@@ -46,13 +40,7 @@ export const calculatePopulationTtl = (
 /**
  * Fetches documents from the DB for given IDs, caches them, and returns them.
  */
-export const fetchAndCacheMissedDocuments = async (
-    missedIds: string[],
-    populatedModel: Model<any>,
-    select: string | undefined | Record<string, number>,
-    isLean: boolean,
-    ttl: number,
-): Promise<Map<string, CachedResult<unknown>>> => {
+export const fetchAndCacheMissedDocuments = async (missedIds: string[], populatedModel: Model<any>, select: string | undefined | Record<string, number>, isLean: boolean, ttl: number): Promise<Map<string, CachedResult<unknown>>> => {
     const cacheStrategy = getCacheStrategyInstance();
     const docsFromDbQuery = populatedModel.find({ _id: { $in: missedIds } }, select);
     if (isLean) {
@@ -75,11 +63,7 @@ export const fetchAndCacheMissedDocuments = async (
 /**
  * Converts plain objects from cache to Mongoose documents if the query is not lean.
  */
-export const hydratePopulatedData = <T extends Document>(
-    data: CachedResult<T> | CachedResult<T>[],
-    populatedModel: Model<T>,
-    isLean: boolean,
-): T | T[] | null => {
+export const hydratePopulatedData = <T extends Document>(data: CachedResult<T> | CachedResult<T>[], populatedModel: Model<T>, isLean: boolean): T | T[] | null => {
     if (isLean || !data) return data as T | T[] | null;
 
     const hydrate = (item: any) => (item && typeof item === 'object' ? populatedModel.hydrate(item) : item);
@@ -90,47 +74,38 @@ export const hydratePopulatedData = <T extends Document>(
 /**
  * Stitches populated documents into parent documents and sets up cache relationships.
  */
-export const stitchAndRelateDocuments = async <T extends Document>(
-    documents: T[],
-    path: string,
-    populatedModel: Model<any>,
-    select: string | undefined | Record<string, number>,
-    docsFromCache: Map<string, CachedResult<unknown>>,
-    isLean: boolean,
-) => {
+export const stitchAndRelateDocuments = async <T extends Document>(documents: T[], path: string, populatedModel: Model<any>, select: string | undefined | Record<string, number>, docsFromCache: Map<string, CachedResult<unknown>>, isLean: boolean) => {
     const cacheStrategy = getCacheStrategyInstance();
+    const relationships: Array<{ childIdentifier: string; parentIdentifier: string }> = [];
 
     for (const doc of documents) {
         const ids = mpath.get(path, doc);
         if (ids == null) continue;
-        const getCacheValue = (id: any) =>
-            id != null
-                ? docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select))
-                : undefined;
+        const getCacheValue = (id: any) => (id != null ? docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select)) : undefined);
         const populatedValue = Array.isArray(ids) ? ids.map(getCacheValue).filter(Boolean) : getCacheValue(ids);
 
         const hydratedValue = hydratePopulatedData(populatedValue, populatedModel, isLean);
         mpath.set(path, hydratedValue, doc);
 
-        // Update parent-child relationships for cache invalidation
+        // Collect parent-child relationships for batch cache update
         const childIds = Array.isArray(ids) ? ids : [ids];
         for (const childId of childIds.filter(Boolean)) {
-            const childIdentifier = `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${populatedModel.modelName}:${childId}`;
-            const parentIdentifier = `${doc.constructor.name}:${doc._id}`;
-            await cacheStrategy.addParentToChildRelationship(childIdentifier, parentIdentifier);
+            relationships.push({
+                childIdentifier: `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${populatedModel.modelName}:${childId}`,
+                parentIdentifier: `${doc.constructor.name}:${doc._id}`,
+            });
         }
+    }
+
+    if (relationships.length > 0) {
+        await cacheStrategy.addManyParentToChildRelationships(relationships);
     }
 };
 
 /**
  * Handles caching logic for a single population option.
  */
-export const handleSinglePopulation = async <T extends Document>(
-    documents: T[],
-    query: Query<any, any>,
-    options: SpeedGoosePopulateOptions,
-    contextTtl?: number,
-) => {
+export const handleSinglePopulation = async <T extends Document>(documents: T[], query: Query<any, any>, options: SpeedGoosePopulateOptions, contextTtl?: number) => {
     const cacheStrategy = getCacheStrategyInstance();
     const { path, select, ttl: optionTtl, ttlInheritance } = options;
     const lean = isLeanQuery(query);
@@ -144,13 +119,18 @@ export const handleSinglePopulation = async <T extends Document>(
     if (!refModelName) return; // Path is not a valid population path.
 
     const populatedModel = getMongooseModelByName(refModelName);
-    const idsToPopulate = [...new Set(
-        documents.flatMap(doc => {
-            const val = mpath.get(path, doc);
-            if (val == null) return [];
-            return Array.isArray(val) ? val.flat() : [val];
-        }).filter(Boolean).map((id: any) => id.toString())
-    )];
+    const idsToPopulate = [
+        ...new Set(
+            documents
+                .flatMap(doc => {
+                    const val = mpath.get(path, doc);
+                    if (val == null) return [];
+                    return Array.isArray(val) ? val.flat() : [val];
+                })
+                .filter(Boolean)
+                .map((id: any) => id.toString()),
+        ),
+    ];
 
     if (idsToPopulate.length === 0) return;
 
@@ -170,17 +150,10 @@ export const handleSinglePopulation = async <T extends Document>(
  * Main handler for processing cached population.
  * Iterates through population options and delegates to handleSinglePopulation.
  */
-export const handleCachedPopulation = async <T extends Document>(
-    documents: T[],
-    populateOptions: SpeedGoosePopulateOptions[],
-    query: Query<any, any>,
-    contextTtl?: number,
-): Promise<T[]> => {
+export const handleCachedPopulation = async <T extends Document>(documents: T[], populateOptions: SpeedGoosePopulateOptions[], query: Query<any, any>, contextTtl?: number): Promise<T[]> => {
     if (!documents || documents.length === 0) return documents;
 
-    for (const options of populateOptions) {
-        await handleSinglePopulation(documents, query, options, contextTtl);
-    }
+    await Promise.all(populateOptions.map(options => handleSinglePopulation(documents, query, options, contextTtl)));
 
     return documents;
 };

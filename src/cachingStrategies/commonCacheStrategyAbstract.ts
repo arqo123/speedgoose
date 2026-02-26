@@ -14,6 +14,7 @@ export abstract class CommonCacheStrategyAbstract {
     public abstract getDocuments<T>(keys: string[]): Promise<Map<string, CachedResult<T>>>;
     public abstract setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void>;
     public abstract addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void>;
+    public abstract addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>): Promise<void>;
     public abstract getParentsOfChild(childIdentifier: string): Promise<string[]>;
     public abstract removeChildRelationships(childIdentifier: string): Promise<void>;
     public abstract clearDocumentsCache(namespace: string): Promise<void>;
