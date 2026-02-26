@@ -92,7 +92,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(documents: T[
         for (const childId of childIds.filter(Boolean)) {
             relationships.push({
                 childIdentifier: `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${populatedModel.modelName}:${childId}`,
-                parentIdentifier: `${doc.constructor.name}:${doc._id}`,
+                parentIdentifier: `${(doc.constructor as any).modelName}:${doc._id}`,
             });
         }
     }

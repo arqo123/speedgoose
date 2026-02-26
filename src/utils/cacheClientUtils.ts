@@ -200,7 +200,9 @@ export const clearParentCache = async (modelName: string, docId: string | Object
             await Promise.all(
                 batch.map(async parentIdWithModel => {
                     const id = parentIdWithModel.split(':').pop();
-                    await clearCacheForRecordId(id!);
+                    if (id) {
+                        await clearCacheForRecordId(id);
+                    }
                 }),
             );
 
