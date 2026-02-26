@@ -1,3 +1,11 @@
+## [2.5.1](https://github.com/arqo123/speedgoose/compare/v2.5.0...v2.5.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* parallel cache clearing, error handler fallback, stable cache keys ([b6e8c5e](https://github.com/arqo123/speedgoose/commit/b6e8c5e4ec25dea64d75928b69d96faa0d41a2ff))
+* singleflight pattern to prevent thundering herd on cache miss ([#163](https://github.com/arqo123/speedgoose/issues/163)) ([7f697ab](https://github.com/arqo123/speedgoose/commit/7f697ab23562f230ef4330b323439781bea2e9e8)), closes [#162](https://github.com/arqo123/speedgoose/issues/162)
+
 ## [2.5.1](https://github.com/arqo123/speedgoose/compare/v2.5.0...v2.5.1) (2026-02-25)
 
 
