@@ -1,3 +1,10 @@
+## [2.5.2](https://github.com/arqo123/speedgoose/compare/v2.5.1...v2.5.2) (2026-03-01)
+
+
+### Bug Fixes
+
+* **deps:** update semantic-release and npm plugin to fix security vulnerabilities ([#164](https://github.com/arqo123/speedgoose/issues/164)) ([19d7543](https://github.com/arqo123/speedgoose/commit/19d754363e869a90ef1beade3a707e8c8e9a2744))
+
 ## [2.5.1](https://github.com/arqo123/speedgoose/compare/v2.5.0...v2.5.1) (2026-02-26)
 
 
