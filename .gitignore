@@ -17,6 +17,9 @@ jspm_packages/
 # Optional npm cache directory
 .npm
 
+# Use yarn.lock only
+package-lock.json
+
 # Yarn Integrity file
 .yarn-integrity
 
