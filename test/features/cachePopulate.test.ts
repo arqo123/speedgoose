@@ -14,7 +14,6 @@ interface IUser extends Document {
 }
 
 describe('cachePopulate', () => {
-
     beforeAll(async () => {
         await setupTestDB();
         applySpeedGooseCacheLayer(mongoose, {});
@@ -38,13 +37,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Query child and populate parent
-        const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const result = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(result).toBeDefined();
         expect(result!.parent).toBeInstanceOf(mongoose.Document);
@@ -57,13 +54,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parents: [parent1._id, parent2._id]
+            parents: [parent1._id, parent2._id],
         });
 
         const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate([
-                { path: 'parents' }
-            ])
+            .cachePopulate([{ path: 'parents' }])
             .exec();
 
         expect(result).toBeDefined();
@@ -72,26 +67,21 @@ describe('cachePopulate', () => {
         expect((result!.parents[1] as unknown as IUser).name).toBe('Parent2');
     });
 
-
     it('should return the same populated data on subsequent queries (cache hit)', async () => {
         const parent = await UserModel.create({ name: 'Parent', email: 'parent@test.com' });
         const user = await UserModel.create({
             name: 'CacheTest',
             email: 'cache@test.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Initial query with population
-        const firstResult = await UserModel.findOne({ _id: user._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const firstResult = await UserModel.findOne({ _id: user._id }).cachePopulate({ path: 'parent' }).exec();
         expect(firstResult).toBeDefined();
         expect(firstResult?.parent?.name).toBe('Parent');
 
         // Subsequent query with population (should hit cache)
-        const secondResult = await UserModel.findOne({ _id: user._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const secondResult = await UserModel.findOne({ _id: user._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(secondResult).toBeDefined();
         expect(secondResult?.name).toBe('CacheTest');
@@ -106,9 +96,7 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({ name: 'Child', email: 'child@test.com', parent: parent._id });
 
         // Initial query with cachePopulate
-        const firstResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const firstResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
         expect(firstResult).toBeDefined();
         if (firstResult!.parent && typeof firstResult!.parent !== 'string') {
             expect((firstResult!.parent as IUser).name).toBe('Parent');
@@ -119,9 +107,7 @@ describe('cachePopulate', () => {
 
         // Subsequent query should bypass cache and get updated parent
         const spy = jest.spyOn(UserModel, 'findOne');
-        const secondResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const secondResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(secondResult).toBeDefined();
         if (secondResult!.parent && typeof secondResult!.parent !== 'string') {
@@ -137,13 +123,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@test.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Cache parent with populated child
-        const firstParent = (await UserModel.findById(child._id)
-            .cachePopulate({ path: 'parent' })
-            .exec())
+        const firstParent = await UserModel.findById(child._id).cachePopulate({ path: 'parent' }).exec();
         expect(firstParent).toBeDefined();
 
         // Update child document
@@ -151,8 +135,7 @@ describe('cachePopulate', () => {
 
         // Verify parent cache is invalidated and shows updated child
         const spy = jest.spyOn(UserModel, 'findById');
-        const secondParent = await UserModel.findById(child._id)
-            .cachePopulate({ path: 'parent' })
+        const secondParent = await UserModel.findById(child._id).cachePopulate({ path: 'parent' });
 
         expect(secondParent).toBeDefined();
         expect(spy).toHaveBeenCalledTimes(1); // Verify DB hit
@@ -172,15 +155,12 @@ describe('cachePopulate', () => {
             name: 'Child',
             email: 'child@example.com',
             parent: parent._id,
-            relationField: relation._id
+            relationField: relation._id,
         });
 
         // Query child and populate both parent and relationField
         const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate([
-                { path: 'parent' },
-                { path: 'relationField' }
-            ])
+            .cachePopulate([{ path: 'parent' }, { path: 'relationField' }])
             .exec();
 
         expect(result).toBeDefined();
@@ -188,7 +168,7 @@ describe('cachePopulate', () => {
         expect(result!.relationField).toBeInstanceOf(mongoose.Document);
         expect((result!.parent as unknown as IUser).name).toBe('Parent');
         expect((result!.relationField as unknown as IUser).name).toBe('Relation');
-    })
+    });
 
     it('should handle population with multiple paths when passed as a single string', async () => {
         // Create parent and relation user documents
@@ -204,9 +184,7 @@ describe('cachePopulate', () => {
         });
 
         // Query child and populate both parent and relationField
-        const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate('parent relationField')
-            .exec();
+        const result = await UserModel.findOne({ _id: child._id }).cachePopulate('parent relationField').exec();
 
         expect(result).toBeDefined();
         expect(result!.parent).toBeInstanceOf(mongoose.Document);
@@ -225,18 +203,14 @@ describe('cachePopulate', () => {
             name: 'Child',
             email: 'child@example.com',
             parent: parent._id,
-            relationField: relation._id
+            relationField: relation._id,
         });
 
         // Spy on Collection.prototype.find to track actual DB hits
         const collectionFindSpy = jest.spyOn(mongoose.Collection.prototype, 'find');
 
         // First query: should hit DB
-        const firstResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate([
-                { path: 'parent' },
-                { path: 'relationField' }
-            ])
+        const firstResult = await UserModel.findOne({ _id: child._id }).cachePopulate([{ path: 'parent' }, { path: 'relationField' }]);
 
         expect(firstResult).toBeDefined();
         expect(firstResult!.parent).toBeDefined();
@@ -247,11 +221,7 @@ describe('cachePopulate', () => {
 
         // Second query: should hit cache, not DB
         collectionFindSpy.mockClear();
-        const secondResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate([
-                { path: 'parent' },
-                { path: 'relationField' }
-            ])
+        const secondResult = await UserModel.findOne({ _id: child._id }).cachePopulate([{ path: 'parent' }, { path: 'relationField' }]);
 
         expect(secondResult).toBeDefined();
         expect(secondResult!.parent).toBeDefined();
@@ -263,7 +233,7 @@ describe('cachePopulate', () => {
         // Deep equality check
         expect(JSON.stringify(secondResult)).toEqual(JSON.stringify(firstResult));
         collectionFindSpy.mockRestore();
-    })
+    });
 
     it(`should handle populate with select fields`, async () => {
         // Create parent user with extra field
@@ -272,12 +242,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Populate parent with select fields only
-        const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name email' });
+        const result = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name email' });
 
         expect(result).toBeDefined();
         expect(result!.parent).toBeDefined();
@@ -289,8 +258,7 @@ describe('cachePopulate', () => {
 
         // Second query: should hit cache, not DB
         const collectionFindSpy = jest.spyOn(mongoose.Collection.prototype, 'find');
-        const cachedResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name email' });
+        const cachedResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name email' });
         expect(cachedResult).toBeDefined();
         expect(cachedResult!.parent).toBeDefined();
         const cachedParent = cachedResult!.parent as unknown as IUser;
@@ -299,7 +267,7 @@ describe('cachePopulate', () => {
         expect((cachedParent as any).fieldA).toBeUndefined();
         expect(collectionFindSpy).not.toHaveBeenCalled();
         collectionFindSpy.mockRestore();
-    })
+    });
 
     it(`should handle populate with lean call on cache query`, async () => {
         // Create parent user
@@ -308,13 +276,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Query with lean and cachePopulate
-        const result = await UserModel.findOne({ _id: child._id })
-            .lean()
-            .cachePopulate({ path: 'parent' });
+        const result = await UserModel.findOne({ _id: child._id }).lean().cachePopulate({ path: 'parent' });
 
         expect(result).toBeDefined();
         expect(result && result.parent).toBeDefined();
@@ -326,9 +292,7 @@ describe('cachePopulate', () => {
 
         // Second query: should hit cache, not DB
         const collectionFindSpy = jest.spyOn(mongoose.Collection.prototype, 'find');
-        const cachedResult = await UserModel.findOne({ _id: child._id })
-            .lean()
-            .cachePopulate({ path: 'parent' });
+        const cachedResult = await UserModel.findOne({ _id: child._id }).lean().cachePopulate({ path: 'parent' });
         expect(cachedResult).toBeDefined();
         expect(cachedResult && cachedResult.parent).toBeDefined();
         expect(cachedResult && cachedResult.parent && (cachedResult.parent as any)).not.toBeInstanceOf(mongoose.Document);
@@ -337,7 +301,7 @@ describe('cachePopulate', () => {
         expect(leanCachedParent && leanCachedParent.email).toBe('parent@example.com');
         expect(collectionFindSpy).not.toHaveBeenCalled();
         collectionFindSpy.mockRestore();
-    })
+    });
 
     it(`should handle populate with select fields and dont call cache on different fields select variations`, async () => {
         // Create parent user with extra field
@@ -346,12 +310,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // First query: populate with select 'name email'
-        const resultSelect = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name email' });
+        const resultSelect = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name email' });
         expect(resultSelect).toBeDefined();
         expect(resultSelect!.parent).toBeDefined();
         const parentSelect = resultSelect!.parent as unknown as IUser;
@@ -360,8 +323,7 @@ describe('cachePopulate', () => {
         expect((parentSelect as any).fieldA).toBeUndefined();
 
         // Second query: populate with select 'name email fieldA'
-        const resultSelectExtra = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name email fieldA' });
+        const resultSelectExtra = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name email fieldA' });
         expect(resultSelectExtra).toBeDefined();
         expect(resultSelectExtra!.parent).toBeDefined();
         const parentSelectExtra = resultSelectExtra!.parent as unknown as IUser;
@@ -370,8 +332,7 @@ describe('cachePopulate', () => {
         expect((parentSelectExtra as any).fieldA).toBe('extra');
 
         // Third query: populate with no select (should get all fields)
-        const resultNoSelect = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' });
+        const resultNoSelect = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' });
         expect(resultNoSelect).toBeDefined();
         expect(resultNoSelect!.parent).toBeDefined();
         const parentNoSelect = resultNoSelect!.parent as unknown as IUser;
@@ -383,11 +344,9 @@ describe('cachePopulate', () => {
         expect((parentSelect as any).fieldA).toBeUndefined();
         expect((parentSelectExtra as any).fieldA).toBe('extra');
         expect((parentNoSelect as any).fieldA).toBe('extra');
-    })
+    });
 
-
-
-        // Cache Invalidation on Populated Document Deletion
+    // Cache Invalidation on Populated Document Deletion
     it('should invalidate cache when a populated document is deleted', async () => {
         // Create parent user
         const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
@@ -396,13 +355,11 @@ describe('cachePopulate', () => {
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Query child and populate parent
-        const firstResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const firstResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(firstResult).toBeDefined();
         expect(firstResult!.parent).toBeInstanceOf(mongoose.Document);
@@ -412,130 +369,126 @@ describe('cachePopulate', () => {
         await UserModel.deleteOne({ _id: parent._id });
 
         // Query child and populate parent again
-        const secondResult = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const secondResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(secondResult).toBeDefined();
         expect(secondResult!.parent).toBeUndefined(); // Parent should not be found in cache
     });
 
     // Cache Invalidation on Populated Document Update
-it('should invalidate cache when a populated document is updated', async () => {
-    // Create parent user
-    const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+    it('should invalidate cache when a populated document is updated', async () => {
+        // Create parent user
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
 
-    // Create child user referencing parent
-    const child = await UserModel.create({
-        name: 'Child',
-        email: 'child@example.com',
-        parent: parent._id
+        // Create child user referencing parent
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        // Query child and populate parent
+        const firstResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
+
+        expect(firstResult).toBeDefined();
+        expect(firstResult!.parent).toBeInstanceOf(mongoose.Document);
+        expect((firstResult!.parent as unknown as IUser).name).toBe('Parent');
+
+        // Update the parent document
+        await UserModel.updateOne({ _id: parent._id }, { name: 'UpdatedParent' });
+
+        // Query child and populate parent again
+        const secondResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
+
+        expect(secondResult).toBeDefined();
+        expect(secondResult!.parent).toBeInstanceOf(mongoose.Document);
+        expect((secondResult!.parent as unknown as IUser).name).toBe('UpdatedParent');
     });
-
-    // Query child and populate parent
-    const firstResult = await UserModel.findOne({ _id: child._id })
-        .cachePopulate({ path: 'parent' })
-        .exec();
-
-    expect(firstResult).toBeDefined();
-    expect(firstResult!.parent).toBeInstanceOf(mongoose.Document);
-    expect((firstResult!.parent as unknown as IUser).name).toBe('Parent');
-
-    // Update the parent document
-    await UserModel.updateOne({ _id: parent._id }, { name: 'UpdatedParent' });
-
-    // Query child and populate parent again
-    const secondResult = await UserModel.findOne({ _id: child._id })
-        .cachePopulate({ path: 'parent' })
-        .exec();
-
-    expect(secondResult).toBeDefined();
-    expect(secondResult!.parent).toBeInstanceOf(mongoose.Document);
-    expect((secondResult!.parent as unknown as IUser).name).toBe('UpdatedParent');
-});
 
     // Population with Array of References
-it('should handle population and caching for array of references', async () => {
-    // Create parent users
-    const parent1 = await UserModel.create({ name: 'Parent1', email: 'parent1@example.com' });
-    const parent2 = await UserModel.create({ name: 'Parent2', email: 'parent2@example.com' });
+    it('should handle population and caching for array of references', async () => {
+        // Create parent users
+        const parent1 = await UserModel.create({ name: 'Parent1', email: 'parent1@example.com' });
+        const parent2 = await UserModel.create({ name: 'Parent2', email: 'parent2@example.com' });
 
-    // Create child user referencing both parents
-    const child = await UserModel.create({
-        name: 'Child',
-        email: 'child@example.com',
-        parents: [parent1._id, parent2._id]
+        // Create child user referencing both parents
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parents: [parent1._id, parent2._id],
+        });
+
+        // Query child and populate parents
+        const firstResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parents' }).exec();
+
+        expect(firstResult).toBeDefined();
+        expect(firstResult!.parents).toBeInstanceOf(Array);
+        expect(firstResult!.parents.length).toBe(2);
+        expect(firstResult!.parents[0]).toBeInstanceOf(mongoose.Document);
+        expect(firstResult!.parents[1]).toBeInstanceOf(mongoose.Document);
+        expect((firstResult!.parents[0] as unknown as IUser).name).toBe('Parent1');
+        expect((firstResult!.parents[1] as unknown as IUser).name).toBe('Parent2');
+
+        // Second query: should hit cache, not DB
+        const collectionFindSpy = jest.spyOn(mongoose.Collection.prototype, 'find');
+        const secondResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parents' }).exec();
+
+        expect(secondResult).toBeDefined();
+        expect(secondResult!.parents).toBeInstanceOf(Array);
+        expect(secondResult!.parents.length).toBe(2);
+        expect(secondResult!.parents[0]).toBeInstanceOf(mongoose.Document);
+        expect(secondResult!.parents[1]).toBeInstanceOf(mongoose.Document);
+        expect((secondResult!.parents[0] as unknown as IUser).name).toBe('Parent1');
+        expect((secondResult!.parents[1] as unknown as IUser).name).toBe('Parent2');
+        expect(collectionFindSpy).not.toHaveBeenCalled(); // Should not hit DB
+        collectionFindSpy.mockRestore();
     });
 
-    // Query child and populate parents
-    const firstResult = await UserModel.findOne({ _id: child._id })
-        .cachePopulate({ path: 'parents' })
-        .exec();
+    it('should correctly populate an array of references with broken relations', async () => {
+        // Create parent users
+        const parent1 = await UserModel.create({ name: 'Parent1', email: 'parent1@example.com' });
+        const parent2 = await UserModel.create({ name: 'Parent2', email: 'parent2@example.com' });
+        const randomParentId = new mongoose.Types.ObjectId(); // The ID of the parent that does not exist in the DB
 
-    expect(firstResult).toBeDefined();
-    expect(firstResult!.parents).toBeInstanceOf(Array);
-    expect(firstResult!.parents.length).toBe(2);
-    expect(firstResult!.parents[0]).toBeInstanceOf(mongoose.Document);
-    expect(firstResult!.parents[1]).toBeInstanceOf(mongoose.Document);
-    expect((firstResult!.parents[0] as unknown as IUser).name).toBe('Parent1');
-    expect((firstResult!.parents[1] as unknown as IUser).name).toBe('Parent2');
+        // Create child user referencing both parents
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parents: [parent1._id, parent2._id, randomParentId],
+        });
 
-    // Second query: should hit cache, not DB
-    const collectionFindSpy = jest.spyOn(mongoose.Collection.prototype, 'find');
-    const secondResult = await UserModel.findOne({ _id: child._id })
-        .cachePopulate({ path: 'parents' })
-        .exec();
+        // Query child and populate parents
+        const query = { _id: child._id };
+        const populate = { path: 'parents' };
+        const dbResult = await UserModel.findOne(query).populate(populate).exec();
+        const cachedResult = await UserModel.findOne(query).cachePopulate(populate).exec();
 
-    expect(secondResult).toBeDefined();
-    expect(secondResult!.parents).toBeInstanceOf(Array);
-    expect(secondResult!.parents.length).toBe(2);
-    expect(secondResult!.parents[0]).toBeInstanceOf(mongoose.Document);
-    expect(secondResult!.parents[1]).toBeInstanceOf(mongoose.Document);
-    expect((secondResult!.parents[0] as unknown as IUser).name).toBe('Parent1');
-    expect((secondResult!.parents[1] as unknown as IUser).name).toBe('Parent2');
-    expect(collectionFindSpy).not.toHaveBeenCalled(); // Should not hit DB
-    collectionFindSpy.mockRestore();
-});
-
-it('should correctly populate an array of references with broken relations', async () => {
-    // Create parent users
-    const parent1 = await UserModel.create({ name: 'Parent1', email: 'parent1@example.com' });
-    const parent2 = await UserModel.create({ name: 'Parent2', email: 'parent2@example.com' });
-    const randomParentId = new mongoose.Types.ObjectId(); // The ID of the parent that does not exist in the DB
-
-    // Create child user referencing both parents
-    const child = await UserModel.create({
-        name: 'Child',
-        email: 'child@example.com',
-        parents: [parent1._id, parent2._id, randomParentId],
+        expect(dbResult).toBeDefined();
+        expect(cachedResult).toBeDefined();
+        // Both requests should return only two parents third one must be ignored
+        expect(dbResult!.parents.length).toBe(2);
+        expect(cachedResult!.parents.length).toBe(2);
     });
-
-    // Query child and populate parents
-    const query = { _id: child._id };
-    const populate = { path: 'parents' };
-    const dbResult = await UserModel.findOne(query).populate(populate).exec();
-    const cachedResult = await UserModel.findOne(query).cachePopulate(populate).exec();
-
-    expect(dbResult).toBeDefined();
-    expect(cachedResult).toBeDefined();
-    // Both requests should return only two parents third one must be ignored
-    expect(dbResult!.parents.length).toBe(2);
-    expect(cachedResult!.parents.length).toBe(2);
-});
 
     // Placeholder: Population with Multiple Models
     it('should handle population and caching for fields referencing different models', async () => {
         // Create instances of different models
-        const parentModel = mongoose.model('ParentModel', new mongoose.Schema({
-            name: String,
-            email: String
-        }));
+        const parentModel = mongoose.model(
+            'ParentModel',
+            new mongoose.Schema({
+                name: String,
+                email: String,
+            }),
+        );
 
-        const childModel = mongoose.model('ChildModel', new mongoose.Schema({
-            name: String,
-            email: String,
-            parent: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentModel' }
-        }));
+        const childModel = mongoose.model(
+            'ChildModel',
+            new mongoose.Schema({
+                name: String,
+                email: String,
+                parent: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentModel' },
+            }),
+        );
 
         // Create parent document
         const parent = await parentModel.create({ name: 'Parent', email: 'parent@example.com' });
@@ -544,13 +497,11 @@ it('should correctly populate an array of references with broken relations', asy
         const child = await childModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // Query child and populate parent
-        const firstResult = await childModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const firstResult = await childModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(firstResult).toBeDefined();
         expect(firstResult!.parent).toBeInstanceOf(mongoose.Document);
@@ -558,9 +509,7 @@ it('should correctly populate an array of references with broken relations', asy
 
         // Second query: should hit cache, not DB
         const collectionFindSpy = jest.spyOn(mongoose.Collection.prototype, 'find');
-        const secondResult = await childModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const secondResult = await childModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(secondResult).toBeDefined();
         expect(secondResult!.parent).toBeInstanceOf(mongoose.Document);
@@ -577,7 +526,7 @@ it('should correctly populate an array of references with broken relations', asy
         const child = await UserModel.create({
             name: 'ChildObj',
             email: 'childobj@example.com',
-            parent: parent._id
+            parent: parent._id,
         });
 
         // First query: populate with select as object { name: 1, email: 1 }
@@ -622,9 +571,7 @@ it('should correctly populate an array of references with broken relations', asy
         collectionFindSpy.mockRestore();
 
         // Fourth query: populate with no select (should get all fields)
-        const resultNoSelectObj = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const resultNoSelectObj = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
         expect(resultNoSelectObj).toBeDefined();
         expect(resultNoSelectObj!.parent).toBeDefined();
         const parentNoSelectObj = resultNoSelectObj!.parent as unknown as IUser;
@@ -642,12 +589,10 @@ it('should correctly populate an array of references with broken relations', asy
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parents: []
+            parents: [],
         });
 
-        const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parents' })
-            .exec();
+        const result = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parents' }).exec();
 
         expect(result).toBeDefined();
         expect(result!.parents).toEqual([]);
@@ -659,9 +604,7 @@ it('should correctly populate an array of references with broken relations', asy
             email: 'child@example.com',
         });
 
-        const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parents' })
-            .exec();
+        const result = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parents' }).exec();
 
         expect(result).toBeDefined();
         expect(result!.parents).toEqual([]);
@@ -674,7 +617,7 @@ it('should correctly populate an array of references with broken relations', asy
         const childWith = await UserModel.create({
             name: 'ChildWith',
             email: 'childwith@example.com',
-            parents: [parent1._id, parent2._id]
+            parents: [parent1._id, parent2._id],
         });
         const childWithout = await UserModel.create({
             name: 'ChildWithout',
@@ -702,20 +645,165 @@ it('should correctly populate an array of references with broken relations', asy
             name: 'Child',
             email: 'child@example.com',
             parent: parentSingle._id,
-            parents: [parentArr1._id, parentArr2._id]
+            parents: [parentArr1._id, parentArr2._id],
         });
 
         const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate([
-                { path: 'parent' },
-                { path: 'parents' }
-            ])
+            .cachePopulate([{ path: 'parent' }, { path: 'parents' }])
             .exec();
 
         expect(result).toBeDefined();
         expect((result!.parent as unknown as IUser).name).toBe('SingleParent');
         expect(result!.parents).toHaveLength(2);
         expect((result!.parents[0] as unknown as IUser).name).toBe('ArrParent1');
+    });
+
+    // ── Projection (select) + cachePopulate tests ──
+
+    it('should populate correctly when query uses .select() that excludes the populate path', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        const result = await UserModel.findOne({ _id: child._id }).select('name email').cachePopulate({ path: 'parent' }).exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.email).toBe('child@example.com');
+        expect(result!.parent).toBeDefined();
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
+    });
+
+    it('should populate correctly when projection is passed as second arg to find()', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        const results = await UserModel.find({ _id: child._id }, 'name email').cachePopulate({ path: 'parent' }).exec();
+
+        expect(results).toHaveLength(1);
+        expect(results[0].name).toBe('Child');
+        expect(results[0].parent).toBeDefined();
+        expect((results[0].parent as unknown as IUser).name).toBe('Parent');
+    });
+
+    it('should not modify exclusive projections when using cachePopulate', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        const result = await UserModel.findOne({ _id: child._id }).select('-email').cachePopulate({ path: 'parent' }).exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.email).toBeUndefined();
+        expect(result!.parent).toBeDefined();
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
+    });
+
+    it('should populate array refs when projection excludes the array field', async () => {
+        const parent1 = await UserModel.create({ name: 'Parent1', email: 'p1@example.com' });
+        const parent2 = await UserModel.create({ name: 'Parent2', email: 'p2@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parents: [parent1._id, parent2._id],
+        });
+
+        const result = await UserModel.findOne({ _id: child._id }).select('name').cachePopulate({ path: 'parents' }).exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.parents).toHaveLength(2);
+        expect((result!.parents[0] as unknown as IUser).name).toBe('Parent1');
+        expect((result!.parents[1] as unknown as IUser).name).toBe('Parent2');
+    });
+
+    it('should add multiple populate paths to projection when both are missing', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const relation = await UserModel.create({ name: 'Relation', email: 'relation@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+            relationField: relation._id,
+        });
+
+        const result = await UserModel.findOne({ _id: child._id })
+            .select('name')
+            .cachePopulate([{ path: 'parent' }, { path: 'relationField' }])
+            .exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.parent).toBeDefined();
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
+        expect(result!.relationField).toBeDefined();
+        expect((result!.relationField as unknown as IUser).name).toBe('Relation');
+    });
+
+    it('should handle select + lean + cachePopulate together', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        const result = await UserModel.findOne({ _id: child._id }).select('name email').lean().cachePopulate({ path: 'parent' }).exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.parent).toBeDefined();
+        expect(result!.parent as any).not.toBeInstanceOf(mongoose.Document);
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
+    });
+
+    it('should populate with select on populate options + projection on query', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com', age: 42 });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        const result = await UserModel.findOne({ _id: child._id }).select('name').cachePopulate({ path: 'parent', select: 'name' }).exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.parent).toBeDefined();
+        const populatedParent = result!.parent as unknown as IUser;
+        expect(populatedParent.name).toBe('Parent');
+        expect(populatedParent.email).toBeUndefined();
+        expect((populatedParent as any).age).toBeUndefined();
+    });
+
+    it('should populate correctly when projection uses boolean true values', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        // Projection with boolean true (Mongoose preserves this, doesn't normalize to 1)
+        const result = await UserModel.findOne({ _id: child._id }, { name: true, email: true } as any)
+            .cachePopulate({ path: 'parent' })
+            .exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.parent).toBeDefined();
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
     });
 
     it('should handle array refs with null entries mixed with valid ids', async () => {
@@ -725,18 +813,13 @@ it('should correctly populate an array of references with broken relations', asy
         const child = await UserModel.create({
             name: 'Child',
             email: 'child@example.com',
-            parents: [parent1._id, parent2._id]
+            parents: [parent1._id, parent2._id],
         });
 
         // Manually inject a null into the parents array via raw update
-        await mongoose.connection.collection('users').updateOne(
-            { _id: child._id },
-            { $set: { parents: [parent1._id, null, parent2._id] } }
-        );
+        await mongoose.connection.collection('users').updateOne({ _id: child._id }, { $set: { parents: [parent1._id, null, parent2._id] } });
 
-        const result = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parents' })
-            .exec();
+        const result = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parents' }).exec();
 
         expect(result).toBeDefined();
         // Should have the 2 valid parents, null should be filtered out
@@ -744,5 +827,4 @@ it('should correctly populate an array of references with broken relations', asy
         expect((result!.parents[0] as unknown as IUser).name).toBe('Parent1');
         expect((result!.parents[1] as unknown as IUser).name).toBe('Parent2');
     });
-
 });
