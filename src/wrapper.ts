@@ -1,12 +1,7 @@
 import { Container } from 'typedi';
 import Keyv from 'keyv';
 import { Document, Mongoose, Query } from 'mongoose';
-import {
-    CacheNamespaces,
-    GlobalDiContainerRegistryNames,
-    SharedCacheStrategies,
-    SpeedGooseConfig
-} from './types/types';
+import { CacheNamespaces, GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig, SpeedGoosePopulateOptions } from './types/types';
 import { addCachingToQuery } from './extendQuery';
 import { addCachingToAggregate } from './extendAggregate';
 import { registerListenerForInternalEvents } from './mongooseModelEvents';
@@ -39,15 +34,9 @@ const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
 };
 
 const registerHydrationCaches = (): void => {
-    Container.set<Keyv<Document>>(
-        GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS,
-        createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_NAMESPACE)
-    );
+    Container.set<Keyv<Document>>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS, createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_NAMESPACE));
 
-    Container.set<Keyv<Set<string>>>(
-        GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS,
-        createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE)
-    );
+    Container.set<Keyv<Set<string>>>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS, createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE));
 };
 
 const registerGlobalMongooseAccess = (mongoose: Mongoose): void => {
@@ -64,6 +53,27 @@ const registerCacheStrategyInstance = (config: SpeedGooseConfig): Promise<void> 
     }
 };
 
+/**
+ * Ensures that populate paths are included in the query's projection.
+ * Without this, an inclusive select like `.select('name email')` would not return
+ * the ObjectId field needed for population, causing cachePopulate to silently skip.
+ * Mirrors native Mongoose behavior in Query.prototype._castFields().
+ */
+const ensurePopulatePathsInProjection = (query: Query<any, any>, populateOptions: SpeedGoosePopulateOptions[]): void => {
+    const projection = query.projection() as Record<string, any> | null;
+    if (!projection || Object.keys(projection).length === 0) return;
+
+    const isInclusive = Object.entries(projection).some(([key, val]) => key !== '_id' && val === 1);
+    if (!isInclusive) return;
+
+    for (const opt of populateOptions) {
+        const rootField = opt.path.split('.')[0];
+        if (!projection[rootField]) {
+            query.select(rootField);
+        }
+    }
+};
+
 const wrapExecForPopulation = (mongoose: Mongoose): void => {
     const originalExec = mongoose.Query.prototype.exec;
 
@@ -75,16 +85,11 @@ const wrapExecForPopulation = (mongoose: Mongoose): void => {
             return originalExec.apply(this, args);
         }
 
-        populateOptions.touched = true
+        populateOptions.touched = true;
+        ensurePopulatePathsInProjection(this as Query<any, any>, populateOptions);
         return originalExec.apply(this, args).then(documents => {
             if (!documents) return documents;
-            return handleCachedPopulation(
-                Array.isArray(documents) ? documents : [documents],
-                populateOptions,
-                this as Query<any, any>
-            ).then(populatedDocs =>
-                Array.isArray(documents) ? populatedDocs : populatedDocs[0]
-            );
+            return handleCachedPopulation(Array.isArray(documents) ? documents : [documents], populateOptions, this as Query<any, any>).then(populatedDocs => (Array.isArray(documents) ? populatedDocs : populatedDocs[0]));
         });
     };
 };
