@@ -63,7 +63,7 @@ const ensurePopulatePathsInProjection = (query: Query<any, any>, populateOptions
     const projection = query.projection() as Record<string, any> | null;
     if (!projection || Object.keys(projection).length === 0) return;
 
-    const isInclusive = Object.entries(projection).some(([key, val]) => key !== '_id' && val === 1);
+    const isInclusive = Object.entries(projection).some(([key, val]) => key !== '_id' && (val === 1 || val === true));
     if (!isInclusive) return;
 
     for (const opt of populateOptions) {

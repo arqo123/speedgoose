@@ -787,6 +787,25 @@ describe('cachePopulate', () => {
         expect((populatedParent as any).age).toBeUndefined();
     });
 
+    it('should populate correctly when projection uses boolean true values', async () => {
+        const parent = await UserModel.create({ name: 'Parent', email: 'parent@example.com' });
+        const child = await UserModel.create({
+            name: 'Child',
+            email: 'child@example.com',
+            parent: parent._id,
+        });
+
+        // Projection with boolean true (Mongoose preserves this, doesn't normalize to 1)
+        const result = await UserModel.findOne({ _id: child._id }, { name: true, email: true } as any)
+            .cachePopulate({ path: 'parent' })
+            .exec();
+
+        expect(result).toBeDefined();
+        expect(result!.name).toBe('Child');
+        expect(result!.parent).toBeDefined();
+        expect((result!.parent as unknown as IUser).name).toBe('Parent');
+    });
+
     it('should handle array refs with null entries mixed with valid ids', async () => {
         const parent1 = await UserModel.create({ name: 'Parent1', email: 'p1@example.com' });
         const parent2 = await UserModel.create({ name: 'Parent2', email: 'p2@example.com' });
