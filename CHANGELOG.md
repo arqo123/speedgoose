@@ -1,3 +1,10 @@
+## [2.5.3](https://github.com/arqo123/speedgoose/compare/v2.5.2...v2.5.3) (2026-03-14)
+
+
+### Bug Fixes
+
+* auto-add populate paths to inclusive projections in cachePopulate ([#167](https://github.com/arqo123/speedgoose/issues/167)) ([4e7956c](https://github.com/arqo123/speedgoose/commit/4e7956c2585ee28e104c5e404d623beae82927bb)), closes [#166](https://github.com/arqo123/speedgoose/issues/166)
+
 ## [2.5.2](https://github.com/arqo123/speedgoose/compare/v2.5.1...v2.5.2) (2026-03-01)
 
 
