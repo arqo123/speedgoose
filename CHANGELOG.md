@@ -1,3 +1,10 @@
+## [2.5.4](https://github.com/arqo123/speedgoose/compare/v2.5.3...v2.5.4) (2026-03-16)
+
+
+### Bug Fixes
+
+* add TTL and cardinality limits to invalidation sets to prevent memory leak ([#169](https://github.com/arqo123/speedgoose/issues/169)) ([7af7656](https://github.com/arqo123/speedgoose/commit/7af7656c4b96e12e4d278ba248368423f5bda768)), closes [#168](https://github.com/arqo123/speedgoose/issues/168)
+
 ## [2.5.3](https://github.com/arqo123/speedgoose/compare/v2.5.2...v2.5.3) (2026-03-14)
 
 
