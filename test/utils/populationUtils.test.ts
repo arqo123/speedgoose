@@ -579,6 +579,8 @@ describe('populationUtils', () => {
             expect(batchSpy).toHaveBeenCalledTimes(1);
             expect(batchSpy).toHaveBeenCalledWith(
                 expect.arrayContaining([expect.objectContaining({ childIdentifier: expect.stringContaining(parent1._id.toString()) }), expect.objectContaining({ childIdentifier: expect.stringContaining(parent2._id.toString()) })]),
+                expect.any(Number),
+                expect.any(Number),
             );
             expect(singleSpy).not.toHaveBeenCalled();
 

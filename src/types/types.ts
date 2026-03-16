@@ -24,7 +24,7 @@ export type CustomDebugger = (label?: string, ...dataToLog: unknown[]) => void;
 
 export enum TtlInheritance {
     FALLBACK = 'fallback',
-    OVERRIDE = 'override'
+    OVERRIDE = 'override',
 }
 
 export enum SpeedGooseDebuggerOperations {
@@ -69,6 +69,10 @@ export type SpeedGooseConfig = {
     cacheParentLimit?: number;
     /** If enabled, clears model-level cache on update events (not only create/delete). Disabled by default. */
     clearModelCacheOnUpdate?: boolean;
+    /** TTL (in seconds) for invalidation sets (model/record/relationship). Defaults to 2x defaultTtl. Set 0 to disable. */
+    setsTtl?: number;
+    /** Maximum number of members in a single invalidation set. When exceeded, the set is reset. Defaults to 10000. Set 0 to disable. */
+    maxSetCardinality?: number;
 };
 
 export type SpeedGooseCacheOperationParams = {
@@ -92,7 +96,7 @@ export enum MongooseDocumentEvents {
 }
 
 export type MongooseDocumentEventsContext = {
-    record?: Document & { _id: string } | DocumentWithIdAndTenantValue;
+    record?: (Document & { _id: string }) | DocumentWithIdAndTenantValue;
     wasNew?: boolean;
     wasDeleted?: boolean;
     modelName?: string;
