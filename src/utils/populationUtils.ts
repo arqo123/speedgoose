@@ -1,6 +1,7 @@
 import { Document, Model, Query } from 'mongoose';
 import { getMongooseModelByName } from './mongooseUtils';
-import { getCacheStrategyInstance, getConfig } from './commonUtils';
+import { getCacheStrategyInstance } from './commonUtils';
+import { getSetsTtl, getMaxSetCardinality } from './cacheClientUtils';
 import { CacheNamespaces, SpeedGoosePopulateOptions, CachedResult, TtlInheritance } from '../types/types';
 import mpath from 'mpath';
 import { isLeanQuery } from './queryUtils';
@@ -106,10 +107,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(
     }
 
     if (relationships.length > 0) {
-        const config = getConfig();
-        const setsTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
-        const maxSetCardinality = config?.maxSetCardinality !== undefined ? config.maxSetCardinality : 10000;
-        await cacheStrategy.addManyParentToChildRelationships(relationships, setsTtl, maxSetCardinality);
+        await cacheStrategy.addManyParentToChildRelationships(relationships, getSetsTtl(), getMaxSetCardinality());
     }
 };
 

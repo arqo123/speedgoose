@@ -50,7 +50,9 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (maxSetCardinality > 0 && namespaces.length > 0) {
             const pipeline = this.client.pipeline();
-            namespaces.forEach(ns => pipeline.scard(ns));
+            for (const ns of namespaces) {
+                pipeline.scard(ns);
+            }
             const results = await pipeline.exec();
             const oversized = namespaces.filter((_, i) => results[i] && !results[i][0] && (results[i][1] as number) >= maxSetCardinality);
             if (oversized.length > 0) {
@@ -58,10 +60,10 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
             }
         }
         const pipeline = this.client.pipeline();
-        namespaces.forEach(namespace => {
+        for (const namespace of namespaces) {
             pipeline.sadd(namespace, value);
             if (setsTtl > 0) pipeline.expire(namespace, setsTtl);
-        });
+        }
         await pipeline.exec();
     }
 
@@ -135,10 +137,13 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (relationships.length === 0) return;
 
+        const uniqueChildren = setsTtl > 0 || maxSetCardinality > 0 ? [...new Set(relationships.map(r => r.childIdentifier))] : [];
+
         if (maxSetCardinality > 0) {
-            const uniqueChildren = [...new Set(relationships.map(r => r.childIdentifier))];
             const pipeline = this.client.pipeline();
-            uniqueChildren.forEach(child => pipeline.scard(child));
+            for (const child of uniqueChildren) {
+                pipeline.scard(child);
+            }
             const results = await pipeline.exec();
             const oversized = uniqueChildren.filter((_, i) => results[i] && !results[i][0] && (results[i][1] as number) >= maxSetCardinality);
             if (oversized.length > 0) {
@@ -151,8 +156,9 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
             pipeline.sadd(childIdentifier, parentIdentifier);
         }
         if (setsTtl > 0) {
-            const uniqueChildren = [...new Set(relationships.map(r => r.childIdentifier))];
-            uniqueChildren.forEach(child => pipeline.expire(child, setsTtl));
+            for (const child of uniqueChildren) {
+                pipeline.expire(child, setsTtl);
+            }
         }
         await pipeline.exec();
     }

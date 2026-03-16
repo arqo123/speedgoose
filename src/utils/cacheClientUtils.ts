@@ -10,14 +10,14 @@ import { logCacheClear } from './debugUtils';
 import { isResultWithIds } from './mongooseUtils';
 import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
 
-const getSetsTtl = (): number => {
+export const getSetsTtl = (): number => {
     const config = getConfig();
     if (config?.setsTtl !== undefined) return config.setsTtl;
     const defaultTtl = config?.defaultTtl ?? 60;
     return defaultTtl * 2;
 };
 
-const getMaxSetCardinality = (): number => {
+export const getMaxSetCardinality = (): number => {
     const config = getConfig();
     if (config?.maxSetCardinality !== undefined) return config.maxSetCardinality;
     return 10000;

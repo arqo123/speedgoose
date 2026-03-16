@@ -77,25 +77,12 @@ describe('Invalidation sets TTL integration', () => {
             spy.mockRestore();
         });
 
-        test('should pass defaults to relationship sets via cachePopulate', async () => {
-            const cacheStrategy = getCacheStrategyInstance();
-            const spy = jest.spyOn(cacheStrategy, 'addManyParentToChildRelationships');
-
-            const parent = await UserModel.create({ name: 'parent', email: 'p@test.com' });
-            await UserModel.create({ name: 'child', email: 'c@test.com', parent: parent._id });
-
-            await (UserModel.find({ name: 'child' }) as any).cacheQuery({
-                cacheKey: 'populate-default-test',
-                cachePopulate: [{ path: 'parent' }],
-            });
-
-            if (spy.mock.calls.length > 0) {
-                const call = spy.mock.calls[0];
-                expect(call[1]).toBe(120); // setsTtl
-                expect(call[2]).toBe(10000); // maxSetCardinality
-            }
-
-            spy.mockRestore();
+        test('should compute correct defaults for relationship set helpers', () => {
+            // Verify that the shared helpers return correct defaults for relationship sets
+            // (the actual relationship call is tested in populationUtils.test.ts)
+            const { getSetsTtl, getMaxSetCardinality } = require('../../src/utils/cacheClientUtils');
+            expect(getSetsTtl()).toBe(120); // 2 * 60 (defaultTtl)
+            expect(getMaxSetCardinality()).toBe(10000);
         });
     });
 
