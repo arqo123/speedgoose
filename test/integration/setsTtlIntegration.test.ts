@@ -19,7 +19,7 @@ import { SpeedGooseConfig, GlobalDiContainerRegistryNames } from '../../src/type
 describe('Invalidation sets TTL integration', () => {
     beforeAll(async () => {
         await setupTestDB();
-        applySpeedGooseCacheLayer(mongoose, {});
+        await applySpeedGooseCacheLayer(mongoose, {});
     });
 
     afterAll(async () => {

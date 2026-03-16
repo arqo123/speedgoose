@@ -137,7 +137,13 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (relationships.length === 0) return;
 
-        const uniqueChildren = setsTtl > 0 || maxSetCardinality > 0 ? [...new Set(relationships.map(r => r.childIdentifier))] : [];
+        // Group incoming relationships by child to count batch additions
+        const grouped = new Map<string, Set<string>>();
+        for (const { childIdentifier, parentIdentifier } of relationships) {
+            if (!grouped.has(childIdentifier)) grouped.set(childIdentifier, new Set<string>());
+            grouped.get(childIdentifier)!.add(parentIdentifier);
+        }
+        const uniqueChildren = [...grouped.keys()];
 
         if (maxSetCardinality > 0) {
             const pipeline = this.client.pipeline();
@@ -145,20 +151,22 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
                 pipeline.scard(child);
             }
             const results = await pipeline.exec();
-            const oversized = uniqueChildren.filter((_, i) => results[i] && !results[i][0] && (results[i][1] as number) >= maxSetCardinality);
+            const oversized = uniqueChildren.filter((child, i) => {
+                const currentSize = results[i] && !results[i][0] ? (results[i][1] as number) : 0;
+                const incomingSize = grouped.get(child)!.size;
+                return currentSize + incomingSize > maxSetCardinality;
+            });
             if (oversized.length > 0) {
                 await this.client.del(...oversized);
             }
         }
 
         const pipeline = this.client.pipeline();
-        for (const { childIdentifier, parentIdentifier } of relationships) {
-            pipeline.sadd(childIdentifier, parentIdentifier);
-        }
-        if (setsTtl > 0) {
-            for (const child of uniqueChildren) {
-                pipeline.expire(child, setsTtl);
+        for (const [childIdentifier, parents] of grouped.entries()) {
+            for (const parentIdentifier of parents) {
+                pipeline.sadd(childIdentifier, parentIdentifier);
             }
+            if (setsTtl > 0) pipeline.expire(childIdentifier, setsTtl);
         }
         await pipeline.exec();
     }

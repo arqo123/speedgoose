@@ -140,20 +140,24 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (relationships.length === 0) return;
-        const grouped = new Map<string, Set<string>>();
+
+        // Group incoming relationships by child
+        const incoming = new Map<string, Set<string>>();
         for (const { childIdentifier, parentIdentifier } of relationships) {
-            if (!grouped.has(childIdentifier)) {
-                const existing = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
-                if (maxSetCardinality > 0 && existing.size >= maxSetCardinality) {
-                    grouped.set(childIdentifier, new Set<string>());
-                } else {
-                    grouped.set(childIdentifier, existing);
-                }
-            }
-            grouped.get(childIdentifier)!.add(parentIdentifier);
+            if (!incoming.has(childIdentifier)) incoming.set(childIdentifier, new Set<string>());
+            incoming.get(childIdentifier)!.add(parentIdentifier);
         }
+
         const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
-        await Promise.all(Array.from(grouped.entries()).map(([key, parents]) => this.relationsCacheClient.set(key, parents, ttlMs)));
+        await Promise.all(
+            Array.from(incoming.entries()).map(async ([key, newParents]) => {
+                const existing = (await this.relationsCacheClient.get(key)) || new Set<string>();
+                const merged = new Set<string>([...existing, ...newParents]);
+                // If merged set exceeds cardinality, reset to only new parents
+                const shouldReset = maxSetCardinality > 0 && merged.size > maxSetCardinality;
+                return this.relationsCacheClient.set(key, shouldReset ? newParents : merged, ttlMs);
+            }),
+        );
     }
 
     public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
