@@ -38,11 +38,11 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         await this.resultsCacheClient.set(keyWithNamespace, value, ttl * 1000);
     }
 
-    public async addValueToCacheSet<T extends string | number>(namespace: string, value: T): Promise<void> {
+    public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, _setsTtl?: number, _maxSetCardinality?: number): Promise<void> {
         await addValueToInternalCachedSet(this.recordResultsSetsClient, namespace, value);
     }
 
-    public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T): Promise<void> {
+    public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, _setsTtl?: number, _maxSetCardinality?: number): Promise<void> {
         await Promise.all(namespaces.map(namespace => addValueToInternalCachedSet(this.recordResultsSetsClient, namespace, value)));
     }
 
@@ -110,13 +110,13 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         await Promise.all(promises);
     }
 
-    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void> {
+    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, _setsTtl?: number, _maxSetCardinality?: number): Promise<void> {
         const parents = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
         parents.add(parentIdentifier);
         await this.relationsCacheClient.set(childIdentifier, parents);
     }
 
-    public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>): Promise<void> {
+    public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, _setsTtl?: number, _maxSetCardinality?: number): Promise<void> {
         if (relationships.length === 0) return;
         const grouped = new Map<string, Set<string>>();
         for (const { childIdentifier, parentIdentifier } of relationships) {

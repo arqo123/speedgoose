@@ -5,10 +5,23 @@ import { SpeedGooseConfig } from '../types/types';
 import { GlobalDiContainerRegistryNames } from '../types/types';
 import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from '../types/types';
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
-import { getCacheStrategyInstance, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
+import { getCacheStrategyInstance, getConfig, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
 import { logCacheClear } from './debugUtils';
 import { isResultWithIds } from './mongooseUtils';
 import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
+
+const getSetsTtl = (): number => {
+    const config = getConfig();
+    if (config?.setsTtl !== undefined) return config.setsTtl;
+    const defaultTtl = config?.defaultTtl ?? 60;
+    return defaultTtl * 2;
+};
+
+const getMaxSetCardinality = (): number => {
+    const config = getConfig();
+    if (config?.maxSetCardinality !== undefined) return config.maxSetCardinality;
+    return 10000;
+};
 
 const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
     if (keysToClean && Array.isArray(keysToClean)) {
@@ -30,14 +43,14 @@ const setKeyInResultsCache = async <T>(results: CachedResult<T>, params: SpeedGo
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const modelCacheKey = generateCacheKeyForModelName(model.modelName, params.multitenantValue);
 
-    await getCacheStrategyInstance().addValueToCacheSet(modelCacheKey, params.cacheKey);
+    await getCacheStrategyInstance().addValueToCacheSet(modelCacheKey, params.cacheKey, getSetsTtl(), getMaxSetCardinality());
 };
 
 const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)];
 
     if (resultsIds.length > 0) {
-        await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey);
+        await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey, getSetsTtl(), getMaxSetCardinality());
     }
 };
 

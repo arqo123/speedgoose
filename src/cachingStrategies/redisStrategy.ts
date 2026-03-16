@@ -34,14 +34,34 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         await this.client.pipeline().set(keyWithNamespace, JSON.stringify(value)).expire(keyWithNamespace, ttl).exec();
     }
 
-    public async addValueToCacheSet<T extends string | number>(namespace: string, value: T): Promise<void> {
-        await this.client.sadd(namespace, value);
+    public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
+        if (maxSetCardinality > 0) {
+            const size = await this.client.scard(namespace);
+            if (size >= maxSetCardinality) {
+                await this.client.del(namespace);
+            }
+        }
+        const pipeline = this.client.pipeline();
+        pipeline.sadd(namespace, value);
+        if (setsTtl > 0) pipeline.expire(namespace, setsTtl);
+        await pipeline.exec();
     }
 
-    public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T): Promise<void> {
+    public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
+        if (maxSetCardinality > 0 && namespaces.length > 0) {
+            const pipeline = this.client.pipeline();
+            namespaces.forEach(ns => pipeline.scard(ns));
+            const results = await pipeline.exec();
+            const oversized = namespaces.filter((_, i) => results[i] && !results[i][0] && (results[i][1] as number) >= maxSetCardinality);
+            if (oversized.length > 0) {
+                await this.client.del(...oversized);
+            }
+        }
         const pipeline = this.client.pipeline();
-        namespaces.forEach(namespace => pipeline.sadd(namespace, value));
-
+        namespaces.forEach(namespace => {
+            pipeline.sadd(namespace, value);
+            if (setsTtl > 0) pipeline.expire(namespace, setsTtl);
+        });
         await pipeline.exec();
     }
 
@@ -52,7 +72,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async clearResultsCacheWithSet(namespace: string): Promise<void> {
         const keys = await this.getValuesFromCachedSet(namespace);
         if (keys?.length > 0) {
-            await this.client.del(keys.map(key => `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`));
+            const fullKeys = keys.map(key => `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`);
+            // Delete in batches to avoid single huge DEL command
+            const BATCH = 500;
+            for (let i = 0; i < fullKeys.length; i += BATCH) {
+                await this.client.del(...fullKeys.slice(i, i + BATCH));
+            }
             await this.clearCachedSet(namespace);
         }
     }
@@ -94,15 +119,40 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         await pipeline.exec();
     }
 
-    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string): Promise<void> {
-        await this.client.sadd(childIdentifier, parentIdentifier);
+    public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
+        if (maxSetCardinality > 0) {
+            const size = await this.client.scard(childIdentifier);
+            if (size >= maxSetCardinality) {
+                await this.client.del(childIdentifier);
+            }
+        }
+        const pipeline = this.client.pipeline();
+        pipeline.sadd(childIdentifier, parentIdentifier);
+        if (setsTtl > 0) pipeline.expire(childIdentifier, setsTtl);
+        await pipeline.exec();
     }
 
-    public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>): Promise<void> {
+    public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (relationships.length === 0) return;
+
+        if (maxSetCardinality > 0) {
+            const uniqueChildren = [...new Set(relationships.map(r => r.childIdentifier))];
+            const pipeline = this.client.pipeline();
+            uniqueChildren.forEach(child => pipeline.scard(child));
+            const results = await pipeline.exec();
+            const oversized = uniqueChildren.filter((_, i) => results[i] && !results[i][0] && (results[i][1] as number) >= maxSetCardinality);
+            if (oversized.length > 0) {
+                await this.client.del(...oversized);
+            }
+        }
+
         const pipeline = this.client.pipeline();
         for (const { childIdentifier, parentIdentifier } of relationships) {
             pipeline.sadd(childIdentifier, parentIdentifier);
+        }
+        if (setsTtl > 0) {
+            const uniqueChildren = [...new Set(relationships.map(r => r.childIdentifier))];
+            uniqueChildren.forEach(child => pipeline.expire(child, setsTtl));
         }
         await pipeline.exec();
     }
