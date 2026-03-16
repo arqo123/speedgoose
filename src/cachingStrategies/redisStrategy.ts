@@ -145,6 +145,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         }
         const uniqueChildren = [...grouped.keys()];
 
+        const resetChildren = new Set<string>();
         if (maxSetCardinality > 0) {
             const pipeline = this.client.pipeline();
             for (const child of uniqueChildren) {
@@ -158,12 +159,15 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
             });
             if (oversized.length > 0) {
                 await this.client.del(...oversized);
+                for (const child of oversized) resetChildren.add(child);
             }
         }
 
         const pipeline = this.client.pipeline();
         for (const [childIdentifier, parents] of grouped.entries()) {
-            for (const parentIdentifier of parents) {
+            // After reset, cap additions to maxSetCardinality to prevent immediate overflow
+            const parentsToAdd = maxSetCardinality > 0 && resetChildren.has(childIdentifier) && parents.size > maxSetCardinality ? [...parents].slice(0, maxSetCardinality) : parents;
+            for (const parentIdentifier of parentsToAdd) {
                 pipeline.sadd(childIdentifier, parentIdentifier);
             }
             if (setsTtl > 0) pipeline.expire(childIdentifier, setsTtl);
