@@ -1,3 +1,10 @@
+## [2.5.5](https://github.com/arqo123/speedgoose/compare/v2.5.4...v2.5.5) (2026-03-19)
+
+
+### Bug Fixes
+
+* include populate select in hydration cache key to prevent data collision ([#171](https://github.com/arqo123/speedgoose/issues/171)) ([00eb28a](https://github.com/arqo123/speedgoose/commit/00eb28afb749c21989ab84593c784609b7a1db04)), closes [#170](https://github.com/arqo123/speedgoose/issues/170)
+
 ## [2.5.4](https://github.com/arqo123/speedgoose/compare/v2.5.3...v2.5.4) (2026-03-16)
 
 
