@@ -1,14 +1,7 @@
-import mongoose, { Document } from 'mongoose';
+import mongoose from 'mongoose';
 import { applySpeedGooseCacheLayer } from '../../src/wrapper';
 import { UserModel, setupTestDB, clearTestCache } from '../testUtils';
-
-interface IUser extends Document {
-    name: string;
-    email: string;
-    age?: number;
-    fieldA?: string;
-    parent?: IUser | mongoose.Types.ObjectId;
-}
+import { IUser } from '../types';
 
 /**
  * Bug report: cachePopulate caches populated documents by _id but the cache key
@@ -55,9 +48,7 @@ describe('BUG: cachePopulate select collision', () => {
         });
 
         // Query 1: populate parent with SELECT (only 'name')
-        const result1 = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name' })
-            .exec();
+        const result1 = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name' }).exec();
 
         expect(result1).toBeDefined();
         const parent1 = result1!.parent as IUser;
@@ -67,9 +58,7 @@ describe('BUG: cachePopulate select collision', () => {
         expect(parent1.fieldA).toBeUndefined();
 
         // Query 2: populate parent WITHOUT select → wants FULL document
-        const result2 = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const result2 = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(result2).toBeDefined();
         const parent2 = result2!.parent as IUser;
@@ -78,9 +67,9 @@ describe('BUG: cachePopulate select collision', () => {
         // If cachePopulate ignores select in cache key, parent2 will be the
         // partial version from Query 1 (only 'name', missing 'email' and 'fieldA').
         expect(parent2.name).toBe('FullParent');
-        expect(parent2.email).toBe('full@example.com');     // <-- would fail if cache collision
-        expect(parent2.fieldA).toBe('important_data');       // <-- would fail if cache collision
-        expect(parent2.age).toBe(42);                        // <-- would fail if cache collision
+        expect(parent2.email).toBe('full@example.com'); // <-- would fail if cache collision
+        expect(parent2.fieldA).toBe('important_data'); // <-- would fail if cache collision
+        expect(parent2.age).toBe(42); // <-- would fail if cache collision
     });
 
     it('should NOT return full document when second query has narrower select', async () => {
@@ -99,9 +88,7 @@ describe('BUG: cachePopulate select collision', () => {
         });
 
         // Query 1: populate parent WITHOUT select (full)
-        const result1 = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const result1 = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(result1).toBeDefined();
         const parent1 = result1!.parent as IUser;
@@ -109,17 +96,15 @@ describe('BUG: cachePopulate select collision', () => {
         expect(parent1.email).toBe('full@example.com');
 
         // Query 2: populate parent WITH select 'name' only
-        const result2 = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name' })
-            .exec();
+        const result2 = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name' }).exec();
 
         expect(result2).toBeDefined();
         const parent2 = result2!.parent as IUser;
 
         // If cache collision: parent2 would have email/fieldA from full populate
         expect(parent2.name).toBe('FullParent');
-        expect(parent2.email).toBeUndefined();   // <-- select 'name' should exclude email
-        expect(parent2.fieldA).toBeUndefined();   // <-- select 'name' should exclude fieldA
+        expect(parent2.email).toBeUndefined(); // <-- select 'name' should exclude email
+        expect(parent2.fieldA).toBeUndefined(); // <-- select 'name' should exclude fieldA
     });
 
     it('should cache different select variants independently', async () => {
@@ -137,27 +122,21 @@ describe('BUG: cachePopulate select collision', () => {
         });
 
         // Query A: select 'name email'
-        const resultA = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name email' })
-            .exec();
+        const resultA = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name email' }).exec();
         const parentA = resultA!.parent as IUser;
         expect(parentA.name).toBe('Parent');
         expect(parentA.email).toBe('parent@example.com');
         expect(parentA.fieldA).toBeUndefined();
 
         // Query B: select 'name fieldA'
-        const resultB = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent', select: 'name fieldA' })
-            .exec();
+        const resultB = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent', select: 'name fieldA' }).exec();
         const parentB = resultB!.parent as IUser;
         expect(parentB.name).toBe('Parent');
         expect(parentB.fieldA).toBe('extra');
-        expect(parentB.email).toBeUndefined();  // <-- should NOT have email
+        expect(parentB.email).toBeUndefined(); // <-- should NOT have email
 
         // Query C: no select (full)
-        const resultC = await UserModel.findOne({ _id: child._id })
-            .cachePopulate({ path: 'parent' })
-            .exec();
+        const resultC = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
         const parentC = resultC!.parent as IUser;
         expect(parentC.name).toBe('Parent');
         expect(parentC.email).toBe('parent@example.com');

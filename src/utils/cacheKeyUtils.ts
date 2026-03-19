@@ -130,7 +130,7 @@ export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record:
 
     const populateOptions = query?._mongooseOptions?.populate;
     const speedGoosePopulate = query?._mongooseOptions?.speedGoosePopulate;
-    const hasPopulate = (populateOptions && Object.keys(populateOptions).length > 0) || (Array.isArray(speedGoosePopulate) && speedGoosePopulate.length > 0);
+    const hasPopulate = (populateOptions && typeof populateOptions === 'object' && Object.keys(populateOptions).length > 0) || (Array.isArray(speedGoosePopulate) && speedGoosePopulate.length > 0);
 
     if (!query.selected() && !hasPopulate) {
         return String(record._id);

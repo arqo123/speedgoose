@@ -1,17 +1,10 @@
-import mongoose, { Document } from 'mongoose';
+import mongoose from 'mongoose';
 import { applySpeedGooseCacheLayer } from '../../src/wrapper';
 import { UserModel, setupTestDB, clearTestCache } from '../testUtils';
 import { SharedCacheStrategies } from '../../src/types/types';
 import { getCacheStrategyInstance } from '../../src/utils/commonUtils';
 import Container from 'typedi';
-
-interface IUser extends Document {
-    name: string;
-    email: string;
-    age?: number;
-    fieldA?: string;
-    parent?: IUser | mongoose.Types.ObjectId;
-}
+import { IUser } from '../types';
 
 /**
  * BUG: Hydration cache key collision when using native .populate() + .cacheQuery()
@@ -70,9 +63,7 @@ describe('BUG: hydration cache select collision with .populate().cacheQuery()', 
 
         // Query 1: populate with select 'name' + cacheQuery → hydration cache stores
         // document with parent having only 'name' under key "{childId}__parent"
-        const result1 = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent', select: 'name' })
-            .cacheQuery()) as IUser;
+        const result1 = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent', select: 'name' }).cacheQuery()) as IUser;
 
         expect(result1).toBeDefined();
         const parent1 = result1.parent as IUser;
@@ -84,18 +75,16 @@ describe('BUG: hydration cache select collision with .populate().cacheQuery()', 
         // → results cache miss → DB query → gets FULL parent
         // BUT: getHydratedDocument checks hydration cache → key "{childId}__parent" → HIT!
         // → returns stale document from Query 1 with only 'name'
-        const result2 = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent' })
-            .cacheQuery()) as IUser;
+        const result2 = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent' }).cacheQuery()) as IUser;
 
         expect(result2).toBeDefined();
         const parent2 = result2.parent as IUser;
 
         // BUG CHECK: if hydration cache collision, parent2 will be partial (only 'name')
         expect(parent2.name).toBe('FullParent');
-        expect(parent2.email).toBe('full@example.com');     // ← FAILS if hydration collision
-        expect(parent2.fieldA).toBe('important_data');       // ← FAILS if hydration collision
-        expect(parent2.age).toBe(42);                        // ← FAILS if hydration collision
+        expect(parent2.email).toBe('full@example.com'); // ← FAILS if hydration collision
+        expect(parent2.fieldA).toBe('important_data'); // ← FAILS if hydration collision
+        expect(parent2.age).toBe(42); // ← FAILS if hydration collision
     });
 
     it('reverse: full populate first, then narrow select — should not leak fields', async () => {
@@ -113,9 +102,7 @@ describe('BUG: hydration cache select collision with .populate().cacheQuery()', 
         });
 
         // Query 1: full populate + cacheQuery
-        const result1 = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent' })
-            .cacheQuery()) as IUser;
+        const result1 = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent' }).cacheQuery()) as IUser;
 
         expect(result1).toBeDefined();
         const parent1 = result1.parent as IUser;
@@ -124,17 +111,15 @@ describe('BUG: hydration cache select collision with .populate().cacheQuery()', 
 
         // Query 2: populate with select 'name' only + cacheQuery
         // Hydration cache collision: returns full parent from Q1 instead of partial
-        const result2 = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent', select: 'name' })
-            .cacheQuery()) as IUser;
+        const result2 = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent', select: 'name' }).cacheQuery()) as IUser;
 
         expect(result2).toBeDefined();
         const parent2 = result2.parent as IUser;
 
         // BUG CHECK: if hydration collision, parent2 would have email/fieldA from Q1
         expect(parent2.name).toBe('FullParent');
-        expect(parent2.email).toBeUndefined();   // ← FAILS if hydration collision (would have email)
-        expect(parent2.fieldA).toBeUndefined();   // ← FAILS if hydration collision
+        expect(parent2.email).toBeUndefined(); // ← FAILS if hydration collision (would have email)
+        expect(parent2.fieldA).toBeUndefined(); // ← FAILS if hydration collision
     });
 
     it('different select variants should produce independent hydration keys', async () => {
@@ -152,27 +137,21 @@ describe('BUG: hydration cache select collision with .populate().cacheQuery()', 
         });
 
         // Query A: select 'name email'
-        const resultA = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent', select: 'name email' })
-            .cacheQuery()) as IUser;
+        const resultA = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent', select: 'name email' }).cacheQuery()) as IUser;
         const parentA = resultA.parent as IUser;
         expect(parentA.name).toBe('Parent');
         expect(parentA.email).toBe('parent@example.com');
         expect(parentA.fieldA).toBeUndefined();
 
         // Query B: select 'name fieldA'
-        const resultB = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent', select: 'name fieldA' })
-            .cacheQuery()) as IUser;
+        const resultB = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent', select: 'name fieldA' }).cacheQuery()) as IUser;
         const parentB = resultB.parent as IUser;
         expect(parentB.name).toBe('Parent');
         expect(parentB.fieldA).toBe('extra');
-        expect(parentB.email).toBeUndefined();  // ← should NOT have email
+        expect(parentB.email).toBeUndefined(); // ← should NOT have email
 
         // Query C: no select (full)
-        const resultC = (await UserModel.findOne({ _id: child._id })
-            .populate({ path: 'parent' })
-            .cacheQuery()) as IUser;
+        const resultC = (await UserModel.findOne({ _id: child._id }).populate({ path: 'parent' }).cacheQuery()) as IUser;
         const parentC = resultC.parent as IUser;
         expect(parentC.name).toBe('Parent');
         expect(parentC.email).toBe('parent@example.com');
