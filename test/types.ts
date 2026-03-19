@@ -26,3 +26,12 @@ export type MongooseTestDocument = Document<string> & TestModel;
 export type MongooseFriendDocument = Document<string> & Friend;
 export type MongooseUserDocument = Document<string> & User;
 export type MongooseTestModel = Model<any>;
+
+export interface IUser extends Document {
+    name: string;
+    email: string;
+    age?: number;
+    fieldA?: string;
+    parent?: IUser | import('mongoose').Types.ObjectId;
+    parents?: (IUser | import('mongoose').Types.ObjectId)[];
+}
