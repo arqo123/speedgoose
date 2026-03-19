@@ -1,7 +1,7 @@
 import { Document, Aggregate, Query } from 'mongoose';
 import { CachedDocument, DocumentWithIdAndTenantValue } from '../types/types';
 import { getConfig } from './commonUtils';
-import { stringifyPopulatedPaths, stringifyQueryParam } from './queryUtils';
+import { stringifyQueryParam } from './queryUtils';
 
 // Mongoose internal populate/runtime-only fields that carry non-deterministic object references
 // and transient state. Excluding them ensures stable, serializable cache keys.
@@ -128,12 +128,21 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): stri
 export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
     if (!record) return '';
 
-    if (!query.selected() && query.getPopulatedPaths().length === 0) {
+    const populateOptions = query?._mongooseOptions?.populate;
+    const speedGoosePopulate = query?._mongooseOptions?.speedGoosePopulate;
+    const hasPopulate = (populateOptions && Object.keys(populateOptions).length > 0) || (Array.isArray(speedGoosePopulate) && speedGoosePopulate.length > 0);
+
+    if (!query.selected() && !hasPopulate) {
         return String(record._id);
     }
 
     const projectionFields = stringifyQueryParam((query?.projection() as Record<string, number>) ?? {});
-    const populationFields = stringifyPopulatedPaths(query?.getPopulatedPaths() ?? []);
+    const populationFields = hasPopulate
+        ? stableSerialize({
+              populate: normalizePopulateValue(populateOptions) ?? null,
+              speedGoosePopulate: normalizePopulateValue(speedGoosePopulate) ?? null,
+          })
+        : '';
 
     return `${record?._id}_${projectionFields}_${populationFields}`;
 };
