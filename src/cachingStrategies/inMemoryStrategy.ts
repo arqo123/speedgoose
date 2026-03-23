@@ -4,7 +4,7 @@ import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { addValueToInternalCachedSet, createInMemoryCacheClientWithNamespace } from '../utils/cacheClientUtils';
 import { getConfig } from '../utils/commonUtils';
-import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from './commonCacheStrategyAbstract';
+import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
 export class InMemoryStrategy extends CommonCacheStrategyAbstract {
@@ -120,9 +120,10 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
         // Use consistent tracking TTL from config to avoid shortening when
-        // the same record is cached with different TTLs across calls
+        // the same record is cached with different TTLs across calls.
+        // Honors setsTtl: 0 (disabled = no expiry on tracking sets).
         const config = getConfig();
-        const trackingTtl = config?.setsTtl !== undefined && config.setsTtl > 0 ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+        const trackingTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
         const trackingTtlMs = trackingTtl > 0 ? trackingTtl * 1000 : undefined;
 
         const trackingKeysToRefresh = new Set<string>();
@@ -130,10 +131,9 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         for (const [key, value] of documents.entries()) {
             promises.push(this.documentsCacheClient.set(key, value, ttl * 1000));
             // Track document cache key by recordId for efficient invalidation
-            // Key format: doc:{modelName}:{recordId}[:select:{selectKey}]
-            const parts = key.split(':');
-            if (parts.length >= 3) {
-                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${parts[2]}`;
+            const recordId = extractRecordIdFromDocKey(key);
+            if (recordId) {
+                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
                 promises.push(addValueToInternalCachedSet(this.recordResultsSetsClient, trackingKey, key));
                 trackingKeysToRefresh.add(trackingKey);
             }

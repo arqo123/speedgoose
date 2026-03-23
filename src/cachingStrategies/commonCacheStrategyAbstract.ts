@@ -1,4 +1,20 @@
-import { CachedResult } from '../types/types';
+import { CachedResult, CacheNamespaces } from '../types/types';
+
+/**
+ * Extracts recordId from a document cache key.
+ * Key format: doc:{modelName}:{recordId}[:select:{selectKey}]
+ * Handles recordIds containing colons (e.g. "tenant:123").
+ */
+export const extractRecordIdFromDocKey = (key: string): string | null => {
+    const prefix = CacheNamespaces.DOCUMENTS + ':';
+    if (!key.startsWith(prefix)) return null;
+    const rest = key.substring(prefix.length); // 'ModelName:recordId[:select:selectKey]'
+    const modelEnd = rest.indexOf(':');
+    if (modelEnd < 0) return null;
+    const afterModel = rest.substring(modelEnd + 1); // 'recordId[:select:selectKey]'
+    const selectIdx = afterModel.indexOf(':select:');
+    return selectIdx >= 0 ? afterModel.substring(0, selectIdx) : afterModel;
+};
 
 export abstract class CommonCacheStrategyAbstract {
     public abstract getValueFromCache(namespace: string, key: string): Promise<CachedResult | null>;

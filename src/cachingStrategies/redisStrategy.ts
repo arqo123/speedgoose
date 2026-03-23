@@ -2,7 +2,7 @@ import Redis, { RedisOptions } from 'ioredis';
 import Container from 'typedi';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { getConfig } from '../utils/commonUtils';
-import { CommonCacheStrategyAbstract } from './commonCacheStrategyAbstract';
+import { CommonCacheStrategyAbstract, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
 export class RedisStrategy extends CommonCacheStrategyAbstract {
     public client: Redis;
@@ -115,18 +115,18 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         if (documents.size === 0) return;
 
         // Use consistent tracking TTL from config to avoid shortening when
-        // the same record is cached with different TTLs across calls
+        // the same record is cached with different TTLs across calls.
+        // Honors setsTtl: 0 (disabled = no expiry on tracking sets).
         const config = getConfig();
-        const trackingTtl = config?.setsTtl !== undefined && config.setsTtl > 0 ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+        const trackingTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
 
         const pipeline = this.client.pipeline();
         for (const [key, value] of documents.entries()) {
             pipeline.set(key, JSON.stringify(value), 'EX', ttl);
             // Track document cache key by recordId for efficient invalidation
-            // Key format: doc:{modelName}:{recordId}[:select:{selectKey}]
-            const parts = key.split(':');
-            if (parts.length >= 3) {
-                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${parts[2]}`;
+            const recordId = extractRecordIdFromDocKey(key);
+            if (recordId) {
+                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
                 pipeline.sadd(trackingKey, key);
                 if (trackingTtl > 0) pipeline.expire(trackingKey, trackingTtl);
             }
