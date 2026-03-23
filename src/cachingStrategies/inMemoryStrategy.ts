@@ -3,7 +3,8 @@ import Container from 'typedi';
 import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { addValueToInternalCachedSet, createInMemoryCacheClientWithNamespace } from '../utils/cacheClientUtils';
-import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods } from './commonCacheStrategyAbstract';
+import { getConfig } from '../utils/commonUtils';
+import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
 export class InMemoryStrategy extends CommonCacheStrategyAbstract {
@@ -118,11 +119,38 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
+        // Use consistent tracking TTL from config. Honors setsTtl: 0 (no expiry).
+        // Ensures tracking set outlives the documents it tracks.
+        const config = getConfig();
+        const configTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+        const trackingTtl = configTtl > 0 ? Math.max(configTtl, ttl) : configTtl;
+        const trackingTtlMs = trackingTtl > 0 ? trackingTtl * 1000 : undefined;
+
+        const trackingKeysToRefresh = new Set<string>();
         const promises = [];
         for (const [key, value] of documents.entries()) {
             promises.push(this.documentsCacheClient.set(key, value, ttl * 1000));
+            // Track document cache key by recordId for efficient invalidation
+            const recordId = extractRecordIdFromDocKey(key);
+            if (recordId) {
+                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
+                promises.push(addValueToInternalCachedSet(this.recordResultsSetsClient, trackingKey, key));
+                trackingKeysToRefresh.add(trackingKey);
+            }
         }
         await Promise.all(promises);
+
+        // Set TTL on tracking sets to prevent monotonic memory growth
+        if (trackingTtlMs) {
+            await Promise.all(
+                Array.from(trackingKeysToRefresh).map(async tk => {
+                    const current = await this.recordResultsSetsClient.get(tk);
+                    if (current) {
+                        await this.recordResultsSetsClient.set(tk, current, trackingTtlMs);
+                    }
+                }),
+            );
+        }
     }
 
     public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -170,13 +198,14 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async clearDocumentsCache(namespace: string): Promise<void> {
-        const keysToDelete: string[] = [];
-        for await (const [key] of this.documentsCacheClient.iterator()) {
-            if (key.includes(`${namespace}`)) {
-                keysToDelete.push(key);
-            }
+        const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${namespace}`;
+        const trackedKeys = await this.recordResultsSetsClient.get(trackingKey);
+        // Delete tracking set first so concurrent setDocuments creates a fresh set
+        // instead of appending to one that's about to be deleted.
+        await this.recordResultsSetsClient.delete(trackingKey);
+        if (trackedKeys?.size > 0) {
+            await Promise.all(Array.from(trackedKeys).map(key => this.documentsCacheClient.delete(key as string)));
         }
-        await Promise.all(keysToDelete.map(key => this.documentsCacheClient.delete(key)));
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {

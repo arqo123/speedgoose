@@ -2,7 +2,7 @@ import Redis, { RedisOptions } from 'ioredis';
 import Container from 'typedi';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { getConfig } from '../utils/commonUtils';
-import { CommonCacheStrategyAbstract } from './commonCacheStrategyAbstract';
+import { CommonCacheStrategyAbstract, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
 export class RedisStrategy extends CommonCacheStrategyAbstract {
     public client: Redis;
@@ -114,9 +114,22 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
         if (documents.size === 0) return;
 
+        // Use consistent tracking TTL from config. Honors setsTtl: 0 (no expiry).
+        // Ensures tracking set outlives the documents it tracks.
+        const config = getConfig();
+        const configTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+        const trackingTtl = configTtl > 0 ? Math.max(configTtl, ttl) : configTtl;
+
         const pipeline = this.client.pipeline();
         for (const [key, value] of documents.entries()) {
             pipeline.set(key, JSON.stringify(value), 'EX', ttl);
+            // Track document cache key by recordId for efficient invalidation
+            const recordId = extractRecordIdFromDocKey(key);
+            if (recordId) {
+                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
+                pipeline.sadd(trackingKey, key);
+                if (trackingTtl > 0) pipeline.expire(trackingKey, trackingTtl);
+            }
         }
         await pipeline.exec();
     }
@@ -184,16 +197,17 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async clearDocumentsCache(namespace: string): Promise<void> {
-        const stream = this.client.scanStream({
-            match: `${namespace}:*`,
-            count: 100,
-        });
-
-        for await (const keys of stream) {
-            if (keys.length) {
-                await this.client.del(...keys);
-            }
-        }
+        const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${namespace}`;
+        // Atomic: read tracked keys, delete them + tracking set in one Lua call.
+        // Prevents race where setDocuments adds a key between SMEMBERS and DEL.
+        await this.client.eval(
+            `local keys = redis.call('SMEMBERS', KEYS[1])
+             if #keys > 0 then redis.call('DEL', unpack(keys)) end
+             redis.call('DEL', KEYS[1])
+             return #keys`,
+            1,
+            trackingKey,
+        );
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {

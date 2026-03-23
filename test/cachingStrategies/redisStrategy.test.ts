@@ -291,25 +291,15 @@ describe('RedisStrategy.clearRelationshipsForModel', () => {
 });
 
 describe('RedisStrategy.clearDocumentsCache', () => {
-    test('should use scanStream with namespace pattern and delete matched keys', async () => {
-        const scanStreamSpy = jest.spyOn(strategy.client, 'scanStream');
+    test('should use atomic Lua script to read and delete tracked document cache keys', async () => {
+        const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:id1`;
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(2);
 
-        const mockKeys = ['doc:User:id1', 'doc:User:id2'];
-        scanStreamSpy.mockReturnValue({
-            [Symbol.asyncIterator]: async function* () {
-                yield mockKeys;
-            },
-        } as any);
+        await strategy.clearDocumentsCache('id1');
 
-        await strategy.clearDocumentsCache('doc:User');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SMEMBERS'), 1, trackingKey);
 
-        expect(scanStreamSpy).toHaveBeenCalledWith({
-            match: 'doc:User:*',
-            count: 100,
-        });
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith(...mockKeys);
-
-        scanStreamSpy.mockRestore();
+        mockedEval.mockRestore();
     });
 });
 
