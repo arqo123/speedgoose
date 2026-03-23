@@ -291,24 +291,15 @@ describe('RedisStrategy.clearRelationshipsForModel', () => {
 });
 
 describe('RedisStrategy.clearDocumentsCache', () => {
-    test('should use tracked set to find and delete document cache keys', async () => {
+    test('should use atomic Lua script to read and delete tracked document cache keys', async () => {
         const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:id1`;
-        const trackedKeys = ['doc:User:id1', 'doc:User:id1:select:name'];
-
-        mockedRedisSmembersMethod.mockImplementation(async () => trackedKeys);
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(2);
 
         await strategy.clearDocumentsCache('id1');
 
-        expect(mockedRedisSmembersMethod).toHaveBeenCalledWith(trackingKey);
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith(...trackedKeys, trackingKey);
-    });
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SMEMBERS'), 1, trackingKey);
 
-    test('should not call del when tracking set is empty', async () => {
-        mockedRedisSmembersMethod.mockImplementation(async () => []);
-
-        await strategy.clearDocumentsCache('nonexistent');
-
-        expect(mockedRedisDelMethod).not.toHaveBeenCalled();
+        mockedEval.mockRestore();
     });
 });
 

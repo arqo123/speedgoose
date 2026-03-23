@@ -119,11 +119,11 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
-        // Use consistent tracking TTL from config to avoid shortening when
-        // the same record is cached with different TTLs across calls.
-        // Honors setsTtl: 0 (disabled = no expiry on tracking sets).
+        // Use consistent tracking TTL from config. Honors setsTtl: 0 (no expiry).
+        // Ensures tracking set outlives the documents it tracks.
         const config = getConfig();
-        const trackingTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+        const configTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+        const trackingTtl = configTtl > 0 ? Math.max(configTtl, ttl) : configTtl;
         const trackingTtlMs = trackingTtl > 0 ? trackingTtl * 1000 : undefined;
 
         const trackingKeysToRefresh = new Set<string>();
@@ -200,9 +200,11 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     public async clearDocumentsCache(namespace: string): Promise<void> {
         const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${namespace}`;
         const trackedKeys = await this.recordResultsSetsClient.get(trackingKey);
+        // Delete tracking set first so concurrent setDocuments creates a fresh set
+        // instead of appending to one that's about to be deleted.
+        await this.recordResultsSetsClient.delete(trackingKey);
         if (trackedKeys?.size > 0) {
             await Promise.all(Array.from(trackedKeys).map(key => this.documentsCacheClient.delete(key as string)));
-            await this.recordResultsSetsClient.delete(trackingKey);
         }
     }
 
