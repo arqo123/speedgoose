@@ -1,3 +1,10 @@
+## [2.5.6](https://github.com/arqo123/speedgoose/compare/v2.5.5...v2.5.6) (2026-03-23)
+
+
+### Bug Fixes
+
+* replace O(N) Redis SCAN with SET-tracked document cache invalidation ([#173](https://github.com/arqo123/speedgoose/issues/173)) ([edf602e](https://github.com/arqo123/speedgoose/commit/edf602e456ac015d7aaa64c79252b3bd563cfd88)), closes [#172](https://github.com/arqo123/speedgoose/issues/172)
+
 ## [2.5.5](https://github.com/arqo123/speedgoose/compare/v2.5.4...v2.5.5) (2026-03-19)
 
 
