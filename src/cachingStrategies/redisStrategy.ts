@@ -114,9 +114,22 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
         if (documents.size === 0) return;
 
+        // Use consistent tracking TTL from config to avoid shortening when
+        // the same record is cached with different TTLs across calls
+        const config = getConfig();
+        const trackingTtl = config?.setsTtl !== undefined && config.setsTtl > 0 ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
+
         const pipeline = this.client.pipeline();
         for (const [key, value] of documents.entries()) {
             pipeline.set(key, JSON.stringify(value), 'EX', ttl);
+            // Track document cache key by recordId for efficient invalidation
+            // Key format: doc:{modelName}:{recordId}[:select:{selectKey}]
+            const parts = key.split(':');
+            if (parts.length >= 3) {
+                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${parts[2]}`;
+                pipeline.sadd(trackingKey, key);
+                if (trackingTtl > 0) pipeline.expire(trackingKey, trackingTtl);
+            }
         }
         await pipeline.exec();
     }
@@ -184,15 +197,11 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async clearDocumentsCache(namespace: string): Promise<void> {
-        const stream = this.client.scanStream({
-            match: `${namespace}:*`,
-            count: 100,
-        });
-
-        for await (const keys of stream) {
-            if (keys.length) {
-                await this.client.del(...keys);
-            }
+        const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${namespace}`;
+        const keys = await this.client.smembers(trackingKey);
+        if (keys?.length > 0) {
+            // Delete document cache keys + tracking set in one DEL call
+            await this.client.del(...keys, trackingKey);
         }
     }
 

@@ -134,6 +134,7 @@ export enum CacheNamespaces {
     HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE = 'hydratedDocumentsVariationsKeyNamespace',
     RECORD_RESULTS_SETS = 'recordResultsSets',
     DOCUMENTS = 'doc',
+    DOCUMENT_CACHE_SETS = 'docCacheSets',
     RELATIONS_CHILD_TO_PARENT = 'rel:child',
 }
 

@@ -80,21 +80,35 @@ describe('InMemoryStrategy.addManyParentToChildRelationships', () => {
 });
 
 describe('InMemoryStrategy.clearDocumentsCache', () => {
-    test('should delete all document cache entries matching namespace', async () => {
+    test('should delete tracked document cache entries for a given recordId', async () => {
         const strategy = getCacheStrategyInstance();
 
         const docs = new Map();
         docs.set('doc:User:id1', { name: 'User1' });
-        docs.set('doc:User:id2', { name: 'User2' });
-        docs.set('doc:Post:id1', { title: 'Post1' });
+        docs.set('doc:User:id1:select:name', { name: 'User1' });
+        docs.set('doc:Post:id2', { title: 'Post1' });
         await strategy.setDocuments(docs, 60);
 
-        await strategy.clearDocumentsCache('doc:User');
+        // Clear only id1's document cache entries
+        await strategy.clearDocumentsCache('id1');
 
-        const remaining = await strategy.getDocuments(['doc:User:id1', 'doc:User:id2', 'doc:Post:id1']);
+        const remaining = await strategy.getDocuments(['doc:User:id1', 'doc:User:id1:select:name', 'doc:Post:id2']);
         expect(remaining.has('doc:User:id1')).toBe(false);
-        expect(remaining.has('doc:User:id2')).toBe(false);
-        expect(remaining.has('doc:Post:id1')).toBe(true);
+        expect(remaining.has('doc:User:id1:select:name')).toBe(false);
+        expect(remaining.has('doc:Post:id2')).toBe(true);
+    });
+
+    test('should be no-op when recordId has no tracked keys', async () => {
+        const strategy = getCacheStrategyInstance();
+
+        const docs = new Map();
+        docs.set('doc:User:id1', { name: 'User1' });
+        await strategy.setDocuments(docs, 60);
+
+        await strategy.clearDocumentsCache('nonexistent');
+
+        const remaining = await strategy.getDocuments(['doc:User:id1']);
+        expect(remaining.has('doc:User:id1')).toBe(true);
     });
 });
 

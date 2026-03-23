@@ -291,25 +291,24 @@ describe('RedisStrategy.clearRelationshipsForModel', () => {
 });
 
 describe('RedisStrategy.clearDocumentsCache', () => {
-    test('should use scanStream with namespace pattern and delete matched keys', async () => {
-        const scanStreamSpy = jest.spyOn(strategy.client, 'scanStream');
+    test('should use tracked set to find and delete document cache keys', async () => {
+        const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:id1`;
+        const trackedKeys = ['doc:User:id1', 'doc:User:id1:select:name'];
 
-        const mockKeys = ['doc:User:id1', 'doc:User:id2'];
-        scanStreamSpy.mockReturnValue({
-            [Symbol.asyncIterator]: async function* () {
-                yield mockKeys;
-            },
-        } as any);
+        mockedRedisSmembersMethod.mockImplementation(async () => trackedKeys);
 
-        await strategy.clearDocumentsCache('doc:User');
+        await strategy.clearDocumentsCache('id1');
 
-        expect(scanStreamSpy).toHaveBeenCalledWith({
-            match: 'doc:User:*',
-            count: 100,
-        });
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith(...mockKeys);
+        expect(mockedRedisSmembersMethod).toHaveBeenCalledWith(trackingKey);
+        expect(mockedRedisDelMethod).toHaveBeenCalledWith(...trackedKeys, trackingKey);
+    });
 
-        scanStreamSpy.mockRestore();
+    test('should not call del when tracking set is empty', async () => {
+        mockedRedisSmembersMethod.mockImplementation(async () => []);
+
+        await strategy.clearDocumentsCache('nonexistent');
+
+        expect(mockedRedisDelMethod).not.toHaveBeenCalled();
     });
 });
 
