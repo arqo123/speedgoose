@@ -4,6 +4,70 @@ import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '.
 import { getConfig } from '../utils/commonUtils';
 import { CommonCacheStrategyAbstract, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
+// Lua script: atomic SCARD check + DEL if oversized + SADD + optional EXPIRE
+// KEYS[1] = set key, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl
+const LUA_ADD_TO_SET = `
+local maxCard = tonumber(ARGV[2])
+if maxCard > 0 then
+    local size = redis.call('SCARD', KEYS[1])
+    if size >= maxCard then
+        redis.call('DEL', KEYS[1])
+    end
+end
+redis.call('SADD', KEYS[1], ARGV[1])
+local ttl = tonumber(ARGV[3])
+if ttl > 0 then
+    redis.call('EXPIRE', KEYS[1], ttl)
+end
+return 1
+`;
+
+// Lua script: same as above but for multiple keys (namespaces)
+// KEYS = all namespace keys, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl
+const LUA_ADD_TO_MANY_SETS = `
+local value = ARGV[1]
+local maxCard = tonumber(ARGV[2])
+local ttl = tonumber(ARGV[3])
+for i = 1, #KEYS do
+    if maxCard > 0 then
+        local size = redis.call('SCARD', KEYS[i])
+        if size >= maxCard then
+            redis.call('DEL', KEYS[i])
+        end
+    end
+    redis.call('SADD', KEYS[i], value)
+    if ttl > 0 then
+        redis.call('EXPIRE', KEYS[i], ttl)
+    end
+end
+return #KEYS
+`;
+
+// Lua script: atomic per-child relationship addition with cardinality check
+// KEYS[1] = child key
+// ARGV[1] = maxSetCardinality, ARGV[2] = ttl, ARGV[3..N] = parent identifiers
+const LUA_ADD_PARENTS_TO_CHILD = `
+local maxCard = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+local numParents = #ARGV - 2
+if maxCard > 0 then
+    local size = redis.call('SCARD', KEYS[1])
+    if size + numParents > maxCard then
+        redis.call('DEL', KEYS[1])
+        if numParents > maxCard then
+            numParents = maxCard
+        end
+    end
+end
+for i = 3, 2 + numParents do
+    redis.call('SADD', KEYS[1], ARGV[i])
+end
+if ttl > 0 then
+    redis.call('EXPIRE', KEYS[1], ttl)
+end
+return numParents
+`;
+
 export class RedisStrategy extends CommonCacheStrategyAbstract {
     public client: Redis;
 
@@ -35,36 +99,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
-        if (maxSetCardinality > 0) {
-            const size = await this.client.scard(namespace);
-            if (size >= maxSetCardinality) {
-                await this.client.del(namespace);
-            }
-        }
-        const pipeline = this.client.pipeline();
-        pipeline.sadd(namespace, value);
-        if (setsTtl > 0) pipeline.expire(namespace, setsTtl);
-        await pipeline.exec();
+        await this.client.eval(LUA_ADD_TO_SET, 1, namespace, String(value), String(maxSetCardinality ?? 0), String(setsTtl ?? 0));
     }
 
     public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
-        if (maxSetCardinality > 0 && namespaces.length > 0) {
-            const pipeline = this.client.pipeline();
-            for (const ns of namespaces) {
-                pipeline.scard(ns);
-            }
-            const results = await pipeline.exec();
-            const oversized = namespaces.filter((_, i) => results[i] && !results[i][0] && (results[i][1] as number) >= maxSetCardinality);
-            if (oversized.length > 0) {
-                await this.client.del(...oversized);
-            }
-        }
-        const pipeline = this.client.pipeline();
-        for (const namespace of namespaces) {
-            pipeline.sadd(namespace, value);
-            if (setsTtl > 0) pipeline.expire(namespace, setsTtl);
-        }
-        await pipeline.exec();
+        if (namespaces.length === 0) return;
+        await this.client.eval(LUA_ADD_TO_MANY_SETS, namespaces.length, ...namespaces, String(value), String(maxSetCardinality ?? 0), String(setsTtl ?? 0));
     }
 
     public async removeKeyForCache(namespace: string, key: string): Promise<void> {
@@ -135,57 +175,26 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
-        if (maxSetCardinality > 0) {
-            const size = await this.client.scard(childIdentifier);
-            if (size >= maxSetCardinality) {
-                await this.client.del(childIdentifier);
-            }
-        }
-        const pipeline = this.client.pipeline();
-        pipeline.sadd(childIdentifier, parentIdentifier);
-        if (setsTtl > 0) pipeline.expire(childIdentifier, setsTtl);
-        await pipeline.exec();
+        await this.client.eval(LUA_ADD_TO_SET, 1, childIdentifier, parentIdentifier, String(maxSetCardinality ?? 0), String(setsTtl ?? 0));
     }
 
     public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (relationships.length === 0) return;
 
-        // Group incoming relationships by child to count batch additions
+        // Group incoming relationships by child to deduplicate
         const grouped = new Map<string, Set<string>>();
         for (const { childIdentifier, parentIdentifier } of relationships) {
             if (!grouped.has(childIdentifier)) grouped.set(childIdentifier, new Set<string>());
             grouped.get(childIdentifier)!.add(parentIdentifier);
         }
-        const uniqueChildren = [...grouped.keys()];
 
-        const resetChildren = new Set<string>();
-        if (maxSetCardinality > 0) {
-            const pipeline = this.client.pipeline();
-            for (const child of uniqueChildren) {
-                pipeline.scard(child);
-            }
-            const results = await pipeline.exec();
-            const oversized = uniqueChildren.filter((child, i) => {
-                const currentSize = results[i] && !results[i][0] ? (results[i][1] as number) : 0;
-                const incomingSize = grouped.get(child)!.size;
-                return currentSize + incomingSize > maxSetCardinality;
-            });
-            if (oversized.length > 0) {
-                await this.client.del(...oversized);
-                for (const child of oversized) resetChildren.add(child);
-            }
-        }
-
-        const pipeline = this.client.pipeline();
+        // Execute one atomic Lua script per unique child
+        const promises: Promise<unknown>[] = [];
         for (const [childIdentifier, parents] of grouped.entries()) {
-            // After reset, cap additions to maxSetCardinality to prevent immediate overflow
-            const parentsToAdd = maxSetCardinality > 0 && resetChildren.has(childIdentifier) && parents.size > maxSetCardinality ? [...parents].slice(0, maxSetCardinality) : parents;
-            for (const parentIdentifier of parentsToAdd) {
-                pipeline.sadd(childIdentifier, parentIdentifier);
-            }
-            if (setsTtl > 0) pipeline.expire(childIdentifier, setsTtl);
+            const parentArgs = [...parents];
+            promises.push(this.client.eval(LUA_ADD_PARENTS_TO_CHILD, 1, childIdentifier, String(maxSetCardinality ?? 0), String(setsTtl ?? 0), ...parentArgs));
         }
-        await pipeline.exec();
+        await Promise.all(promises);
     }
 
     public async getParentsOfChild(childIdentifier: string): Promise<string[]> {

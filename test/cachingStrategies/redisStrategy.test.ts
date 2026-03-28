@@ -34,52 +34,42 @@ describe('RedisStrategy.removeKeyForCache', () => {
 });
 
 describe('RedisStrategy.addValueToCacheSet', () => {
-    test(`should call sadd via pipeline with correct namespace and value`, async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
-        const mockedRedisPipelineExpireMethod = jest.spyOn(pipeline, 'expire').mockClear();
+    test(`should call eval with Lua script, correct key and value`, async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('someNamespace', 'someValue');
 
-        expect(mockedRedisPipelineMethod).toHaveBeenCalledTimes(1);
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(1);
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('someNamespace', 'someValue');
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(0);
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(
+            expect.stringContaining('SADD'),
+            1,
+            'someNamespace',
+            'someValue',
+            '0', // maxSetCardinality defaults to 0
+            '0', // setsTtl defaults to 0
+        );
+
+        mockedEval.mockRestore();
     });
 
-    test(`should call expire when setsTtl is provided`, async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
-        const mockedRedisPipelineExpireMethod = jest.spyOn(pipeline, 'expire').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
+    test(`should pass TTL when setsTtl is provided`, async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('someNamespace', 'someValue', 120);
 
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('someNamespace', 'someValue');
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('someNamespace', 120);
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'someNamespace', 'someValue', '0', '120');
+
+        mockedEval.mockRestore();
     });
 
-    test(`should reset set when maxSetCardinality is exceeded`, async () => {
-        const mockedScard = jest.spyOn(strategy.client, 'scard').mockImplementation(async () => 100);
-
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-        jest.spyOn(pipeline, 'sadd').mockClear();
-        jest.spyOn(pipeline, 'exec').mockClear();
+    test(`should pass maxSetCardinality when provided`, async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('someNamespace', 'someValue', 0, 50);
 
-        expect(mockedScard).toHaveBeenCalledWith('someNamespace');
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('someNamespace');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'someNamespace', 'someValue', '50', '0');
 
-        mockedScard.mockRestore();
+        mockedEval.mockRestore();
     });
 });
 
@@ -143,40 +133,35 @@ describe('RedisStrategy.getValuesFromCachedSet', () => {
 });
 
 describe('RedisStrategy.addValueToManyCachedSets', () => {
-    test(`should call sadd method on redis client assigning value for each namespace`, async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
-        const mockedRedisPipelineExpireMethod = jest.spyOn(pipeline, 'expire').mockClear();
+    test(`should call eval with Lua script for all namespaces`, async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(3);
 
         await strategy.addValueToManyCachedSets(['nameSpace1', 'nameSpace2', 'nameSpace3'], 'someValue');
 
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(3);
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('nameSpace1', 'someValue');
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('nameSpace2', 'someValue');
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('nameSpace3', 'someValue');
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 3, 'nameSpace1', 'nameSpace2', 'nameSpace3', 'someValue', '0', '0');
 
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(0);
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        mockedEval.mockRestore();
     });
 
-    test(`should call expire for each namespace when setsTtl is provided`, async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
-        const mockedRedisPipelineExpireMethod = jest.spyOn(pipeline, 'expire').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
+    test(`should pass TTL when setsTtl is provided`, async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(2);
 
         await strategy.addValueToManyCachedSets(['ns1', 'ns2'], 'val', 60);
 
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(2);
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(2);
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('ns1', 60);
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('ns2', 60);
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'ns1', 'ns2', 'val', '0', '60');
+
+        mockedEval.mockRestore();
+    });
+
+    test(`should not call eval for empty namespaces array`, async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(0);
+
+        await strategy.addValueToManyCachedSets([], 'val', 60);
+
+        expect(mockedEval).not.toHaveBeenCalled();
+
+        mockedEval.mockRestore();
     });
 });
 
@@ -204,12 +189,8 @@ describe('RedisStrategy.refreshTTLForCachedResult', () => {
 });
 
 describe('RedisStrategy.addManyParentToChildRelationships', () => {
-    test('should use pipeline to batch multiple SADD calls', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
+    test('should call eval with Lua script per unique child', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addManyParentToChildRelationships([
             { childIdentifier: 'rel:child:Model:id1', parentIdentifier: 'Parent:p1' },
@@ -217,20 +198,28 @@ describe('RedisStrategy.addManyParentToChildRelationships', () => {
             { childIdentifier: 'rel:child:Model:id1', parentIdentifier: 'Parent:p3' },
         ]);
 
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(3);
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('rel:child:Model:id1', 'Parent:p1');
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('rel:child:Model:id2', 'Parent:p2');
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledWith('rel:child:Model:id1', 'Parent:p3');
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        // 2 unique children → 2 eval calls
+        expect(mockedEval).toHaveBeenCalledTimes(2);
+
+        // Child id1 with parents p1 and p3
+        expect(mockedEval).toHaveBeenCalledWith(
+            expect.stringContaining('SADD'),
+            1,
+            'rel:child:Model:id1',
+            '0', // maxSetCardinality
+            '0', // setsTtl
+            'Parent:p1',
+            'Parent:p3',
+        );
+
+        // Child id2 with parent p2
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'rel:child:Model:id2', '0', '0', 'Parent:p2');
+
+        mockedEval.mockRestore();
     });
 
-    test('should call expire for unique children when setsTtl is provided', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSaddMethod = jest.spyOn(pipeline, 'sadd').mockClear();
-        const mockedRedisPipelineExpireMethod = jest.spyOn(pipeline, 'expire').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
+    test('should pass TTL when setsTtl is provided', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addManyParentToChildRelationships(
             [
@@ -241,17 +230,21 @@ describe('RedisStrategy.addManyParentToChildRelationships', () => {
             120,
         );
 
-        expect(mockedRedisPipelineSaddMethod).toHaveBeenCalledTimes(3);
-        // expire called for 2 unique children
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(2);
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('rel:child:Model:id1', 120);
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('rel:child:Model:id2', 120);
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        // 2 unique children → 2 eval calls, each with ttl '120'
+        expect(mockedEval).toHaveBeenCalledTimes(2);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'rel:child:Model:id1', '0', '120', 'Parent:p1', 'Parent:p3');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'rel:child:Model:id2', '0', '120', 'Parent:p2');
+
+        mockedEval.mockRestore();
     });
 
-    test('should not create pipeline for empty relationships array', async () => {
+    test('should not call eval for empty relationships array', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
+
         await strategy.addManyParentToChildRelationships([]);
-        expect(mockedRedisPipelineMethod).not.toHaveBeenCalled();
+
+        expect(mockedEval).not.toHaveBeenCalled();
+        mockedEval.mockRestore();
     });
 });
 

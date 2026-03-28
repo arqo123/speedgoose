@@ -27,125 +27,95 @@ beforeEach(() => {
 // ────────────────────────────────────────────
 
 describe('addValueToCacheSet — TTL behavior', () => {
-    test('should NOT call expire when setsTtl is 0', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL as 0 when setsTtl is 0', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 0);
 
-        expect(expireSpy).not.toHaveBeenCalled();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        mockedEval.mockRestore();
     });
 
-    test('should NOT call expire when setsTtl is undefined', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL as 0 when setsTtl is undefined', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', undefined);
 
-        expect(expireSpy).not.toHaveBeenCalled();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        mockedEval.mockRestore();
     });
 
-    test('should call expire with correct TTL value', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
-        const expireSpy = jest.spyOn(pipeline, 'expire');
-        const execSpy = jest.spyOn(pipeline, 'exec');
+    test('should pass correct TTL value in eval', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('mySet', 'myVal', 300);
 
-        expect(saddSpy).toHaveBeenCalledWith('mySet', 'myVal');
-        expect(expireSpy).toHaveBeenCalledWith('mySet', 300);
-        expect(execSpy).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'mySet', 'myVal', '0', '300');
+        mockedEval.mockRestore();
     });
 
-    test('should call both sadd and expire in a single pipeline', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-        const saddSpy = jest.spyOn(pipeline, 'sadd').mockClear();
-        const expireSpy = jest.spyOn(pipeline, 'expire').mockClear();
-        const execSpy = jest.spyOn(pipeline, 'exec').mockClear();
+    test('should execute as a single atomic eval call', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'v', 60);
 
-        // Only 1 pipeline created, 1 exec
-        expect(mockedRedisPipelineMethod).toHaveBeenCalledTimes(1);
-        expect(saddSpy).toHaveBeenCalledTimes(1);
-        expect(expireSpy).toHaveBeenCalledTimes(1);
-        expect(execSpy).toHaveBeenCalledTimes(1);
+        // Single atomic eval — no pipeline needed
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 1, 'ns', 'v', '0', '60');
+        mockedEval.mockRestore();
     });
 });
 
 describe('addValueToCacheSet — cardinality guard', () => {
-    test('should NOT check scard when maxSetCardinality is 0 (disabled)', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard');
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
+    test('should pass maxSetCardinality as 0 when disabled', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 0, 0);
 
-        expect(scardSpy).not.toHaveBeenCalled();
-        scardSpy.mockRestore();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        // Lua script handles the maxCard == 0 check internally
+        mockedEval.mockRestore();
     });
 
-    test('should NOT check scard when maxSetCardinality is undefined', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard');
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
+    test('should pass maxSetCardinality as 0 when undefined', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 0, undefined);
 
-        expect(scardSpy).not.toHaveBeenCalled();
-        scardSpy.mockRestore();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        mockedEval.mockRestore();
     });
 
-    test('should NOT delete set when cardinality is below limit', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard').mockResolvedValue(50);
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
+    test('should pass cardinality limit to Lua script for enforcement', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 0, 100);
 
-        expect(scardSpy).toHaveBeenCalledWith('ns');
-        expect(mockedRedisDelMethod).not.toHaveBeenCalled();
-        scardSpy.mockRestore();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'ns', 'val', '100', '0');
+        mockedEval.mockRestore();
     });
 
-    test('should delete set when cardinality equals limit', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard').mockResolvedValue(100);
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
+    test('should use Lua script that contains SCARD and DEL for cardinality enforcement', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 0, 100);
 
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('ns');
-        scardSpy.mockRestore();
+        const luaScript = mockedEval.mock.calls[0][0] as string;
+        expect(luaScript).toContain('SCARD');
+        expect(luaScript).toContain('DEL');
+        expect(luaScript).toContain('SADD');
+        mockedEval.mockRestore();
     });
 
-    test('should delete set when cardinality exceeds limit', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard').mockResolvedValue(200);
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-
-        await strategy.addValueToCacheSet('ns', 'val', 0, 100);
-
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('ns');
-        scardSpy.mockRestore();
-    });
-
-    test('should still add the value after resetting the set', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard').mockResolvedValue(500);
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
+    test('should pass both value and cardinality limit atomically', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 60, 100);
 
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('ns');
-        expect(saddSpy).toHaveBeenCalledWith('ns', 'val');
-        scardSpy.mockRestore();
+        // All parameters passed in one atomic eval call
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '100', '60');
+        mockedEval.mockRestore();
     });
 });
 
@@ -154,96 +124,63 @@ describe('addValueToCacheSet — cardinality guard', () => {
 // ────────────────────────────────────────────
 
 describe('addValueToManyCachedSets — TTL behavior', () => {
-    test('should set expire for each namespace when setsTtl provided', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL for each namespace via Lua script', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(3);
 
         await strategy.addValueToManyCachedSets(['a', 'b', 'c'], 'val', 90);
 
-        expect(saddSpy).toHaveBeenCalledTimes(3);
-        expect(expireSpy).toHaveBeenCalledTimes(3);
-        expect(expireSpy).toHaveBeenCalledWith('a', 90);
-        expect(expireSpy).toHaveBeenCalledWith('b', 90);
-        expect(expireSpy).toHaveBeenCalledWith('c', 90);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 3, 'a', 'b', 'c', 'val', '0', '90');
+        mockedEval.mockRestore();
     });
 
-    test('should NOT expire when setsTtl is 0', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL as 0 when setsTtl is 0', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(2);
 
         await strategy.addValueToManyCachedSets(['a', 'b'], 'val', 0);
 
-        expect(expireSpy).not.toHaveBeenCalled();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'a', 'b', 'val', '0', '0');
+        mockedEval.mockRestore();
     });
 
     test('should handle empty namespaces array', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(0);
 
         await strategy.addValueToManyCachedSets([], 'val', 60);
 
-        expect(saddSpy).not.toHaveBeenCalled();
+        expect(mockedEval).not.toHaveBeenCalled();
+        mockedEval.mockRestore();
     });
 });
 
 describe('addValueToManyCachedSets — cardinality guard', () => {
-    test('should reset only oversized sets', async () => {
-        // ns1 has 50 members (under limit), ns2 has 200 (over limit)
-        const scardPipeline = strategy.client.pipeline();
-        const mainPipeline = strategy.client.pipeline();
-        let pipelineCall = 0;
-        mockedRedisPipelineMethod.mockImplementation(() => {
-            pipelineCall++;
-            // First pipeline call is for scard checks, subsequent for sadd
-            return pipelineCall === 1 ? scardPipeline : mainPipeline;
-        });
-
-        jest.spyOn(scardPipeline, 'scard');
-        jest.spyOn(scardPipeline, 'exec').mockResolvedValue([
-            [null, 50], // ns1 — under limit
-            [null, 200], // ns2 — over limit
-        ]);
+    test('should pass cardinality limit to Lua script for atomic enforcement', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(2);
 
         await strategy.addValueToManyCachedSets(['ns1', 'ns2'], 'val', 0, 100);
 
-        // Only ns2 should be deleted
-        expect(mockedRedisDelMethod).toHaveBeenCalledTimes(1);
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('ns2');
+        // Cardinality check is done atomically inside Lua
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 2, 'ns1', 'ns2', 'val', '100', '0');
+        mockedEval.mockRestore();
     });
 
-    test('should NOT check cardinality when maxSetCardinality is 0', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const scardSpy = jest.spyOn(pipeline, 'scard');
+    test('should pass maxSetCardinality as 0 when disabled', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(2);
 
         await strategy.addValueToManyCachedSets(['ns1', 'ns2'], 'val', 0, 0);
 
-        expect(scardSpy).not.toHaveBeenCalled();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'ns1', 'ns2', 'val', '0', '0');
+        mockedEval.mockRestore();
     });
 
-    test('should reset all oversized sets when all exceed limit', async () => {
-        const scardPipeline = strategy.client.pipeline();
-        const mainPipeline = strategy.client.pipeline();
-        let pipelineCall = 0;
-        mockedRedisPipelineMethod.mockImplementation(() => {
-            pipelineCall++;
-            return pipelineCall === 1 ? scardPipeline : mainPipeline;
-        });
-
-        jest.spyOn(scardPipeline, 'scard');
-        jest.spyOn(scardPipeline, 'exec').mockResolvedValue([
-            [null, 500],
-            [null, 300],
-            [null, 150],
-        ]);
+    test('should use a single atomic eval for all namespaces', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(3);
 
         await strategy.addValueToManyCachedSets(['a', 'b', 'c'], 'val', 0, 100);
 
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('a', 'b', 'c');
+        // Single eval call handles all keys atomically
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 3, 'a', 'b', 'c', 'val', '100', '0');
+        mockedEval.mockRestore();
     });
 });
 
@@ -252,40 +189,33 @@ describe('addValueToManyCachedSets — cardinality guard', () => {
 // ────────────────────────────────────────────
 
 describe('addParentToChildRelationship — TTL behavior', () => {
-    test('should set expire on parent-child relationship set', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL to Lua script for atomic expire', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addParentToChildRelationship('rel:child:User:123', 'Post:456', 180);
 
-        expect(saddSpy).toHaveBeenCalledWith('rel:child:User:123', 'Post:456');
-        expect(expireSpy).toHaveBeenCalledWith('rel:child:User:123', 180);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'rel:child:User:123', 'Post:456', '0', '180');
+        mockedEval.mockRestore();
     });
 
-    test('should NOT set expire when setsTtl is 0', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL as 0 when setsTtl is 0', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addParentToChildRelationship('rel:child:User:123', 'Post:456', 0);
 
-        expect(expireSpy).not.toHaveBeenCalled();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'rel:child:User:123', 'Post:456', '0', '0');
+        mockedEval.mockRestore();
     });
 });
 
 describe('addParentToChildRelationship — cardinality guard', () => {
-    test('should reset relationship set when exceeding cardinality', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard').mockResolvedValue(500);
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
+    test('should pass cardinality limit to Lua script for atomic enforcement', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addParentToChildRelationship('rel:child:User:123', 'Post:456', 60, 100);
 
-        expect(scardSpy).toHaveBeenCalledWith('rel:child:User:123');
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('rel:child:User:123');
-        scardSpy.mockRestore();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'rel:child:User:123', 'Post:456', '100', '60');
+        mockedEval.mockRestore();
     });
 });
 
@@ -294,11 +224,8 @@ describe('addParentToChildRelationship — cardinality guard', () => {
 // ────────────────────────────────────────────
 
 describe('addManyParentToChildRelationships — TTL behavior', () => {
-    test('should set expire for each unique child identifier', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should call eval per unique child with TTL', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addManyParentToChildRelationships(
             [
@@ -309,51 +236,36 @@ describe('addManyParentToChildRelationships — TTL behavior', () => {
             240,
         );
 
-        expect(saddSpy).toHaveBeenCalledTimes(3);
-        // Only 2 unique children → 2 expire calls
-        expect(expireSpy).toHaveBeenCalledTimes(2);
-        expect(expireSpy).toHaveBeenCalledWith('child:1', 240);
-        expect(expireSpy).toHaveBeenCalledWith('child:2', 240);
+        // 2 unique children → 2 eval calls
+        expect(mockedEval).toHaveBeenCalledTimes(2);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'child:1', '0', '240', 'parent:a', 'parent:c');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'child:2', '0', '240', 'parent:b');
+        mockedEval.mockRestore();
     });
 
-    test('should NOT set expire when setsTtl is 0', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('should pass TTL as 0 when setsTtl is 0', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addManyParentToChildRelationships([{ childIdentifier: 'child:1', parentIdentifier: 'parent:a' }], 0);
 
-        expect(expireSpy).not.toHaveBeenCalled();
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'child:1', '0', '0', 'parent:a');
+        mockedEval.mockRestore();
     });
 
     test('should handle single relationship', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addManyParentToChildRelationships([{ childIdentifier: 'child:1', parentIdentifier: 'parent:a' }], 60);
 
-        expect(saddSpy).toHaveBeenCalledTimes(1);
-        expect(expireSpy).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'child:1', '0', '60', 'parent:a');
+        mockedEval.mockRestore();
     });
 });
 
 describe('addManyParentToChildRelationships — cardinality guard', () => {
-    test('should reset only oversized child sets', async () => {
-        const scardPipeline = strategy.client.pipeline();
-        const mainPipeline = strategy.client.pipeline();
-        let pipelineCall = 0;
-        mockedRedisPipelineMethod.mockImplementation(() => {
-            pipelineCall++;
-            return pipelineCall === 1 ? scardPipeline : mainPipeline;
-        });
-
-        jest.spyOn(scardPipeline, 'scard');
-        jest.spyOn(scardPipeline, 'exec').mockResolvedValue([
-            [null, 50], // child:1 — under limit
-            [null, 200], // child:2 — over limit
-        ]);
+    test('should pass cardinality limit to Lua script per unique child', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addManyParentToChildRelationships(
             [
@@ -364,13 +276,19 @@ describe('addManyParentToChildRelationships — cardinality guard', () => {
             100,
         );
 
-        expect(mockedRedisDelMethod).toHaveBeenCalledTimes(1);
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('child:2');
+        expect(mockedEval).toHaveBeenCalledTimes(2);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'child:1', '100', '0', 'parent:a');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'child:2', '100', '0', 'parent:b');
+        mockedEval.mockRestore();
     });
 
-    test('should skip cardinality check for empty relationships', async () => {
+    test('should skip eval for empty relationships', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
+
         await strategy.addManyParentToChildRelationships([], 60, 100);
-        expect(mockedRedisPipelineMethod).not.toHaveBeenCalled();
+
+        expect(mockedEval).not.toHaveBeenCalled();
+        mockedEval.mockRestore();
     });
 });
 
@@ -440,31 +358,29 @@ describe('clearResultsCacheWithSet — batched deletion', () => {
 // ────────────────────────────────────────────
 
 describe('combined TTL and cardinality', () => {
-    test('addValueToCacheSet should apply both TTL and cardinality check', async () => {
-        const scardSpy = jest.spyOn(strategy.client, 'scard').mockResolvedValue(200);
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const saddSpy = jest.spyOn(pipeline, 'sadd');
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('addValueToCacheSet should pass both TTL and cardinality to atomic Lua script', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 120, 100);
 
-        // Cardinality exceeded → del
-        expect(mockedRedisDelMethod).toHaveBeenCalledWith('ns');
-        // Then sadd + expire
-        expect(saddSpy).toHaveBeenCalledWith('ns', 'val');
-        expect(expireSpy).toHaveBeenCalledWith('ns', 120);
-
-        scardSpy.mockRestore();
+        // Both cardinality and TTL handled atomically in a single eval
+        expect(mockedEval).toHaveBeenCalledTimes(1);
+        const luaScript = mockedEval.mock.calls[0][0] as string;
+        expect(luaScript).toContain('SCARD');
+        expect(luaScript).toContain('DEL');
+        expect(luaScript).toContain('SADD');
+        expect(luaScript).toContain('EXPIRE');
+        expect(mockedEval).toHaveBeenCalledWith(expect.any(String), 1, 'ns', 'val', '100', '120');
+        mockedEval.mockRestore();
     });
 
-    test('addValueToCacheSet with negative TTL should not expire', async () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline);
-        const expireSpy = jest.spyOn(pipeline, 'expire');
+    test('addValueToCacheSet with negative TTL should pass negative TTL to Lua (handled by ttl > 0 check)', async () => {
+        const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', -1);
 
-        expect(expireSpy).not.toHaveBeenCalled();
+        // TTL passed as '-1', Lua script's `if ttl > 0` will skip EXPIRE
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '-1');
+        mockedEval.mockRestore();
     });
 });
