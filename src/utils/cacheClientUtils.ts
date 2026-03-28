@@ -165,6 +165,10 @@ export const clearParentCacheBulk = async (modelName: string, docIds: (string | 
         if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
     }
 
+    if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) {
+        console.warn(`[SpeedGoose] Parent cache invalidation truncated at ${CACHE_PARENT_LIMIT} for model "${modelName}". Some parent caches may be stale. Increase cacheParentLimit in config to cover all parents.`);
+    }
+
     try {
         // Invalidate unique parents in batches
         if (uniqueParentRecordIds.size > 0) {
@@ -201,6 +205,10 @@ export const clearParentCache = async (modelName: string, docId: string | Object
     try {
         if (parentIdentifiers.length > 0) {
             logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
+
+            if (parentIdentifiers.length > CACHE_PARENT_LIMIT) {
+                console.warn(`[SpeedGoose] Parent cache invalidation truncated at ${CACHE_PARENT_LIMIT} for "${modelName}:${docId}". ${parentIdentifiers.length - CACHE_PARENT_LIMIT} parents skipped. Increase cacheParentLimit in config.`);
+            }
 
             // Process in batches with delay up to CACHE_PARENT_LIMIT
             const BATCH_SIZE = 25;
