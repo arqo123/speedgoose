@@ -9,7 +9,7 @@ import { TestModel } from '../types';
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig');
 
 /** Creates a minimal object that satisfies Mongoose document detection ($__ + _id). */
-const createMockMongooseDoc = (id: ObjectId, fields: Record<string, unknown> = {}) => ({
+const createMockMongooseDoc = (id: ObjectId | string, fields: Record<string, unknown> = {}) => ({
     _id: id,
     $__: { activePaths: {}, strictMode: true },
     $isNew: false,
@@ -127,7 +127,7 @@ describe(`stableSerialize — Mongoose document sanitization`, () => {
     });
 
     test(`should handle Mongoose document with string _id`, () => {
-        const doc = createMockMongooseDoc('custom-string-id' as any, { name: 'StringIdDoc' });
+        const doc = createMockMongooseDoc('custom-string-id', { name: 'StringIdDoc' });
 
         const result = stableSerialize({ _id: doc });
         const expected = stableSerialize({ _id: 'custom-string-id' });
