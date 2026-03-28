@@ -12,6 +12,24 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     private recordResultsSetsClient: Keyv<Set<string>>;
     private documentsCacheClient: Keyv<CachedResult<unknown>>;
     private relationsCacheClient: Keyv<Set<string>>;
+    private keyLocks = new Map<string, Promise<void>>();
+
+    private async withKeyLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+        while (this.keyLocks.has(key)) {
+            await this.keyLocks.get(key);
+        }
+        let resolve: () => void;
+        const lock = new Promise<void>(r => {
+            resolve = r;
+        });
+        this.keyLocks.set(key, lock);
+        try {
+            return await fn();
+        } finally {
+            this.keyLocks.delete(key);
+            resolve!();
+        }
+    }
 
     public static async register(): Promise<void> {
         const strategy = new InMemoryStrategy();
@@ -40,20 +58,22 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
-        if (maxSetCardinality > 0) {
-            const existing = await this.recordResultsSetsClient.get(namespace);
-            if (existing && existing.size >= maxSetCardinality) {
-                await this.recordResultsSetsClient.delete(namespace);
+        await this.withKeyLock(`cacheSet:${namespace}`, async () => {
+            if (maxSetCardinality > 0) {
+                const existing = await this.recordResultsSetsClient.get(namespace);
+                if (existing && existing.size >= maxSetCardinality) {
+                    await this.recordResultsSetsClient.delete(namespace);
+                }
             }
-        }
-        await addValueToInternalCachedSet(this.recordResultsSetsClient, namespace, value);
-        if (setsTtl > 0) {
-            // Re-set with TTL to refresh expiry (Keyv supports TTL in ms)
-            const current = await this.recordResultsSetsClient.get(namespace);
-            if (current) {
-                await this.recordResultsSetsClient.set(namespace, current, setsTtl * 1000);
+            await addValueToInternalCachedSet(this.recordResultsSetsClient, namespace, value);
+            if (setsTtl > 0) {
+                // Re-set with TTL to refresh expiry (Keyv supports TTL in ms)
+                const current = await this.recordResultsSetsClient.get(namespace);
+                if (current) {
+                    await this.recordResultsSetsClient.set(namespace, current, setsTtl * 1000);
+                }
             }
-        }
+        });
     }
 
     public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -154,16 +174,18 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
-        if (maxSetCardinality > 0) {
-            const existing = await this.relationsCacheClient.get(childIdentifier);
-            if (existing && existing.size >= maxSetCardinality) {
-                await this.relationsCacheClient.delete(childIdentifier);
+        await this.withKeyLock(`relation:${childIdentifier}`, async () => {
+            if (maxSetCardinality > 0) {
+                const existing = await this.relationsCacheClient.get(childIdentifier);
+                if (existing && existing.size >= maxSetCardinality) {
+                    await this.relationsCacheClient.delete(childIdentifier);
+                }
             }
-        }
-        const parents = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
-        parents.add(parentIdentifier);
-        const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
-        await this.relationsCacheClient.set(childIdentifier, parents, ttlMs);
+            const parents = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
+            parents.add(parentIdentifier);
+            const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
+            await this.relationsCacheClient.set(childIdentifier, parents, ttlMs);
+        });
     }
 
     public async addManyParentToChildRelationships(relationships: Array<{ childIdentifier: string; parentIdentifier: string }>, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -177,15 +199,17 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         }
 
         const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
-        await Promise.all(
-            Array.from(incoming.entries()).map(async ([key, newParents]) => {
+        // Process each unique child sequentially through the lock to prevent
+        // lost updates when multiple calls target the same childIdentifier.
+        for (const [key, newParents] of incoming.entries()) {
+            await this.withKeyLock(`relation:${key}`, async () => {
                 const existing = (await this.relationsCacheClient.get(key)) || new Set<string>();
                 const merged = new Set<string>([...existing, ...newParents]);
                 // If merged set exceeds cardinality, reset to only new parents
                 const shouldReset = maxSetCardinality > 0 && merged.size > maxSetCardinality;
-                return this.relationsCacheClient.set(key, shouldReset ? newParents : merged, ttlMs);
-            }),
-        );
+                await this.relationsCacheClient.set(key, shouldReset ? newParents : merged, ttlMs);
+            });
+        }
     }
 
     public async getParentsOfChild(childIdentifier: string): Promise<string[]> {
@@ -199,13 +223,13 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
     public async clearDocumentsCache(namespace: string): Promise<void> {
         const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${namespace}`;
-        const trackedKeys = await this.recordResultsSetsClient.get(trackingKey);
-        // Delete tracking set first so concurrent setDocuments creates a fresh set
-        // instead of appending to one that's about to be deleted.
-        await this.recordResultsSetsClient.delete(trackingKey);
-        if (trackedKeys?.size > 0) {
-            await Promise.all(Array.from(trackedKeys).map(key => this.documentsCacheClient.delete(key as string)));
-        }
+        await this.withKeyLock(`docTrack:${trackingKey}`, async () => {
+            const trackedKeys = await this.recordResultsSetsClient.get(trackingKey);
+            await this.recordResultsSetsClient.delete(trackingKey);
+            if (trackedKeys?.size > 0) {
+                await Promise.all(Array.from(trackedKeys).map(key => this.documentsCacheClient.delete(key as string)));
+            }
+        });
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {
