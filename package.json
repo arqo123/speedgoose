@@ -92,6 +92,10 @@
         "typescript": "5.9.3",
         "rimraf": "^5.0.5"
     },
+    "resolutions": {
+        "undici": ">=7.24.0",
+        "picomatch": ">=4.0.4"
+    },
     "bugs": {
         "url": "https://github.com/arqo123/speedgoose/issues"
     },
