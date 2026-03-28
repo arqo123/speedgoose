@@ -1,3 +1,10 @@
+## [2.5.8](https://github.com/arqo123/speedgoose/compare/v2.5.7...v2.5.8) (2026-03-28)
+
+
+### Bug Fixes
+
+* batch critical bug fixes from codebase audit ([#176](https://github.com/arqo123/speedgoose/issues/176)) ([a5309db](https://github.com/arqo123/speedgoose/commit/a5309dbee63a8f7b2b6dc19bb70522e14e98d21a))
+
 ## [2.5.7](https://github.com/arqo123/speedgoose/compare/v2.5.6...v2.5.7) (2026-03-28)
 
 
