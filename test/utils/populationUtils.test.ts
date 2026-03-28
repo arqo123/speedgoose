@@ -327,6 +327,44 @@ describe('populationUtils', () => {
             expect((populatedChild.relationField as Record<string, unknown>).name).toBe('Relation');
         });
 
+        it('should not throw when path does not exist in schema (null schemaField guard)', async () => {
+            const user = await UserModel.create({ name: 'User', email: 'user@example.com' });
+            const userDoc = await UserModel.findById(user._id);
+            expect(userDoc).toBeDefined();
+
+            // 'nonExistentField' is not in the schema, so schema.path() returns undefined
+            await expect(handleCachedPopulation([userDoc!], [{ path: 'nonExistentField' }], UserModel.find() as any)).resolves.not.toThrow();
+
+            // The document should be returned unchanged
+            const result = await handleCachedPopulation([userDoc!], [{ path: 'nonExistentField' }], UserModel.find() as any);
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe('User');
+        });
+
+        it('should not throw when referenced model is not registered (null populatedModel guard)', async () => {
+            // Create a temporary schema with a ref to a model name that is NOT registered
+            const tempSchema = new mongoose.Schema({
+                name: String,
+                fakeRef: { type: mongoose.Schema.Types.ObjectId, ref: 'NonRegisteredModel' },
+            });
+
+            // Avoid OverwriteModelError if model already exists
+            const TempModel = mongoose.models.TempNullGuardTest || mongoose.model('TempNullGuardTest', tempSchema);
+
+            const doc = await TempModel.create({ name: 'Test', fakeRef: new mongoose.Types.ObjectId() });
+            const docFromDb = await TempModel.findById(doc._id);
+            expect(docFromDb).toBeDefined();
+
+            // 'NonRegisteredModel' is not a registered mongoose model, so getMongooseModelByName returns undefined
+            await expect(handleCachedPopulation([docFromDb!], [{ path: 'fakeRef' }], TempModel.find() as any)).resolves.not.toThrow();
+
+            const result = await handleCachedPopulation([docFromDb!], [{ path: 'fakeRef' }], TempModel.find() as any);
+            expect(result).toHaveLength(1);
+
+            // Cleanup
+            await TempModel.deleteMany({});
+        });
+
         it('should handle empty populate options', async () => {
             const user = await UserModel.create({ name: 'User', email: 'user@example.com' });
             const userDoc = await UserModel.findById(user._id);
