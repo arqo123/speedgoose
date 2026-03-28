@@ -1,3 +1,10 @@
+## [2.5.7](https://github.com/arqo123/speedgoose/compare/v2.5.6...v2.5.7) (2026-03-28)
+
+
+### Bug Fixes
+
+* extract _id from Mongoose documents in cache key to prevent OOM ([#175](https://github.com/arqo123/speedgoose/issues/175)) ([bc45319](https://github.com/arqo123/speedgoose/commit/bc45319f970ea87a37955a55c94b6db02b2f914c)), closes [#174](https://github.com/arqo123/speedgoose/issues/174)
+
 ## [2.5.6](https://github.com/arqo123/speedgoose/compare/v2.5.5...v2.5.6) (2026-03-23)
 
 
