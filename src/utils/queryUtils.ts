@@ -27,10 +27,10 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
         context.multitenantValue = context.multitenantValue ?? getMultitenantValueFromQuery(query, config.multitenancyConfig.multitenantKey);
     }
 
-    if (config?.defaultTtl) {
+    if (config?.defaultTtl !== undefined) {
         context.ttl = context?.ttl ?? config.defaultTtl;
     }
- 
+
     if (config?.refreshTtlOnRead) {
         context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;
     }
@@ -43,7 +43,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
 export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): void => {
     const config = getConfig();
 
-    if (config?.defaultTtl) {
+    if (config?.defaultTtl !== undefined) {
         context.ttl = context?.ttl ?? config.defaultTtl;
     }
 
