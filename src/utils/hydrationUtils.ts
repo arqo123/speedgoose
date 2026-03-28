@@ -42,7 +42,8 @@ const getHydratedDocument = async <T>(query: Query<T, T>, context: SpeedGooseCac
 
         return hydratedDocument;
     }
-}
+    return result;
+};
 
 const hydrateDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): CachedDocument<T> => deepHydrate(query.model, record);
 
