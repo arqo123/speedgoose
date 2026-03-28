@@ -15,6 +15,8 @@ const isObjectIdLike = (value: unknown): value is { toHexString: () => string } 
         ((value as { _bsontype?: string })._bsontype === 'ObjectId' || (value as { constructor?: { name?: string } }).constructor?.name === 'ObjectId'),
     );
 
+const isMongooseDocument = (value: unknown): value is { _id: unknown; $__: unknown } => Boolean(value && typeof value === 'object' && '$__' in (value as Record<string, unknown>) && '_id' in (value as Record<string, unknown>));
+
 const normalizePopulateValue = (value: unknown): unknown => {
     if (value == null) {
         return value;
@@ -59,6 +61,12 @@ const normalizeForStableStringify = (value: unknown, seen: WeakSet<object>): unk
 
     if (isObjectIdLike(value)) {
         return `objectId:${value.toHexString()}`;
+    }
+
+    // Mongoose documents passed as query filter values (e.g. findById(populatedDoc))
+    // must be reduced to their _id to avoid serializing the entire document graph.
+    if (isMongooseDocument(value)) {
+        return normalizeForStableStringify(value._id, seen);
     }
 
     if (Array.isArray(value)) {
