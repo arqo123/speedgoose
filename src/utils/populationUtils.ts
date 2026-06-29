@@ -1,5 +1,5 @@
 import { Document, Model, Query } from 'mongoose';
-import { getMongooseModelByName } from './mongooseUtils';
+import { getMongooseModelByName, markPathPopulated } from './mongooseUtils';
 import { getCacheStrategyInstance } from './commonUtils';
 import { getSetsTtl, getMaxSetCardinality } from './cacheClientUtils';
 import { CacheNamespaces, SpeedGoosePopulateOptions, CachedResult, TtlInheritance } from '../types/types';
@@ -95,6 +95,9 @@ export const stitchAndRelateDocuments = async <T extends Document>(
 
         const hydratedValue = hydratePopulatedData(populatedValue, populatedModel, isLean);
         mpath.set(path, hydratedValue, doc);
+
+        // Keep Mongoose's populate bookkeeping in sync with the stitched value.
+        if (!isLean) markPathPopulated(doc, path, ids);
 
         // Collect parent-child relationships for batch cache update
         const childIds = Array.isArray(ids) ? ids : [ids];

@@ -39,3 +39,16 @@ export const isMongooseUnpopulatedField = <T>(record: CachedDocument<T>, path: s
 
     return value[0] && isObjectIdOrHexString(value[0]);
 };
+
+type PopulatedPathRegistrar = { populated?: (path: string, val?: unknown) => unknown };
+
+/**
+ * Registers a stitched populate in Mongoose's `$__.populated` bookkeeping so a
+ * cache-hydrated doc depopulates/repopulates like a freshly-populated one.
+ *
+ * @param ids the original reference id(s) that lived at `path` before stitching
+ */
+export const markPathPopulated = <T>(doc: Document<T>, path: string, ids: unknown): void => {
+    const target = doc as PopulatedPathRegistrar;
+    if (typeof target?.populated === 'function' && ids != null) target.populated(path, ids);
+};
