@@ -4,7 +4,7 @@ import { CachedDocument, SpeedGooseCacheOperationContext } from '../types/types'
 import { setKeyInHydrationCaches } from './cacheClientUtils';
 import { generateCacheKeyForSingleDocument } from './cacheKeyUtils';
 import { getHydrationCache } from './commonUtils';
-import { getValueFromDocument, isResultWithIds, getMongooseModelByName, setValueOnDocument, isMongooseUnpopulatedField } from './mongooseUtils';
+import { getValueFromDocument, isResultWithIds, getMongooseModelByName, setValueOnDocument, isMongooseUnpopulatedField, markPathPopulated } from './mongooseUtils';
 
 type FieldWithReferenceModel = {
     path: string;
@@ -59,9 +59,11 @@ const deepHydrate = <T>(model: Model<T>, record: CachedDocument<T>): CachedDocum
             if (!Array.isArray(value)) {
                 const hydratedValue = deepHydrate(getMongooseModelByName(field.referenceModelName), value as CachedDocument<T>);
                 setValueOnDocument(field.path, hydratedValue, hydratedRootDocument);
+                markPathPopulated(hydratedRootDocument, field.path, (value as CachedDocument<T>)?._id);
             } else {
                 const hydratedValue = value.map(valueToHydrate => deepHydrate(getMongooseModelByName(field.referenceModelName), valueToHydrate), hydratedRootDocument);
                 setValueOnDocument(field.path, hydratedValue, hydratedRootDocument);
+                markPathPopulated(hydratedRootDocument, field.path, value.map((valueToHydrate: { _id?: CachedDocument<T> }) => valueToHydrate?._id));
             }
         }
     }
