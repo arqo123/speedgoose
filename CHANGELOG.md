@@ -1,3 +1,10 @@
+## [2.5.9](https://github.com/arqo123/speedgoose/compare/v2.5.8...v2.5.9) (2026-06-30)
+
+
+### Bug Fixes
+
+* register stitched populates in Mongoose bookkeeping ([#178](https://github.com/arqo123/speedgoose/issues/178)) ([5da8396](https://github.com/arqo123/speedgoose/commit/5da8396f2d671ce4ffb3e57a7ec6672402c1d138))
+
 ## [2.5.8](https://github.com/arqo123/speedgoose/compare/v2.5.7...v2.5.8) (2026-03-28)
 
 
