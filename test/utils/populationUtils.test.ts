@@ -423,7 +423,7 @@ describe('populationUtils', () => {
 
             expect(result).toHaveLength(1);
             const populatedChild = result[0] as IUser;
-            expect(populatedChild.parent).toBeUndefined();
+            expect(populatedChild.parent).toBeNull();
         });
     });
 
@@ -546,7 +546,7 @@ describe('populationUtils', () => {
             const docsFromCache = new Map();
             docsFromCache.set(getDocumentCacheKey('User', parent1._id.toString()), parent1.toObject());
             docsFromCache.set(getDocumentCacheKey('User', parent2._id.toString()), parent2.toObject());
-            await stitchAndRelateDocuments([childDoc], 'parents', UserModel, undefined, docsFromCache, false);
+            await stitchAndRelateDocuments([childDoc], 'parents', UserModel, undefined, docsFromCache, false, undefined, true);
             expect(childDoc.parents).toHaveLength(2);
             expect((childDoc.parents[0] as any).name).toBe('Parent1');
             expect((childDoc.parents[1] as any).name).toBe('Parent2');
@@ -590,7 +590,7 @@ describe('populationUtils', () => {
             const childDoc = await UserModel.findById(child._id);
             const docsFromCache = new Map();
             docsFromCache.set(getDocumentCacheKey('User', parent._id.toString()), parent.toObject());
-            await stitchAndRelateDocuments([childDoc], 'parents', UserModel, undefined, docsFromCache, false);
+            await stitchAndRelateDocuments([childDoc], 'parents', UserModel, undefined, docsFromCache, false, undefined, true);
             // Should only have the valid parent, null filtered out
             expect((childDoc.parents as any[]).length).toBe(1);
             expect((childDoc.parents[0] as any).name).toBe('Parent');
@@ -632,7 +632,7 @@ describe('populationUtils', () => {
             const childDoc = await UserModel.findById(child._id);
             const docsFromCache = new Map(); // No parent in cache
             await stitchAndRelateDocuments([childDoc], 'parent', UserModel, undefined, docsFromCache, false);
-            expect(childDoc.parent).toBeUndefined();
+            expect(childDoc.parent).toBeNull();
         });
     });
 });

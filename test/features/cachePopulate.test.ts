@@ -372,7 +372,7 @@ describe('cachePopulate', () => {
         const secondResult = await UserModel.findOne({ _id: child._id }).cachePopulate({ path: 'parent' }).exec();
 
         expect(secondResult).toBeDefined();
-        expect(secondResult!.parent).toBeUndefined(); // Parent should not be found in cache
+        expect(secondResult!.parent).toBeNull(); // Deleted ref resolves to null, like native populate
     });
 
     // Cache Invalidation on Populated Document Update

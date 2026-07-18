@@ -83,6 +83,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(
     docsFromCache: Map<string, CachedResult<unknown>>,
     isLean: boolean,
     parentModelName: string,
+    isDirectArrayPath = false,
 ) => {
     const cacheStrategy = getCacheStrategyInstance();
     const relationships: Array<{ childIdentifier: string; parentIdentifier: string }> = [];
@@ -91,7 +92,10 @@ export const stitchAndRelateDocuments = async <T extends Document>(
         const ids = mpath.get(path, doc);
         if (ids == null) continue;
         const getCacheValue = (id: any) => (id != null ? docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select)) : undefined);
-        const populatedValue = Array.isArray(ids) ? ids.map(getCacheValue).filter(Boolean) : getCacheValue(ids);
+        // Match native populate: direct ref arrays drop unresolved refs, but paths traversing
+        // sub-document arrays must keep null placeholders — mpath.set assigns positionally, so a
+        // shortened array would stitch the wrong documents onto later elements.
+        const populatedValue = Array.isArray(ids) ? (isDirectArrayPath ? ids.map(getCacheValue).filter(Boolean) : ids.map(id => getCacheValue(id) ?? null)) : (getCacheValue(ids) ?? null);
 
         const hydratedValue = hydratePopulatedData(populatedValue, populatedModel, isLean);
         mpath.set(path, hydratedValue, doc);
@@ -157,7 +161,8 @@ export const handleSinglePopulation = async <T extends Document>(documents: T[],
         newDocs.forEach((value, key) => docsFromCache.set(key, value));
     }
 
-    await stitchAndRelateDocuments(documents, path, populatedModel, select, docsFromCache, lean, query.model.modelName);
+    const isDirectArrayPath = schemaField.instance === 'Array';
+    await stitchAndRelateDocuments(documents, path, populatedModel, select, docsFromCache, lean, query.model.modelName, isDirectArrayPath);
 };
 
 /**
