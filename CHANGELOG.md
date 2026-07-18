@@ -1,3 +1,10 @@
+## [2.5.10](https://github.com/arqo123/speedgoose/compare/v2.5.9...v2.5.10) (2026-07-18)
+
+
+### Bug Fixes
+
+* keep populate positions aligned when a cached ref is unresolvable ([#179](https://github.com/arqo123/speedgoose/issues/179)) ([5e5dcef](https://github.com/arqo123/speedgoose/commit/5e5dcef6d108df25b5a426829561b4d8785516bf))
+
 ## [2.5.9](https://github.com/arqo123/speedgoose/compare/v2.5.8...v2.5.9) (2026-06-30)
 
 
