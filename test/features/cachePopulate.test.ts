@@ -13,6 +13,21 @@ interface IUser extends Document {
     populate(path: string): Promise<this>;
 }
 
+// Models for nested sub-document array population (issue #180). Registered lazily and
+// idempotently so the same names can be reused across the tests below.
+const registerNestedModels = () => {
+    const childSchema = new mongoose.Schema({ name: String });
+    const memberSchema = new mongoose.Schema({
+        label: String,
+        child: { type: mongoose.Schema.Types.ObjectId, ref: 'NestedChild' }, // single ref in a sub-doc array
+        children: [{ type: mongoose.Schema.Types.ObjectId, ref: 'NestedChild' }], // ref array in a sub-doc array
+    });
+    const parentSchema = new mongoose.Schema({ members: [memberSchema] });
+    const NestedChild = mongoose.models.NestedChild || mongoose.model('NestedChild', childSchema);
+    const NestedParent = mongoose.models.NestedParent || mongoose.model('NestedParent', parentSchema);
+    return { NestedChild, NestedParent };
+};
+
 describe('cachePopulate', () => {
     beforeAll(async () => {
         await setupTestDB();
@@ -468,6 +483,96 @@ describe('cachePopulate', () => {
         // Both requests should return only two parents third one must be ignored
         expect(dbResult!.parents.length).toBe(2);
         expect(cachedResult!.parents.length).toBe(2);
+    });
+
+    // Population of nested sub-document arrays (issue #180)
+    it('should populate an array of refs nested inside a sub-document array (members.children)', async () => {
+        const { NestedChild, NestedParent } = registerNestedModels();
+
+        const [a, b, c, d] = await NestedChild.create([{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }]);
+        const parent = await NestedParent.create({
+            members: [
+                { label: 'm0', children: [a._id, b._id] },
+                { label: 'm1', children: [c._id, d._id] },
+            ],
+        });
+
+        const query = { _id: parent._id };
+        const nativeResult: any = await NestedParent.findOne(query).populate('members.children').exec();
+        const cachedResult: any = await NestedParent.findOne(query).cachePopulate({ path: 'members.children' }).exec();
+
+        const names = (res: any) => res.members.map((m: any) => m.children.map((x: any) => x.name));
+
+        // native populate stitches each member's children positionally
+        expect(names(nativeResult)).toEqual([['A', 'B'], ['C', 'D']]);
+        // cachePopulate must match native element-for-element
+        expect(names(cachedResult)).toEqual(names(nativeResult));
+        // leaves must be hydrated Mongoose documents (non-lean), like native
+        expect(cachedResult.members[0].children[0]).toBeInstanceOf(mongoose.Document);
+    });
+
+    it('should populate members.children on a lean query, matching native lean populate', async () => {
+        const { NestedChild, NestedParent } = registerNestedModels();
+
+        const [a, b, c, d] = await NestedChild.create([{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }]);
+        const parent = await NestedParent.create({
+            members: [
+                { label: 'm0', children: [a._id, b._id] },
+                { label: 'm1', children: [c._id, d._id] },
+            ],
+        });
+
+        const query = { _id: parent._id };
+        const nativeResult: any = await NestedParent.findOne(query).populate('members.children').lean().exec();
+        const cachedResult: any = await NestedParent.findOne(query).lean().cachePopulate({ path: 'members.children' }).exec();
+
+        const names = (res: any) => res.members.map((m: any) => m.children.map((x: any) => x.name));
+        expect(names(nativeResult)).toEqual([['A', 'B'], ['C', 'D']]);
+        expect(names(cachedResult)).toEqual(names(nativeResult));
+        // lean leaves stay plain objects, not Mongoose documents
+        expect(cachedResult.members[0].children[0]).not.toBeInstanceOf(mongoose.Document);
+    });
+
+    it('should drop unresolved refs inside members.children like native populate', async () => {
+        const { NestedChild, NestedParent } = registerNestedModels();
+
+        const [a, c] = await NestedChild.create([{ name: 'A' }, { name: 'C' }]);
+        const missing = new mongoose.Types.ObjectId(); // never created
+
+        const parent = await NestedParent.create({
+            members: [
+                { label: 'm0', children: [a._id, missing] },
+                { label: 'm1', children: [c._id] },
+            ],
+        });
+
+        const query = { _id: parent._id };
+        const nativeResult: any = await NestedParent.findOne(query).populate('members.children').exec();
+        const cachedResult: any = await NestedParent.findOne(query).cachePopulate({ path: 'members.children' }).exec();
+
+        const names = (res: any) => res.members.map((m: any) => m.children.map((x: any) => x.name));
+        expect(names(nativeResult)).toEqual([['A'], ['C']]); // unresolved ref dropped by native
+        expect(names(cachedResult)).toEqual(names(nativeResult));
+    });
+
+    it('should populate a single ref nested inside a sub-document array (members.child)', async () => {
+        const { NestedChild, NestedParent } = registerNestedModels();
+
+        const [a, b] = await NestedChild.create([{ name: 'A' }, { name: 'B' }]);
+        const parent = await NestedParent.create({
+            members: [
+                { label: 'm0', child: a._id },
+                { label: 'm1', child: b._id },
+            ],
+        });
+
+        const query = { _id: parent._id };
+        const nativeResult: any = await NestedParent.findOne(query).populate('members.child').exec();
+        const cachedResult: any = await NestedParent.findOne(query).cachePopulate({ path: 'members.child' }).exec();
+
+        const names = (res: any) => res.members.map((m: any) => m.child?.name);
+        expect(names(nativeResult)).toEqual(['A', 'B']);
+        expect(names(cachedResult)).toEqual(names(nativeResult));
     });
 
     // Placeholder: Population with Multiple Models

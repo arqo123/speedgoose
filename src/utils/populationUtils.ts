@@ -67,7 +67,12 @@ export const fetchAndCacheMissedDocuments = async (missedIds: string[], populate
 export const hydratePopulatedData = <T extends Document>(data: CachedResult<T> | CachedResult<T>[], populatedModel: Model<T>, isLean: boolean): T | T[] | null => {
     if (isLean || !data) return data as T | T[] | null;
 
-    const hydrate = (item: any) => (item && typeof item === 'object' ? populatedModel.hydrate(item) : item);
+    // Recurse into nested arrays so refs living inside a sub-document array (e.g. `members.children`,
+    // whose stitched value is an array-of-arrays) hydrate each leaf document rather than an inner array.
+    const hydrate = (item: any): any => {
+        if (Array.isArray(item)) return item.map(hydrate);
+        return item && typeof item === 'object' ? populatedModel.hydrate(item) : item;
+    };
 
     return Array.isArray(data) ? data.map(hydrate) : hydrate(data);
 };
@@ -82,7 +87,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(
     select: string | undefined | Record<string, number>,
     docsFromCache: Map<string, CachedResult<unknown>>,
     isLean: boolean,
-    parentModelName: string,
+    parentModelName?: string,
     isDirectArrayPath = false,
 ) => {
     const cacheStrategy = getCacheStrategyInstance();
@@ -92,10 +97,27 @@ export const stitchAndRelateDocuments = async <T extends Document>(
         const ids = mpath.get(path, doc);
         if (ids == null) continue;
         const getCacheValue = (id: any) => (id != null ? docsFromCache.get(getDocumentCacheKey(populatedModel.modelName, id.toString(), select)) : undefined);
-        // Match native populate: direct ref arrays drop unresolved refs, but paths traversing
-        // sub-document arrays must keep null placeholders — mpath.set assigns positionally, so a
-        // shortened array would stitch the wrong documents onto later elements.
-        const populatedValue = Array.isArray(ids) ? (isDirectArrayPath ? ids.map(getCacheValue).filter(Boolean) : ids.map(id => getCacheValue(id) ?? null)) : (getCacheValue(ids) ?? null);
+        // Direct ref arrays drop unresolved refs (like native populate); resolve each id, keep only hits.
+        const resolveDirectArray = (arr: any[]) => arr.map(getCacheValue).filter(Boolean);
+
+        // Four shapes, matching native populate:
+        //  - single ref                                    -> resolved doc or null
+        //  - direct ref array (`kids`)                     -> drop unresolved refs
+        //  - array of ref arrays in a sub-doc array
+        //    (`members.children`, mpath.get returns
+        //     array-of-arrays)                             -> resolve each inner array, keep outer positions
+        //  - single ref in a sub-doc array (`members.child`,
+        //    mpath.get returns a flat positional array)    -> keep null placeholders so mpath.set stays aligned
+        let populatedValue: any;
+        if (!Array.isArray(ids)) {
+            populatedValue = getCacheValue(ids) ?? null;
+        } else if (isDirectArrayPath && ids.some(Array.isArray)) {
+            populatedValue = ids.map(inner => (Array.isArray(inner) ? resolveDirectArray(inner) : inner));
+        } else if (isDirectArrayPath) {
+            populatedValue = resolveDirectArray(ids);
+        } else {
+            populatedValue = ids.map(id => getCacheValue(id) ?? null);
+        }
 
         const hydratedValue = hydratePopulatedData(populatedValue, populatedModel, isLean);
         mpath.set(path, hydratedValue, doc);
@@ -103,9 +125,11 @@ export const stitchAndRelateDocuments = async <T extends Document>(
         // Keep Mongoose's populate bookkeeping in sync with the stitched value.
         if (!isLean) markPathPopulated(doc, path, ids);
 
-        // Collect parent-child relationships for batch cache update
-        const childIds = Array.isArray(ids) ? ids : [ids];
-        for (const childId of childIds.filter(Boolean)) {
+        // Collect parent-child relationships for batch cache update. Flatten so refs nested in a
+        // sub-document array (`members.children`, array-of-arrays) yield one relationship per id
+        // instead of a bogus key built from a stringified inner array.
+        const childIds = (Array.isArray(ids) ? ids.flat() : [ids]).filter(Boolean);
+        for (const childId of childIds) {
             relationships.push({
                 childIdentifier: `${CacheNamespaces.RELATIONS_CHILD_TO_PARENT}:${populatedModel.modelName}:${childId}`,
                 parentIdentifier: `${parentModelName}:${doc._id}`,
