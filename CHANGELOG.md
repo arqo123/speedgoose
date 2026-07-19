@@ -1,3 +1,10 @@
+## [2.5.11](https://github.com/arqo123/speedgoose/compare/v2.5.10...v2.5.11) (2026-07-19)
+
+
+### Bug Fixes
+
+* stitch array refs nested in a sub-document array (members.children) ([#181](https://github.com/arqo123/speedgoose/issues/181)) ([1594360](https://github.com/arqo123/speedgoose/commit/1594360b1f4d43d64058641a7fb42aebbc33f9eb)), closes [#180](https://github.com/arqo123/speedgoose/issues/180)
+
 ## [2.5.10](https://github.com/arqo123/speedgoose/compare/v2.5.9...v2.5.10) (2026-07-18)
 
 
