@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26
 
       - name: Update npm to latest (OIDC requires >= 11.5.1)
         run: npm install -g npm@latest
