@@ -1,3 +1,10 @@
+## [2.5.13](https://github.com/arqo123/speedgoose/compare/v2.5.12...v2.5.13) (2026-10-24)
+
+
+### Bug Fixes
+
+* close cache invalidation gaps found in audit ([#184](https://github.com/arqo123/speedgoose/issues/184)) ([70a9bd5](https://github.com/arqo123/speedgoose/commit/70a9bd5067a0f579270107a5653b95b85c81889f))
+
 ## [2.5.12](https://github.com/arqo123/speedgoose/compare/v2.5.11...v2.5.12) (2026-10-24)
 
 
