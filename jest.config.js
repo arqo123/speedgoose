@@ -11,5 +11,6 @@ module.exports = {
             },
         ],
     },
+    testPathIgnorePatterns: ['/node_modules/', '<rootDir>/test/redis/'],
     maxWorkers: '25%',
 };

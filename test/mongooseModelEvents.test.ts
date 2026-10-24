@@ -322,7 +322,8 @@ describe('MANY_DOCUMENTS_CHANGED event', () => {
         await new Promise(resolve => setTimeout(resolve, 50));
 
         expect(mockedClearCacheForRecordId).toHaveBeenCalledTimes(3);
-        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledTimes(2);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledTimes(3);
+        expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_`);
         expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_tenant-a`);
         expect(clearResultsCacheWithSetSpy).toHaveBeenCalledWith(`${TEST_MODEL_NAME}_tenant-b`);
     });

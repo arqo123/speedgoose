@@ -1,5 +1,6 @@
 
 
+import { SpeedGooseCacheOperationContext } from '../../src/types/types';
 import * as commonUtils from '../../src/utils/commonUtils';
 import { isCountQuery, isDistinctQuery, isLeanQuery, prepareAggregateOperationParams, prepareQueryOperationContext, shouldHydrateResult, stringifyPopulatedPaths, stringifyQueryParam } from '../../src/utils/queryUtils';
 import { generateAggregateParamsOperationTestData } from '../assets/utils/prepareAggregateOperationContextAssets';
@@ -16,6 +17,28 @@ describe(`prepareQueryOperationContext`, () => {
 
             expect(testCase.given.params).toMatchObject(testCase.expected);
         });
+    });
+});
+
+describe(`prepareQueryOperationContext - multitenantValue`, () => {
+    beforeEach(() => {
+        mockedGetConfig.mockReturnValue({ redisUri: 'redisUri', multitenancyConfig: { multitenantKey: 'tenantId' } });
+    });
+
+    test(`should leave multitenantValue undefined when the tenant filter matches many tenants`, () => {
+        const context = {} as SpeedGooseCacheOperationContext;
+
+        prepareQueryOperationContext(generateTestFindQuery({ tenantId: { $in: ['tenant-a', 'tenant-b'] } }), context);
+
+        expect(context.multitenantValue).toBeUndefined();
+    });
+
+    test(`should keep a plain string tenant value`, () => {
+        const context = {} as SpeedGooseCacheOperationContext;
+
+        prepareQueryOperationContext(generateTestFindQuery({ tenantId: 'tenant-a' }), context);
+
+        expect(context.multitenantValue).toBe('tenant-a');
     });
 });
 

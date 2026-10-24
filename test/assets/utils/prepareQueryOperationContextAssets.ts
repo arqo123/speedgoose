@@ -1,5 +1,6 @@
 import { Query } from 'mongoose';
 import { SpeedGooseCacheOperationContext, SpeedGooseConfig } from '../../../src/types/types';
+import { hashCacheKey } from '../../../src/utils/cacheKeyUtils';
 import { generateTestFindQuery } from '../../testUtils';
 
 type AggregateParamsOperationTestData = {
@@ -29,7 +30,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 120,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{},"query":{"tenantId":"tenantTestValue"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{},"query":{"tenantId":"tenantTestValue"},"speedGoosePopulate":null}'),
             multitenantValue: 'tenantTestValue',
             debug: expect.any(Function),
         },
@@ -49,7 +50,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{},"query":{},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{},"query":{},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
         },
     },
@@ -95,7 +96,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionField1":1},"query":{"field1":"x"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionField1":1},"query":{"field1":"x"},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
         },
     },
@@ -117,7 +118,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"selectedField":1,"selectedSecondField":1},"query":{"field1":"x"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"selectedField":1,"selectedSecondField":1},"query":{"field1":"x"},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
         },
     },
@@ -139,7 +140,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectedFieldFromOptions":1},"query":{"field1":"x"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectedFieldFromOptions":1},"query":{"field1":"x"},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
         },
     },
@@ -161,7 +162,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
         },
     },
@@ -184,7 +185,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
@@ -208,7 +209,7 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"},"speedGoosePopulate":null}',
+            cacheKey: hashCacheKey('{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x"},"speedGoosePopulate":null}'),
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
@@ -232,8 +233,9 @@ export const generateQueryParamsOperationTestData = (): AggregateParamsOperation
         },
         expected: {
             ttl: 30,
-            cacheKey:
+            cacheKey: hashCacheKey(
                 '{"collection":"users","mongooseOptions":{"lean":null,"populate":null},"op":"find","options":{},"projection":{"projectionFromOptions":1,"selectedField":1},"query":{"field1":"x","some":{"nested":{"object":"regex:/Chapter (\\\\d+)\\\\.\\\\d*/"}}},"speedGoosePopulate":null}',
+            ),
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },

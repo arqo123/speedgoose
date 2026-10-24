@@ -40,6 +40,7 @@
         "test": "jest --forceExit",
         "benchmark": "jest --testPathPattern=benchmark --forceExit --testTimeout=120000",
         "test:debug": "jest --runInBand --forceExit",
+        "test:redis": "jest -c jest.redis.config.js --runInBand --forceExit",
         "test-watch": "nodemon --exec 'yarn test'",
         "clean": "rimraf ./lib/*",
         "lint:base": "eslint --ext .ts",

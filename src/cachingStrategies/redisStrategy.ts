@@ -4,6 +4,10 @@ import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '.
 import { getConfig } from '../utils/commonUtils';
 import { CommonCacheStrategyAbstract, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
+// Members checked for an expired result on every write. With k samples the share of dead
+// members settles around 1/k, so a set holds roughly k/(k-1) times its live keys.
+const EXPIRED_MEMBERS_SAMPLE_SIZE = 4;
+
 // Lua script: atomic SCARD check + DEL if oversized + SADD + optional EXPIRE
 // KEYS[1] = set key, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl
 const LUA_ADD_TO_SET = `
@@ -22,18 +26,27 @@ end
 return 1
 `;
 
-// Lua script: same as above but for multiple keys (namespaces)
-// KEYS = all namespace keys, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl
+// Lua script: add a cache key to the invalidation sets of many namespaces (model/records).
+// Before adding, samples a few members and drops those whose cached result has already expired.
+// Without it, a set written more often than its TTL never expires and keeps every key ever added.
+// KEYS = all namespace keys, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl, ARGV[4] = results key prefix
 const LUA_ADD_TO_MANY_SETS = `
 local value = ARGV[1]
 local maxCard = tonumber(ARGV[2])
 local ttl = tonumber(ARGV[3])
+local resultsPrefix = ARGV[4]
 for i = 1, #KEYS do
-    if maxCard > 0 then
-        local size = redis.call('SCARD', KEYS[i])
-        if size >= maxCard then
-            redis.call('DEL', KEYS[i])
+    local size = redis.call('SCARD', KEYS[i])
+    if size > 0 then
+        local sample = redis.call('SRANDMEMBER', KEYS[i], ${EXPIRED_MEMBERS_SAMPLE_SIZE})
+        for _, member in ipairs(sample) do
+            if redis.call('EXISTS', resultsPrefix .. member) == 0 then
+                size = size - redis.call('SREM', KEYS[i], member)
+            end
         end
+    end
+    if maxCard > 0 and size >= maxCard then
+        redis.call('DEL', KEYS[i])
     end
     redis.call('SADD', KEYS[i], value)
     if ttl > 0 then
@@ -99,12 +112,17 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
-        await this.client.eval(LUA_ADD_TO_SET, 1, namespace, String(value), String(maxSetCardinality ?? 0), String(setsTtl ?? 0));
+        await this.client.eval(LUA_ADD_TO_MANY_SETS, 1, namespace, String(value), String(maxSetCardinality ?? 0), String(setsTtl ?? 0), this.getResultsKeyPrefix());
     }
 
     public async addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         if (namespaces.length === 0) return;
-        await this.client.eval(LUA_ADD_TO_MANY_SETS, namespaces.length, ...namespaces, String(value), String(maxSetCardinality ?? 0), String(setsTtl ?? 0));
+        await this.client.eval(LUA_ADD_TO_MANY_SETS, namespaces.length, ...namespaces, String(value), String(maxSetCardinality ?? 0), String(setsTtl ?? 0), this.getResultsKeyPrefix());
+    }
+
+    // Keys built inside Lua are not prefixed by ioredis, only KEYS[] are.
+    private getResultsKeyPrefix(): string {
+        return `${this.client.options?.keyPrefix ?? ''}${CacheNamespaces.RESULTS_NAMESPACE}:`;
     }
 
     public async removeKeyForCache(namespace: string, key: string): Promise<void> {
