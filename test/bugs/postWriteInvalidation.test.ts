@@ -110,6 +110,10 @@ describe('cache is invalidated after the database write, not only before it', ()
     it.each([
         ['updateOne', () => RaceModel.updateOne({ name: 'upserted', group: 'g' }, { $set: { name: 'upserted' } }, { upsert: true }).exec()],
         ['findOneAndUpdate', () => RaceModel.findOneAndUpdate({ name: 'upserted', group: 'g' }, { $set: { name: 'upserted' } }, { upsert: true, new: true }).exec()],
+        // The update changes the filtered field, so the inserted record no longer matches the filter.
+        ['updateOne changing the filtered field', () => RaceModel.updateOne({ name: 'before-upsert', group: 'g' }, { $set: { name: 'upserted' } }, { upsert: true }).exec()],
+        ['updateMany changing the filtered field', () => RaceModel.updateMany({ name: 'before-upsert', group: 'g' }, { $set: { name: 'upserted' } }, { upsert: true }).exec()],
+        ['findOneAndUpdate changing the filtered field', () => RaceModel.findOneAndUpdate({ name: 'before-upsert', group: 'g' }, { $set: { name: 'upserted' } }, { upsert: true, new: true }).exec()],
     ])('upsert via %s is treated as a new record (model-wide cached query sees it)', async (_label, upsert) => {
         const readGroup = async () => (await RaceModel.find({ group: 'g' }).lean().cacheQuery({ ttl: 600 })) as any[];
         expect(await readGroup()).toHaveLength(2);

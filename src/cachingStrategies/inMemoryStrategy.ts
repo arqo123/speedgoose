@@ -179,8 +179,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
             }
             const parents = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
             parents.add(parentIdentifier);
-            const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
-            await this.relationsCacheClient.set(childIdentifier, parents, ttlMs);
+            await this.relationsCacheClient.set(childIdentifier, parents, getExtendedTtlMs(this.relationsCacheClient, childIdentifier, setsTtl));
         });
     }
 
@@ -194,7 +193,6 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
             incoming.get(childIdentifier)!.add(parentIdentifier);
         }
 
-        const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
         // Process each unique child sequentially through the lock to prevent
         // lost updates when multiple calls target the same childIdentifier.
         for (const [key, newParents] of incoming.entries()) {
@@ -203,7 +201,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
                 const merged = new Set<string>([...existing, ...newParents]);
                 // If merged set exceeds cardinality, reset to only new parents
                 const shouldReset = maxSetCardinality > 0 && merged.size > maxSetCardinality;
-                await this.relationsCacheClient.set(key, shouldReset ? newParents : merged, ttlMs);
+                await this.relationsCacheClient.set(key, shouldReset ? newParents : merged, getExtendedTtlMs(this.relationsCacheClient, key, setsTtl));
             });
         }
     }

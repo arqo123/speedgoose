@@ -104,7 +104,7 @@ end
 for i = 3, 2 + numParents do
     redis.call('SADD', KEYS[1], ARGV[i])
 end
-if ttl > 0 then
+if ttl > 0 and redis.call('TTL', KEYS[1]) < ttl then
     redis.call('EXPIRE', KEYS[1], ttl)
 end
 return numParents

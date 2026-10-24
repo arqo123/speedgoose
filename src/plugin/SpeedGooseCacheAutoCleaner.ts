@@ -3,7 +3,7 @@ import { isCachingEnabled } from '../utils/commonUtils';
 import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
 import { getMongooseModelFromDocument } from '../utils/mongooseUtils';
-import { getRecordsAffectedByAction, getRecordAffectedByAction, wasRecordDeleted } from './utils';
+import { getRecordsAffectedByAction, getRecordAffectedByAction, getRecordById, wasRecordDeleted } from './utils';
 import { clearParentCache, clearParentCacheBulk } from '../utils/cacheClientUtils';
 
 const MONGOOSE_DELETE_ONE_ACTIONS = ['findByIdAndRemove', 'findByIdAndDelete', 'findOneAndDelete', 'findOneAndRemove', 'deleteOne'];
@@ -44,13 +44,24 @@ const invalidateRecords = async (model: Model<unknown>, records: DocumentWithIdA
     }
 };
 
-/* After the write: the records found before it, or - for an upsert that matched nothing - the inserted ones. */
-const getRecordsAfterWrite = async (action: QueryWithAffectedRecords, findRecords: () => Promise<DocumentWithIdAndTenantValue[]>): Promise<{ records: DocumentWithIdAndTenantValue[]; wasNew: boolean }> => {
+type WriteResult = { upsertedId?: unknown; _id?: unknown; lastErrorObject?: { upserted?: unknown } } | null;
+
+/*
+ * After the write: the records found before it, or - for an upsert that matched nothing - the inserted one.
+ * Its id comes from the write result: the update may have changed the fields the filter matched on.
+ */
+const getRecordsAfterWrite = async (action: QueryWithAffectedRecords, result: WriteResult, findRecords: () => Promise<DocumentWithIdAndTenantValue[]>): Promise<{ records: DocumentWithIdAndTenantValue[]; wasNew: boolean }> => {
     const records = action[AFFECTED_RECORDS] ?? [];
-    if (records.length === 0 && action.getOptions().upsert) {
+    if (records.length > 0 || !action.getOptions().upsert) {
+        return { records, wasNew: false };
+    }
+    // updateOne/updateMany: upsertedId; findOneAndUpdate: the returned document, or the result metadata with includeResultMetadata.
+    const upsertedId = result?.upsertedId ?? result?.lastErrorObject?.upserted ?? result?._id;
+    if (upsertedId == null) {
         return { records: await findRecords(), wasNew: true };
     }
-    return { records, wasNew: false };
+    const upserted = await getRecordById(action, upsertedId);
+    return { records: upserted ? [upserted] : [], wasNew: true };
 };
 
 const appendQueryBasedListeners = (schema: Schema): void => {
@@ -66,12 +77,12 @@ const appendQueryBasedListeners = (schema: Schema): void => {
     });
 
     //@ts-expect-error this event work, but it's just not added into types
-    schema.post([...MONGOOSE_DELETE_ONE_ACTIONS, ...MONGOOSE_UPDATE_ONE_ACTIONS], async function () {
+    schema.post([...MONGOOSE_DELETE_ONE_ACTIONS, ...MONGOOSE_UPDATE_ONE_ACTIONS], async function (result: WriteResult) {
         if (!isCachingEnabled()) return;
         const action = this as unknown as QueryWithAffectedRecords;
         // The write has already committed - never fail it from here.
         try {
-            const { records, wasNew } = await getRecordsAfterWrite(action, async () => {
+            const { records, wasNew } = await getRecordsAfterWrite(action, result, async () => {
                 const upserted = await getRecordAffectedByAction(action);
                 return upserted ? [upserted] : [];
             });
@@ -95,12 +106,12 @@ const appendQueryBasedListeners = (schema: Schema): void => {
     });
 
     //@ts-expect-error this event work, but it's just not added into types
-    schema.post([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function () {
+    schema.post([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function (result: WriteResult) {
         if (!isCachingEnabled()) return;
         const action = this as unknown as QueryWithAffectedRecords;
         // The write has already committed - never fail it from here.
         try {
-            const { records, wasNew } = await getRecordsAfterWrite(action, () => getRecordsAffectedByAction(action));
+            const { records, wasNew } = await getRecordsAfterWrite(action, result, () => getRecordsAffectedByAction(action));
             if (records.length > 0) {
                 await invalidateRecords(action.model, records, wasNew, MONGOOSE_DELETE_MANY_ACTIONS.includes(action.op));
             }

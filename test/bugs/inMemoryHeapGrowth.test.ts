@@ -48,7 +48,8 @@ describe('IN_MEMORY: expired entries do not stay in the process heap', () => {
     it('removes expired, never-read entries from the underlying store once further writes happen', async () => {
         const client = createInMemoryCacheClientWithNamespace<{ payload: string }>('heapGrowth');
         for (let i = 0; i < 1000; i++) {
-            await client.set(`key-${i}`, { payload: 'x'.repeat(100) }, 10);
+            // Long enough to outlive the write loop itself on a slow runner, so none is swept early.
+            await client.set(`key-${i}`, { payload: 'x'.repeat(100) }, 500);
         }
         expect(storeSize(client)).toBe(1000);
 

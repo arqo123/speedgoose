@@ -24,6 +24,9 @@ export const getRecordsAffectedByAction = async <T>(queryAction: Query<T, T>): P
     return queryAction.model.find<CachedDocument<T>>(condition, { _id: 1, ...getMultitenantKeyProjection() }, options).lean() as unknown as DocumentWithIdAndTenantValue[];
 };
 
+export const getRecordById = async <T>(queryAction: Query<T, T>, id: unknown): Promise<DocumentWithIdAndTenantValue | null> =>
+    queryAction.model.findOne<CachedDocument<T>>({ _id: id }, { _id: 1, ...getMultitenantKeyProjection() }).lean() as unknown as DocumentWithIdAndTenantValue;
+
 /* In case of 'many' actions - as they are query operation we have to predict affected ids by making same query to fetch them */
 export const getRecordAffectedByAction = async <T>(queryAction: Query<T, T>): Promise<DocumentWithIdAndTenantValue> => {
     const condition = queryAction.getFilter();
