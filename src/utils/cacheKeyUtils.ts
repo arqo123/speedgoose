@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Document, Aggregate, Query } from 'mongoose';
 import { CachedDocument, DocumentWithIdAndTenantValue } from '../types/types';
 import { getConfig } from './commonUtils';
@@ -132,6 +133,10 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): stri
         collection: aggregation._model.collection.name,
         options: { ...(aggregation.options ?? {}), session: undefined },
     });
+
+// Generated keys embed the whole query and can reach tens of KB. Each key is stored as a member of
+// several invalidation sets, so it is kept at a fixed size.
+export const hashCacheKey = (key: string): string => createHash('sha1').update(key).digest('hex');
 
 export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
     if (!record) return '';

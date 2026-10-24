@@ -107,7 +107,9 @@ export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperation
     }
 
     context?.debug(`Setting key in cache`, context.cacheKey);
-    const writes: Promise<void>[] = [setKeyInResultsCache(result, context), setKeyInModelCache(model, context)];
+    // The result goes first: writing to an invalidation set drops members whose result key does not exist.
+    await setKeyInResultsCache(result, context);
+    const writes: Promise<void>[] = [setKeyInModelCache(model, context)];
     if (isResultWithIds(result)) {
         writes.push(setKeyInRecordsCache(result as CachedDocument<T>, context));
     }

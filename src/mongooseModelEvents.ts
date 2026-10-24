@@ -31,13 +31,15 @@ const getModelCacheKeysFromContext = (context: MongooseInternalEventContext): st
     }
 
     const tenantValues = Array.from(
-        new Set(
-            records.map(record => {
+        new Set([
+            // Queries without a single tenant (no tenant filter, many tenants) are tracked under the empty-tenant key.
+            '',
+            ...records.map(record => {
                 const value = (record as Record<string, unknown>)?.[multitenantKey];
                 // Missing tenant field is treated the same as empty-tenant scope.
                 return value == null ? '' : String(value);
             }),
-        ),
+        ]),
     );
 
     return tenantValues.map(tenantValue => generateCacheKeyForModelName(context.modelName, tenantValue));

@@ -1,6 +1,6 @@
-import { Query, Aggregate } from 'mongoose';
+import { Query, Aggregate, isObjectIdOrHexString } from 'mongoose';
 import { MongooseCountQueries, MongooseSpecialQueries, SpeedGooseCacheOperationContext, SpeedGooseDebuggerOperations } from '../types/types';
-import { generateCacheKeyFromPipeline, generateCacheKeyFromQuery } from './cacheKeyUtils';
+import { generateCacheKeyFromPipeline, generateCacheKeyFromQuery, hashCacheKey } from './cacheKeyUtils';
 import { getCacheStrategyInstance, getConfig } from './commonUtils';
 import { getDebugger } from './debugUtils';
 
@@ -12,7 +12,11 @@ export const stringifyQueryParam = (queryParam: Record<string, unknown>): string
 
 export const stringifyPopulatedPaths = (populatedPaths: string[]): string => populatedPaths.sort().toString();
 
-const getMultitenantValueFromQuery = <T>(query: Query<T, T>, multitenantKey: string): string => query.getQuery()[multitenantKey];
+const getMultitenantValueFromQuery = <T>(query: Query<T, T>, multitenantKey: string): string | undefined => {
+    const value = query.getQuery()[multitenantKey];
+    // A filter matching many tenants (array, $in, ...) has no single tenant; it's tracked under the model-wide key.
+    return value !== null && typeof value === 'object' && !isObjectIdOrHexString(value) ? undefined : value;
+};
 
 export const isLeanQuery = <T>(query: Query<T, T>): boolean => Boolean(query?._mongooseOptions.lean);
 
@@ -35,7 +39,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
         context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;
     }
 
-    context.cacheKey = context?.cacheKey ?? generateCacheKeyFromQuery(query);
+    context.cacheKey = context?.cacheKey ?? hashCacheKey(generateCacheKeyFromQuery(query));
 
     context.debug = getDebugger(query.model.modelName, SpeedGooseDebuggerOperations.CACHE_QUERY);
 };
@@ -51,7 +55,7 @@ export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, co
         context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;
     }
 
-    context.cacheKey = context?.cacheKey ?? generateCacheKeyFromPipeline(aggregation);
+    context.cacheKey = context?.cacheKey ?? hashCacheKey(generateCacheKeyFromPipeline(aggregation));
 
     context.debug = getDebugger(aggregation._model.modelName, SpeedGooseDebuggerOperations.CACHE_PIPELINE);
 };

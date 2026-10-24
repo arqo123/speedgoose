@@ -32,7 +32,7 @@ describe('addValueToCacheSet — TTL behavior', () => {
 
         await strategy.addValueToCacheSet('ns', 'val', 0);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -41,7 +41,7 @@ describe('addValueToCacheSet — TTL behavior', () => {
 
         await strategy.addValueToCacheSet('ns', 'val', undefined);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -50,7 +50,7 @@ describe('addValueToCacheSet — TTL behavior', () => {
 
         await strategy.addValueToCacheSet('mySet', 'myVal', 300);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'mySet', 'myVal', '0', '300');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'mySet', 'myVal', '0', '300', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -61,7 +61,7 @@ describe('addValueToCacheSet — TTL behavior', () => {
 
         // Single atomic eval — no pipeline needed
         expect(mockedEval).toHaveBeenCalledTimes(1);
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 1, 'ns', 'v', '0', '60');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 1, 'ns', 'v', '0', '60', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 });
@@ -72,7 +72,7 @@ describe('addValueToCacheSet — cardinality guard', () => {
 
         await strategy.addValueToCacheSet('ns', 'val', 0, 0);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0', 'resultsNamespace:');
         // Lua script handles the maxCard == 0 check internally
         mockedEval.mockRestore();
     });
@@ -82,7 +82,7 @@ describe('addValueToCacheSet — cardinality guard', () => {
 
         await strategy.addValueToCacheSet('ns', 'val', 0, undefined);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -91,7 +91,7 @@ describe('addValueToCacheSet — cardinality guard', () => {
 
         await strategy.addValueToCacheSet('ns', 'val', 0, 100);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'ns', 'val', '100', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'ns', 'val', '100', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -114,7 +114,7 @@ describe('addValueToCacheSet — cardinality guard', () => {
 
         // All parameters passed in one atomic eval call
         expect(mockedEval).toHaveBeenCalledTimes(1);
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '100', '60');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '100', '60', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 });
@@ -129,7 +129,7 @@ describe('addValueToManyCachedSets — TTL behavior', () => {
 
         await strategy.addValueToManyCachedSets(['a', 'b', 'c'], 'val', 90);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 3, 'a', 'b', 'c', 'val', '0', '90');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('EXPIRE'), 3, 'a', 'b', 'c', 'val', '0', '90', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -138,7 +138,7 @@ describe('addValueToManyCachedSets — TTL behavior', () => {
 
         await strategy.addValueToManyCachedSets(['a', 'b'], 'val', 0);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'a', 'b', 'val', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'a', 'b', 'val', '0', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -159,7 +159,7 @@ describe('addValueToManyCachedSets — cardinality guard', () => {
         await strategy.addValueToManyCachedSets(['ns1', 'ns2'], 'val', 0, 100);
 
         // Cardinality check is done atomically inside Lua
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 2, 'ns1', 'ns2', 'val', '100', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 2, 'ns1', 'ns2', 'val', '100', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -168,7 +168,7 @@ describe('addValueToManyCachedSets — cardinality guard', () => {
 
         await strategy.addValueToManyCachedSets(['ns1', 'ns2'], 'val', 0, 0);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'ns1', 'ns2', 'val', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'ns1', 'ns2', 'val', '0', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -179,7 +179,7 @@ describe('addValueToManyCachedSets — cardinality guard', () => {
 
         // Single eval call handles all keys atomically
         expect(mockedEval).toHaveBeenCalledTimes(1);
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 3, 'a', 'b', 'c', 'val', '100', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 3, 'a', 'b', 'c', 'val', '100', '0', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 });
@@ -370,7 +370,7 @@ describe('combined TTL and cardinality', () => {
         expect(luaScript).toContain('DEL');
         expect(luaScript).toContain('SADD');
         expect(luaScript).toContain('EXPIRE');
-        expect(mockedEval).toHaveBeenCalledWith(expect.any(String), 1, 'ns', 'val', '100', '120');
+        expect(mockedEval).toHaveBeenCalledWith(expect.any(String), 1, 'ns', 'val', '100', '120', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 
@@ -380,7 +380,7 @@ describe('combined TTL and cardinality', () => {
         await strategy.addValueToCacheSet('ns', 'val', -1);
 
         // TTL passed as '-1', Lua script's `if ttl > 0` will skip EXPIRE
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '-1');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'ns', 'val', '0', '-1', 'resultsNamespace:');
         mockedEval.mockRestore();
     });
 });

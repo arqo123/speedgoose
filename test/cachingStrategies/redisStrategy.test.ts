@@ -47,6 +47,7 @@ describe('RedisStrategy.addValueToCacheSet', () => {
             'someValue',
             '0', // maxSetCardinality defaults to 0
             '0', // setsTtl defaults to 0
+            'resultsNamespace:',
         );
 
         mockedEval.mockRestore();
@@ -57,7 +58,7 @@ describe('RedisStrategy.addValueToCacheSet', () => {
 
         await strategy.addValueToCacheSet('someNamespace', 'someValue', 120);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'someNamespace', 'someValue', '0', '120');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 1, 'someNamespace', 'someValue', '0', '120', 'resultsNamespace:');
 
         mockedEval.mockRestore();
     });
@@ -67,7 +68,7 @@ describe('RedisStrategy.addValueToCacheSet', () => {
 
         await strategy.addValueToCacheSet('someNamespace', 'someValue', 0, 50);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'someNamespace', 'someValue', '50', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SCARD'), 1, 'someNamespace', 'someValue', '50', '0', 'resultsNamespace:');
 
         mockedEval.mockRestore();
     });
@@ -139,7 +140,7 @@ describe('RedisStrategy.addValueToManyCachedSets', () => {
         await strategy.addValueToManyCachedSets(['nameSpace1', 'nameSpace2', 'nameSpace3'], 'someValue');
 
         expect(mockedEval).toHaveBeenCalledTimes(1);
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 3, 'nameSpace1', 'nameSpace2', 'nameSpace3', 'someValue', '0', '0');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 3, 'nameSpace1', 'nameSpace2', 'nameSpace3', 'someValue', '0', '0', 'resultsNamespace:');
 
         mockedEval.mockRestore();
     });
@@ -149,7 +150,7 @@ describe('RedisStrategy.addValueToManyCachedSets', () => {
 
         await strategy.addValueToManyCachedSets(['ns1', 'ns2'], 'val', 60);
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'ns1', 'ns2', 'val', '0', '60');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SADD'), 2, 'ns1', 'ns2', 'val', '0', '60', 'resultsNamespace:');
 
         mockedEval.mockRestore();
     });

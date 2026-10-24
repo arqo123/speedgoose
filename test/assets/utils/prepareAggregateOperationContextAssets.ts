@@ -1,6 +1,7 @@
 import { Aggregate } from 'mongoose';
 import { SpeedGooseCacheOperationContext, SpeedGooseConfig, SpeedGooseDebuggerOperations } from '../../../src/types/types';
 import { getDebugger } from '../../../src/utils/debugUtils';
+import { hashCacheKey } from '../../../src/utils/cacheKeyUtils';
 import { generateTestAggregate } from '../../testUtils';
 
 type AggregateParamsOperationTestData = {
@@ -31,7 +32,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 120,
-            cacheKey: '{"collection":"testmodels","options":{},"pipeline":[{"$match":{"someField":"someValue"}}]}',
+            cacheKey: hashCacheKey('{"collection":"testmodels","options":{},"pipeline":[{"$match":{"someField":"someValue"}}]}'),
             multitenantValue: 'tenantTestValue',
             debug: expect.any(Function),
         },
@@ -50,7 +51,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 30,
-            cacheKey: '{"collection":"testmodels","options":{},"pipeline":[{"$match":{"someField":"someValue"}}]}',
+            cacheKey: hashCacheKey('{"collection":"testmodels","options":{},"pipeline":[{"$match":{"someField":"someValue"}}]}'),
             multitenantValue: 'tenantTestValue',
             debug: expect.any(Function),
         },
@@ -123,7 +124,7 @@ export const generateAggregateParamsOperationTestData = (): AggregateParamsOpera
         },
         expected: {
             ttl: 90,    
-            cacheKey: '{\"collection\":\"testmodels\",\"options\":{},\"pipeline\":[{\"$match\":{\"abc\":\"regex:/abc/\",\"someField\":\"someValue\"}}]}',
+            cacheKey: hashCacheKey('{\"collection\":\"testmodels\",\"options\":{},\"pipeline\":[{\"$match\":{\"abc\":\"regex:/abc/\",\"someField\":\"someValue\"}}]}'),
             debug: expect.any(Function),
             refreshTtlOnRead: true,
         },
