@@ -23,7 +23,8 @@ export const getReferenceModelNameFromSchema = (schema: SchemaType): string => {
 const getFieldsToHydrate = <T>(model: Model<T>): FieldWithReferenceModel[] =>
     Object.entries<SchemaType>({
         ...(model?.schema?.paths ?? {}),
-        ...(model?.schema?.singleNestedPaths ?? {}),
+        // Still set at runtime by mongoose, but no longer part of its public typings.
+        ...((model?.schema as { singleNestedPaths?: Record<string, SchemaType> })?.singleNestedPaths ?? {}),
     })
         .map(([path, schemaFieldType]) => ({ path, referenceModelName: getReferenceModelNameFromSchema(schemaFieldType) }))
         .filter(schemaPaths => schemaPaths.referenceModelName);
