@@ -11,7 +11,8 @@
  *  - the model set key was built from the whole tenant array, so create/delete of a
  *    tenant document never cleared it.
  *
- * Needs a real Redis (MEMORY USAGE, Lua) - run with `REDIS_URI=redis://localhost:6379 yarn test:redis`.
+ * Needs a real Redis (MEMORY USAGE, Lua) - run with `REDIS_URI=redis://localhost:6379/15 yarn test:redis`.
+ * The test flushes the selected database, so REDIS_URI must name a non-default db index reserved for it.
  * SPEEDGOOSE_ENTRY can point at another build (e.g. an unpacked npm release) to compare versions.
  */
 import mongoose, { Schema, Types } from 'mongoose';
@@ -23,6 +24,9 @@ import Container from 'typedi';
 const speedgoose = require(process.env.SPEEDGOOSE_ENTRY ?? '../../index');
 
 const REDIS_URI = process.env.REDIS_URI;
+if (REDIS_URI && !(Number(new URL(REDIS_URI).pathname.slice(1)) > 0)) {
+    throw new Error(`REDIS_URI must select a dedicated db index other than 0 (e.g. redis://localhost:6379/15), got ${REDIS_URI}`);
+}
 const describeWithRedis = REDIS_URI ? describe : describe.skip;
 
 const TENANTS = Array.from({ length: 200 }, () => new Types.ObjectId());
