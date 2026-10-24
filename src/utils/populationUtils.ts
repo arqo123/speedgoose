@@ -1,7 +1,7 @@
 import { Document, Model, Query } from 'mongoose';
 import { getMongooseModelByName, markPathPopulated } from './mongooseUtils';
-import { getCacheStrategyInstance } from './commonUtils';
-import { getSetsTtl, getMaxSetCardinality } from './cacheClientUtils';
+import { getCacheStrategyInstance, getConfig } from './commonUtils';
+import { getSetsTtlFor, getMaxSetCardinality } from './cacheClientUtils';
 import { CacheNamespaces, SpeedGoosePopulateOptions, CachedResult, TtlInheritance } from '../types/types';
 import mpath from 'mpath';
 import { isLeanQuery } from './queryUtils';
@@ -30,12 +30,12 @@ export const getDocumentCacheKey = (modelName: string, id: string, select?: stri
  * Calculates the final TTL for a population operation based on inheritance rules.
  */
 export const calculatePopulationTtl = (optionTtl: number | undefined, contextTtl: number | undefined, ttlInheritance: TtlInheritance | 'fallback' | 'override' | undefined): number => {
-    const defaultTtl = 60; // Default global TTL
+    const defaultTtl = getConfig()?.defaultTtl ?? 60;
     if (ttlInheritance === 'override') {
-        return contextTtl ?? optionTtl ?? defaultTtl;
+        return optionTtl ?? contextTtl ?? defaultTtl;
     }
-    // Default behavior is 'fallback'
-    return optionTtl ?? contextTtl ?? defaultTtl;
+    // Default behavior is 'fallback': the populate ttl applies only when the query has none.
+    return contextTtl ?? optionTtl ?? defaultTtl;
 };
 
 /**
@@ -55,7 +55,7 @@ export const fetchAndCacheMissedDocuments = async (missedIds: string[], populate
         const cachedDoc = isLean ? doc : doc.toObject();
         newDocsToCache.set(key, cachedDoc);
     }
-    if (newDocsToCache.size > 0) {
+    if (newDocsToCache.size > 0 && ttl > 0) {
         await cacheStrategy.setDocuments(newDocsToCache, ttl);
     }
     return newDocsToCache;
@@ -89,6 +89,7 @@ export const stitchAndRelateDocuments = async <T extends Document>(
     isLean: boolean,
     parentModelName?: string,
     isDirectArrayPath = false,
+    ttl?: number,
 ) => {
     const cacheStrategy = getCacheStrategyInstance();
     const relationships: Array<{ childIdentifier: string; parentIdentifier: string }> = [];
@@ -137,8 +138,8 @@ export const stitchAndRelateDocuments = async <T extends Document>(
         }
     }
 
-    if (relationships.length > 0) {
-        await cacheStrategy.addManyParentToChildRelationships(relationships, getSetsTtl(), getMaxSetCardinality());
+    if (relationships.length > 0 && !(ttl <= 0)) {
+        await cacheStrategy.addManyParentToChildRelationships(relationships, getSetsTtlFor(ttl), getMaxSetCardinality());
     }
 };
 
@@ -176,8 +177,9 @@ export const handleSinglePopulation = async <T extends Document>(documents: T[],
 
     if (idsToPopulate.length === 0) return;
 
+    // ttl <= 0 disables caching: populate straight from the database.
     const cacheKeys = idsToPopulate.map(id => getDocumentCacheKey(populatedModel.modelName, id, select));
-    const docsFromCache = await cacheStrategy.getDocuments(cacheKeys);
+    const docsFromCache = ttl > 0 ? await cacheStrategy.getDocuments(cacheKeys) : new Map<string, CachedResult<unknown>>();
     const missedIds = idsToPopulate.filter(id => !docsFromCache.has(getDocumentCacheKey(populatedModel.modelName, id, select)));
 
     if (missedIds.length > 0) {
@@ -186,7 +188,7 @@ export const handleSinglePopulation = async <T extends Document>(documents: T[],
     }
 
     const isDirectArrayPath = schemaField.instance === 'Array';
-    await stitchAndRelateDocuments(documents, path, populatedModel, select, docsFromCache, lean, query.model.modelName, isDirectArrayPath);
+    await stitchAndRelateDocuments(documents, path, populatedModel, select, docsFromCache, lean, query.model.modelName, isDirectArrayPath, ttl);
 };
 
 /**

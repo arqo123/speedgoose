@@ -25,7 +25,7 @@ export abstract class CommonCacheStrategyAbstract {
     public abstract addValueToManyCachedSets<T extends string | number>(namespaces: string[], value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void>;
     public abstract removeKeyForCache(namespace: string, key: string): Promise<void>;
     public abstract clearResultsCacheWithSet(namespace: string): Promise<void>;
-    public abstract refreshTTLForCachedResult(key: string, ttl: number, value: CachedResult): void;
+    public abstract refreshTTLForCachedResult(key: string, ttl: number): Promise<void>;
 
     public abstract getDocuments<T>(keys: string[]): Promise<Map<string, CachedResult<T>>>;
     public abstract setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void>;

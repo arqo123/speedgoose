@@ -95,14 +95,15 @@ describe('addValueToCacheSet — cardinality guard', () => {
         mockedEval.mockRestore();
     });
 
-    test('should use Lua script that contains SCARD and DEL for cardinality enforcement', async () => {
+    test('should use Lua script that contains SCARD and SPOP/UNLINK for cardinality enforcement', async () => {
         const mockedEval = jest.spyOn(strategy.client, 'eval').mockResolvedValue(1);
 
         await strategy.addValueToCacheSet('ns', 'val', 0, 100);
 
         const luaScript = mockedEval.mock.calls[0][0] as string;
         expect(luaScript).toContain('SCARD');
-        expect(luaScript).toContain('DEL');
+        expect(luaScript).toContain('SPOP');
+        expect(luaScript).toContain('UNLINK');
         expect(luaScript).toContain('SADD');
         mockedEval.mockRestore();
     });
@@ -367,7 +368,8 @@ describe('combined TTL and cardinality', () => {
         expect(mockedEval).toHaveBeenCalledTimes(1);
         const luaScript = mockedEval.mock.calls[0][0] as string;
         expect(luaScript).toContain('SCARD');
-        expect(luaScript).toContain('DEL');
+        expect(luaScript).toContain('SPOP');
+        expect(luaScript).toContain('UNLINK');
         expect(luaScript).toContain('SADD');
         expect(luaScript).toContain('EXPIRE');
         expect(mockedEval).toHaveBeenCalledWith(expect.any(String), 1, 'ns', 'val', '100', '120', 'resultsNamespace:');

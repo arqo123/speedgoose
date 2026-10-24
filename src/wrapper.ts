@@ -89,7 +89,9 @@ const wrapExecForPopulation = (mongoose: Mongoose): void => {
         ensurePopulatePathsInProjection(this as Query<any, any>, populateOptions);
         return originalExec.apply(this, args).then(documents => {
             if (!documents) return documents;
-            return handleCachedPopulation(Array.isArray(documents) ? documents : [documents], populateOptions, this as Query<any, any>).then(populatedDocs => (Array.isArray(documents) ? populatedDocs : populatedDocs[0]));
+            // @ts-ignore
+            const contextTtl = this._mongooseOptions.speedGooseTtl;
+            return handleCachedPopulation(Array.isArray(documents) ? documents : [documents], populateOptions, this as Query<any, any>, contextTtl).then(populatedDocs => (Array.isArray(documents) ? populatedDocs : populatedDocs[0]));
         });
     };
 };

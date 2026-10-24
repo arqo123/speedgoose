@@ -308,7 +308,7 @@ describe('refreshTTLTimeIfNeeded', () => {
         jest.runAllTimers();
 
         expect(mockedScheduleTTlRefreshing).toHaveBeenCalledTimes(1);
-        expect(mockedScheduleTTlRefreshing).toHaveBeenCalledWith(context, cachedValue);
+        expect(mockedScheduleTTlRefreshing).toHaveBeenCalledWith(context);
     });
 
     it('should not schedule TTL refreshing when refreshTtlOnRead is false', () => {

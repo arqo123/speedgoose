@@ -477,13 +477,13 @@ describe('populationUtils', () => {
     });
 
     describe('calculatePopulationTtl', () => {
-        it('should use contextTtl when ttlInheritance is override', () => {
-            expect(calculatePopulationTtl(120, 90, TtlInheritance.OVERRIDE)).toBe(90);
+        it('should use optionTtl when ttlInheritance is override', () => {
+            expect(calculatePopulationTtl(120, 90, TtlInheritance.OVERRIDE)).toBe(120);
             expect(calculatePopulationTtl(undefined, 80, TtlInheritance.OVERRIDE)).toBe(80);
         });
 
-        it('should use optionTtl when ttlInheritance is fallback', () => {
-            expect(calculatePopulationTtl(120, 90, TtlInheritance.FALLBACK)).toBe(120);
+        it('should use contextTtl when ttlInheritance is fallback', () => {
+            expect(calculatePopulationTtl(120, 90, TtlInheritance.FALLBACK)).toBe(90);
             expect(calculatePopulationTtl(60, undefined, TtlInheritance.FALLBACK)).toBe(60);
         });
 
@@ -493,8 +493,8 @@ describe('populationUtils', () => {
             expect(calculatePopulationTtl(undefined, undefined, TtlInheritance.OVERRIDE)).toBe(60);
         });
 
-        it('should prioritize optionTtl over contextTtl in fallback mode', () => {
-            expect(calculatePopulationTtl(120, 90, TtlInheritance.FALLBACK)).toBe(120);
+        it('should prioritize contextTtl over optionTtl in fallback mode', () => {
+            expect(calculatePopulationTtl(120, 90, TtlInheritance.FALLBACK)).toBe(90);
         });
     });
 

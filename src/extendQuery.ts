@@ -53,7 +53,10 @@ const prepareQueryResults = async <T>(query: Query<T, T>, context: SpeedGooseCac
 };
 
 const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCacheOperationContext): Promise<Query<CachedResult<T> | CachedResult<T>[], Document<T>>> => {
+    const hasExplicitTtl = context?.ttl != null;
     prepareQueryOperationContext(query, context);
+    // cachePopulate on this query inherits a ttl passed to cacheQuery (not the default, which would hide the populate ttl).
+    query._mongooseOptions.speedGooseTtl = hasExplicitTtl ? context.ttl : undefined;
 
     if (context?.ttl !== undefined && context.ttl <= 0) {
         context?.debug(`Skipping cache read/write because ttl <= 0`, context.cacheKey);
@@ -65,7 +68,7 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
 
     if (cachedValue) {
         context?.debug(`Returning cache for key`, context.cacheKey);
-        refreshTTLTimeIfNeeded(context, cachedValue);
+        refreshTTLTimeIfNeeded(context, cachedValue, query.model);
         return prepareQueryResults(query, context, cachedValue);
     }
 

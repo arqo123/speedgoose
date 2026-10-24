@@ -14,8 +14,17 @@ export const stringifyPopulatedPaths = (populatedPaths: string[]): string => pop
 
 const getMultitenantValueFromQuery = <T>(query: Query<T, T>, multitenantKey: string): string | undefined => {
     const value = query.getQuery()[multitenantKey];
-    // A filter matching many tenants (array, $in, ...) has no single tenant; it's tracked under the model-wide key.
-    return value !== null && typeof value === 'object' && !isObjectIdOrHexString(value) ? undefined : value;
+    // No single tenant (null/missing, array, $in, ...): tracked under the model-wide key, which every create/delete clears.
+    if (value == null) return undefined;
+    return typeof value === 'object' && !isObjectIdOrHexString(value) ? undefined : value;
+};
+
+// ttl <= 0 disables caching. A ttl that is not a finite number would store a result that never expires,
+// and Redis only accepts whole seconds.
+const normalizeTtl = (ttl: number | undefined, defaultTtl: number | undefined): number | undefined => {
+    if (ttl == null) return defaultTtl;
+    if (ttl <= 0) return ttl;
+    return Number.isFinite(ttl) ? Math.ceil(ttl) : defaultTtl;
 };
 
 export const isLeanQuery = <T>(query: Query<T, T>): boolean => Boolean(query?._mongooseOptions.lean);
@@ -31,9 +40,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
         context.multitenantValue = context.multitenantValue ?? getMultitenantValueFromQuery(query, config.multitenancyConfig.multitenantKey);
     }
 
-    if (config?.defaultTtl !== undefined) {
-        context.ttl = context?.ttl ?? config.defaultTtl;
-    }
+    context.ttl = normalizeTtl(context?.ttl, config?.defaultTtl);
 
     if (config?.refreshTtlOnRead) {
         context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;
@@ -47,9 +54,7 @@ export const prepareQueryOperationContext = <T>(query: Query<T, T>, context: Spe
 export const prepareAggregateOperationParams = <R>(aggregation: Aggregate<R>, context: SpeedGooseCacheOperationContext): void => {
     const config = getConfig();
 
-    if (config?.defaultTtl !== undefined) {
-        context.ttl = context?.ttl ?? config.defaultTtl;
-    }
+    context.ttl = normalizeTtl(context?.ttl, config?.defaultTtl);
 
     if (config?.refreshTtlOnRead) {
         context.refreshTtlOnRead = context?.refreshTtlOnRead ?? config.refreshTtlOnRead;

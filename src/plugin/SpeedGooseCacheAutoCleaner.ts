@@ -1,4 +1,4 @@
-import { Schema, Document } from 'mongoose';
+import { Schema, Document, Model, Query } from 'mongoose';
 import { isCachingEnabled } from '../utils/commonUtils';
 import { publishRecordIdsOnChannel } from '../utils/redisUtils';
 import { DocumentWithIdAndTenantValue, MongooseDocumentEvents, MongooseDocumentEventsContext, MongooseManyObjectOperationEventContext, SpeedGooseCacheAutoCleanerOptions, SpeedGooseRedisChannels } from '../types/types';
@@ -11,47 +11,101 @@ const MONGOOSE_UPDATE_ONE_ACTIONS = ['updateOne', 'findOneAndUpdate', 'findByIdA
 const MONGOOSE_UPDATE_MANY_ACTIONS = ['updateMany'];
 const MONGOOSE_DELETE_MANY_ACTIONS = ['deleteMany'];
 
+// Records found by a pre hook are invalidated again once the write has committed: a read between the
+// first clear and the commit would otherwise put the old state back into the cache for the full TTL.
+const AFFECTED_RECORDS = Symbol('speedgooseAffectedRecords');
+
+type QueryWithAffectedRecords = Query<unknown, unknown> & { [AFFECTED_RECORDS]?: DocumentWithIdAndTenantValue[] };
+
+const invalidateRecord = async (model: Model<unknown>, record: DocumentWithIdAndTenantValue, wasNew: boolean, wasDeleted: boolean): Promise<void> => {
+    await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(record._id));
+    model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record, wasNew, wasDeleted, modelName: model.modelName });
+    try {
+        await clearParentCache(model.modelName, record._id as string);
+    } catch (err) {
+        console.error('Error clearing parent cache:', err);
+    }
+};
+
+const invalidateRecords = async (model: Model<unknown>, records: DocumentWithIdAndTenantValue[], wasNew: boolean, wasDeleted: boolean): Promise<void> => {
+    await publishRecordIdsOnChannel(
+        SpeedGooseRedisChannels.RECORDS_CHANGED,
+        records.map(record => String(record._id)),
+    );
+    model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records, wasNew, wasDeleted, modelName: model.modelName });
+    // Clear parent caches for all affected records with deduplication
+    try {
+        await clearParentCacheBulk(
+            model.modelName,
+            records.map(record => String(record._id)),
+        );
+    } catch (err) {
+        console.error('Error clearing parent cache:', err);
+    }
+};
+
+/* After the write: the records found before it, or - for an upsert that matched nothing - the inserted ones. */
+const getRecordsAfterWrite = async (action: QueryWithAffectedRecords, findRecords: () => Promise<DocumentWithIdAndTenantValue[]>): Promise<{ records: DocumentWithIdAndTenantValue[]; wasNew: boolean }> => {
+    const records = action[AFFECTED_RECORDS] ?? [];
+    if (records.length === 0 && action.getOptions().upsert) {
+        return { records: await findRecords(), wasNew: true };
+    }
+    return { records, wasNew: false };
+};
+
 const appendQueryBasedListeners = (schema: Schema): void => {
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_DELETE_ONE_ACTIONS, ...MONGOOSE_UPDATE_ONE_ACTIONS], async function () {
         if (!isCachingEnabled()) return;
-        const action = this as any;
-        const model = action.model;
+        const action = this as unknown as QueryWithAffectedRecords;
         const updatedRecord = await getRecordAffectedByAction(action);
+        action[AFFECTED_RECORDS] = updatedRecord ? [updatedRecord] : [];
         if (updatedRecord) {
-            const wasDeleted = MONGOOSE_DELETE_ONE_ACTIONS.includes(action.op);
-            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, String(updatedRecord._id));
-            model.emit(MongooseDocumentEvents.SINGLE_DOCUMENT_CHANGED, <MongooseDocumentEventsContext>{ record: updatedRecord, wasNew: false, wasDeleted, modelName: model.modelName });
-            try {
-                await clearParentCache(model.modelName, updatedRecord._id as string);
-            } catch (err) {
-                console.error('Error clearing parent cache:', err);
+            await invalidateRecord(action.model, updatedRecord, false, MONGOOSE_DELETE_ONE_ACTIONS.includes(action.op));
+        }
+    });
+
+    //@ts-expect-error this event work, but it's just not added into types
+    schema.post([...MONGOOSE_DELETE_ONE_ACTIONS, ...MONGOOSE_UPDATE_ONE_ACTIONS], async function () {
+        if (!isCachingEnabled()) return;
+        const action = this as unknown as QueryWithAffectedRecords;
+        // The write has already committed - never fail it from here.
+        try {
+            const { records, wasNew } = await getRecordsAfterWrite(action, async () => {
+                const upserted = await getRecordAffectedByAction(action);
+                return upserted ? [upserted] : [];
+            });
+            for (const record of records) {
+                await invalidateRecord(action.model, record, wasNew, MONGOOSE_DELETE_ONE_ACTIONS.includes(action.op));
             }
+        } catch (err) {
+            console.error('Error clearing cache after write:', err);
         }
     });
 
     //@ts-expect-error this event work, but it's just not added into types
     schema.pre([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function () {
         if (!isCachingEnabled()) return;
-        const action = this as any;
-        const model = action.model;
+        const action = this as unknown as QueryWithAffectedRecords;
         const affectedRecords = await getRecordsAffectedByAction(action);
+        action[AFFECTED_RECORDS] = affectedRecords;
         if (affectedRecords.length > 0) {
-            const wasDeleted = MONGOOSE_DELETE_MANY_ACTIONS.includes(action.op);
-            await publishRecordIdsOnChannel(
-                SpeedGooseRedisChannels.RECORDS_CHANGED,
-                affectedRecords.map(record => record._id),
-            );
-            model.emit(MongooseDocumentEvents.MANY_DOCUMENTS_CHANGED, <MongooseManyObjectOperationEventContext>{ records: affectedRecords, wasDeleted, modelName: model.modelName });
-            // Clear parent caches for all affected records with deduplication
-            try {
-                await clearParentCacheBulk(
-                    model.modelName,
-                    affectedRecords.map(record => String(record._id)),
-                );
-            } catch (err) {
-                console.error('Error clearing parent cache:', err);
+            await invalidateRecords(action.model, affectedRecords, false, MONGOOSE_DELETE_MANY_ACTIONS.includes(action.op));
+        }
+    });
+
+    //@ts-expect-error this event work, but it's just not added into types
+    schema.post([...MONGOOSE_UPDATE_MANY_ACTIONS, ...MONGOOSE_DELETE_MANY_ACTIONS], { query: true }, async function () {
+        if (!isCachingEnabled()) return;
+        const action = this as unknown as QueryWithAffectedRecords;
+        // The write has already committed - never fail it from here.
+        try {
+            const { records, wasNew } = await getRecordsAfterWrite(action, () => getRecordsAffectedByAction(action));
+            if (records.length > 0) {
+                await invalidateRecords(action.model, records, wasNew, MONGOOSE_DELETE_MANY_ACTIONS.includes(action.op));
             }
+        } catch (err) {
+            console.error('Error clearing cache after write:', err);
         }
     });
 };
@@ -75,6 +129,18 @@ const appendDocumentBasedListeners = (schema: Schema, options: SpeedGooseCacheAu
             } catch (err) {
                 console.error('Error clearing parent cache:', err);
             }
+        }
+    });
+
+    schema.post('save', async function () {
+        if (!isCachingEnabled()) return;
+        const model = getMongooseModelFromDocument(this as Document);
+        if (!model) return;
+        // The write has already committed - never fail it from here.
+        try {
+            await invalidateRecord(model, this as unknown as DocumentWithIdAndTenantValue, this.$locals.wasNew as boolean, this.$locals.wasDeleted as boolean);
+        } catch (err) {
+            console.error('Error clearing cache after write:', err);
         }
     });
 

@@ -1,7 +1,7 @@
 import Keyv from 'keyv';
 import { Container } from 'typedi';
 import { Document, Model, ObjectId } from 'mongoose';
-import { SpeedGooseConfig } from '../types/types';
+import { SpeedGooseConfig, SpeedGooseRedisChannels } from '../types/types';
 import { GlobalDiContainerRegistryNames } from '../types/types';
 import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from '../types/types';
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
@@ -9,12 +9,20 @@ import { getCacheStrategyInstance, getConfig, getHydrationCache, getHydrationVar
 import { logCacheClear } from './debugUtils';
 import { isResultWithIds } from './mongooseUtils';
 import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
+import { ExpiringMap } from './expiringMap';
+import { publishRecordIdsOnChannel } from './redisUtils';
 
 export const getSetsTtl = (): number => {
     const config = getConfig();
     if (config?.setsTtl !== undefined) return config.setsTtl;
     const defaultTtl = config?.defaultTtl ?? 60;
     return defaultTtl * 2;
+};
+
+/** TTL for the invalidation sets a cached value is tracked in: never shorter than the value's own TTL, so it can always be invalidated. 0 = no expiry. */
+export const getSetsTtlFor = (ttl?: number): number => {
+    const setsTtl = getSetsTtl();
+    return setsTtl > 0 ? Math.max(setsTtl, ttl ?? 0) : setsTtl;
 };
 
 export const getMaxSetCardinality = (): number => {
@@ -33,9 +41,9 @@ const setKeyInHydratedDocumentsCache = async <T>(document: CachedDocument<T>, ke
     await getHydrationCache().set(key, document, params.ttl * 1000);
 };
 
-const setKeyInHydratedDocumentsVariationsCache = async <T>(document: Document<T>, key: string): Promise<void> => {
+const setKeyInHydratedDocumentsVariationsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const recordId = String(document._id);
-    await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key);
+    await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key, getSetsTtlFor(params.ttl));
 };
 
 const setKeyInResultsCache = async <T>(results: CachedResult<T>, params: SpeedGooseCacheOperationParams): Promise<void> => getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results, params.ttl);
@@ -43,19 +51,19 @@ const setKeyInResultsCache = async <T>(results: CachedResult<T>, params: SpeedGo
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const modelCacheKey = generateCacheKeyForModelName(model.modelName, params.multitenantValue);
 
-    await getCacheStrategyInstance().addValueToCacheSet(modelCacheKey, params.cacheKey, getSetsTtl(), getMaxSetCardinality());
+    await getCacheStrategyInstance().addValueToCacheSet(modelCacheKey, params.cacheKey, getSetsTtlFor(params.ttl), getMaxSetCardinality());
 };
 
 const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
     const resultsIds = Array.isArray(result) ? result.map(record => String(record._id)) : [String(result._id)];
 
     if (resultsIds.length > 0) {
-        await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey, getSetsTtl(), getMaxSetCardinality());
+        await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey, getSetsTtlFor(params.ttl), getMaxSetCardinality());
     }
 };
 
-export const addValueToInternalCachedSet = async <T extends string | number>(client: Keyv<Set<string | number>>, namespace: string, value: T): Promise<void> => {
-    await getCachedSetsQueue().push({ client, namespace, value });
+export const addValueToInternalCachedSet = async <T extends string | number>(client: Keyv<Set<string | number>>, namespace: string, value: T, ttl?: number): Promise<void> => {
+    await getCachedSetsQueue().push({ client, namespace, value, ttl });
 };
 
 /**
@@ -99,6 +107,14 @@ export const clearHydrationCache = async (recordId: string): Promise<void> => {
     }
 };
 
+const setKeyInInvalidationSets = async <T>(context: SpeedGooseCacheOperationContext, result: CachedResult<T>, model: Model<T>): Promise<void> => {
+    const writes: Promise<void>[] = [setKeyInModelCache(model, context)];
+    if (isResultWithIds(result)) {
+        writes.push(setKeyInRecordsCache(result as CachedDocument<T>, context));
+    }
+    await Promise.all(writes);
+};
+
 export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperationContext, result: CachedResult<T>, model: Model<T>): Promise<void> => {
     // Defensive guard: cache writes are also bypassed earlier in query/aggregate execution paths for ttl <= 0.
     if (context?.ttl !== undefined && context.ttl <= 0) {
@@ -109,17 +125,13 @@ export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperation
     context?.debug(`Setting key in cache`, context.cacheKey);
     // The result goes first: writing to an invalidation set drops members whose result key does not exist.
     await setKeyInResultsCache(result, context);
-    const writes: Promise<void>[] = [setKeyInModelCache(model, context)];
-    if (isResultWithIds(result)) {
-        writes.push(setKeyInRecordsCache(result as CachedDocument<T>, context));
-    }
-    await Promise.all(writes);
+    await setKeyInInvalidationSets(context, result, model);
 
     context?.debug(`Cache key set`, context.cacheKey);
 };
 
 export const setKeyInHydrationCaches = async <T>(key: string, document: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    await Promise.all([setKeyInHydratedDocumentsCache(document, key, params), setKeyInHydratedDocumentsVariationsCache(document, key)]);
+    await Promise.all([setKeyInHydratedDocumentsCache(document, key, params), setKeyInHydratedDocumentsVariationsCache(document, key, params)]);
 };
 
 export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) =>
@@ -127,6 +139,7 @@ export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) =>
         //@ts-expect-error There is a incorrect typo in the library for custom serializers
         {
             namespace,
+            store: new ExpiringMap(),
             serialize: objectSerializer,
             deserialize: objectDeserializer,
         },
@@ -136,13 +149,22 @@ export const getResultsFromCache = async (key: string): Promise<CachedResult | n
 
 export const isCached = async (key: string): Promise<boolean> => getCacheStrategyInstance().isValueCached(CacheNamespaces.RESULTS_NAMESPACE, key);
 
-export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationContext, cachedValue: CachedResult<T>): void => {
+export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationContext, cachedValue: CachedResult<T>, model?: Model<T>): void => {
     if (context.refreshTtlOnRead) {
-        setTimeout(() => {
-            scheduleTTlRefreshing(context, cachedValue);
+        setTimeout(async () => {
+            try {
+                const scheduled = await scheduleTTlRefreshing(context);
+                // The result now outlives its invalidation sets' TTL; extend them too or it can no longer be invalidated.
+                if (scheduled && model) await setKeyInInvalidationSets(context, cachedValue, model);
+            } catch (error) {
+                context?.debug?.(`Refreshing TTL failed`, error);
+            }
         }, 0);
     }
 };
+
+// Tracked parents are stored as `<modelName>:<recordId>`; a string _id may itself contain ':'.
+const getRecordIdFromParentIdentifier = (parentIdentifier: string): string => parentIdentifier.slice(parentIdentifier.indexOf(':') + 1);
 
 export const clearParentCacheBulk = async (modelName: string, docIds: (string | ObjectId)[]): Promise<void> => {
     if (docIds.length === 0) return;
@@ -160,7 +182,7 @@ export const clearParentCacheBulk = async (modelName: string, docIds: (string | 
     const uniqueParentRecordIds = new Set<string>();
     for (const parentIdentifiers of parentSets) {
         for (const parentIdWithModel of parentIdentifiers) {
-            const id = parentIdWithModel.split(':').pop();
+            const id = getRecordIdFromParentIdentifier(parentIdWithModel);
             if (id) uniqueParentRecordIds.add(id);
             if (uniqueParentRecordIds.size >= CACHE_PARENT_LIMIT) break;
         }
@@ -175,6 +197,8 @@ export const clearParentCacheBulk = async (modelName: string, docIds: (string | 
         // Invalidate unique parents in batches
         if (uniqueParentRecordIds.size > 0) {
             logCacheClear(`Bulk invalidating ${uniqueParentRecordIds.size} unique parents for ${docIds.length} children`, modelName);
+            // Other instances hold their own hydrated copies of these parents.
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, Array.from(uniqueParentRecordIds));
 
             const BATCH_SIZE = 25;
             const uniqueIds = Array.from(uniqueParentRecordIds);
@@ -207,6 +231,8 @@ export const clearParentCache = async (modelName: string, docId: string | Object
     try {
         if (parentIdentifiers.length > 0) {
             logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
+            // Other instances hold their own hydrated copies of these parents.
+            await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, parentIdentifiers.slice(0, CACHE_PARENT_LIMIT).map(getRecordIdFromParentIdentifier));
 
             if (parentIdentifiers.length > CACHE_PARENT_LIMIT) {
                 console.warn(`[SpeedGoose] Parent cache invalidation truncated at ${CACHE_PARENT_LIMIT} for "${modelName}:${docId}". ${parentIdentifiers.length - CACHE_PARENT_LIMIT} parents skipped. Increase cacheParentLimit in config.`);
@@ -225,7 +251,7 @@ export const clearParentCache = async (modelName: string, docId: string | Object
 
                 await Promise.all(
                     batch.map(async parentIdWithModel => {
-                        const id = parentIdWithModel.split(':').pop();
+                        const id = getRecordIdFromParentIdentifier(parentIdWithModel);
                         if (id) {
                             await clearCacheForRecordId(id);
                         }
