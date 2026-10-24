@@ -1,3 +1,10 @@
+## [2.5.12](https://github.com/arqo123/speedgoose/compare/v2.5.11...v2.5.12) (2026-10-24)
+
+
+### Bug Fixes
+
+* keep invalidation sets bounded for never-hit, cross-tenant queries ([#182](https://github.com/arqo123/speedgoose/issues/182)) ([56fcfab](https://github.com/arqo123/speedgoose/commit/56fcfab483392a6582da5d0b92ac44ad17eb188d))
+
 ## [2.5.11](https://github.com/arqo123/speedgoose/compare/v2.5.10...v2.5.11) (2026-07-19)
 
 
