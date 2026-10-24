@@ -2,9 +2,12 @@ import Keyv from 'keyv';
 import Container from 'typedi';
 import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
-import { addValueToInternalCachedSet, createInMemoryCacheClientWithNamespace } from '../utils/cacheClientUtils';
-import { getConfig } from '../utils/commonUtils';
+import { createInMemoryCacheClientWithNamespace, getMaxSetCardinality, getSetsTtlFor } from '../utils/cacheClientUtils';
+import { extendStoredTtl, getExtendedTtlMs } from '../utils/expiringMap';
 import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
+
+// Members checked for an expired value on every write, as in the Redis strategy.
+const EXPIRED_MEMBERS_SAMPLE_SIZE = 4;
 
 @staticImplements<CommonCacheStrategyStaticMethods>()
 export class InMemoryStrategy extends CommonCacheStrategyAbstract {
@@ -46,6 +49,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async isValueCached(namespace: string, key: string): Promise<boolean> {
+        // The ExpiringMap store answers `has` for expired entries with false.
         const keyWithNamespace = `${namespace}:${key}`;
 
         return this.resultsCacheClient.has(keyWithNamespace);
@@ -58,21 +62,34 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
+        await this.addToTrackingSet(namespace, String(value), this.resultsCacheClient, member => `${CacheNamespaces.RESULTS_NAMESPACE}:${member}`, setsTtl, maxSetCardinality);
+    }
+
+    /**
+     * Same rules as the Redis script: members whose value (`valueKey(member)` in `valuesClient`) has expired
+     * are dropped, a full set evicts its oldest members together with their values, and the set TTL is only extended.
+     */
+    private async addToTrackingSet(namespace: string, value: string, valuesClient: Keyv<CachedResult<unknown>>, valueKey: (member: string) => string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
         await this.withKeyLock(`cacheSet:${namespace}`, async () => {
-            if (maxSetCardinality > 0) {
-                const existing = await this.recordResultsSetsClient.get(namespace);
-                if (existing && existing.size >= maxSetCardinality) {
-                    await this.recordResultsSetsClient.delete(namespace);
+            const members = (await this.recordResultsSetsClient.get(namespace)) ?? new Set<string>();
+
+            // Insertion order: the oldest members are the most likely to be dead.
+            let checked = 0;
+            for (const member of members) {
+                if (checked++ >= EXPIRED_MEMBERS_SAMPLE_SIZE) break;
+                if (!(await valuesClient.has(valueKey(member)))) members.delete(member);
+            }
+
+            if (maxSetCardinality > 0 && !members.has(value)) {
+                for (const member of members) {
+                    if (members.size < maxSetCardinality) break;
+                    members.delete(member);
+                    await valuesClient.delete(valueKey(member));
                 }
             }
-            await addValueToInternalCachedSet(this.recordResultsSetsClient, namespace, value);
-            if (setsTtl > 0) {
-                // Re-set with TTL to refresh expiry (Keyv supports TTL in ms)
-                const current = await this.recordResultsSetsClient.get(namespace);
-                if (current) {
-                    await this.recordResultsSetsClient.set(namespace, current, setsTtl * 1000);
-                }
-            }
+
+            members.add(value);
+            await this.recordResultsSetsClient.set(namespace, members, getExtendedTtlMs(this.recordResultsSetsClient, namespace, setsTtl));
         });
     }
 
@@ -109,10 +126,9 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         await this.recordResultsSetsClient.delete(namespace);
     }
 
-    public async refreshTTLForCachedResult<T>(key: string, ttl: number, value: CachedResult<T>): Promise<void> {
-        const keyWithNamespace = `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`;
-
-        await this.resultsCacheClient.set(keyWithNamespace, value, ttl * 1000);
+    public async refreshTTLForCachedResult(key: string, ttl: number): Promise<void> {
+        // Never re-set the value read earlier: it may have been invalidated since.
+        extendStoredTtl(this.resultsCacheClient, `${CacheNamespaces.RESULTS_NAMESPACE}:${key}`, ttl * 1000);
     }
 
     private setClients(): void {
@@ -139,38 +155,18 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     }
 
     public async setDocuments<T>(documents: Map<string, CachedResult<T>>, ttl: number): Promise<void> {
-        // Use consistent tracking TTL from config. Honors setsTtl: 0 (no expiry).
-        // Ensures tracking set outlives the documents it tracks.
-        const config = getConfig();
-        const configTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
-        const trackingTtl = configTtl > 0 ? Math.max(configTtl, ttl) : configTtl;
-        const trackingTtlMs = trackingTtl > 0 ? trackingTtl * 1000 : undefined;
+        const trackingTtl = getSetsTtlFor(ttl);
 
-        const trackingKeysToRefresh = new Set<string>();
-        const promises = [];
-        for (const [key, value] of documents.entries()) {
-            promises.push(this.documentsCacheClient.set(key, value, ttl * 1000));
-            // Track document cache key by recordId for efficient invalidation
-            const recordId = extractRecordIdFromDocKey(key);
-            if (recordId) {
-                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
-                promises.push(addValueToInternalCachedSet(this.recordResultsSetsClient, trackingKey, key));
-                trackingKeysToRefresh.add(trackingKey);
-            }
-        }
-        await Promise.all(promises);
-
-        // Set TTL on tracking sets to prevent monotonic memory growth
-        if (trackingTtlMs) {
-            await Promise.all(
-                Array.from(trackingKeysToRefresh).map(async tk => {
-                    const current = await this.recordResultsSetsClient.get(tk);
-                    if (current) {
-                        await this.recordResultsSetsClient.set(tk, current, trackingTtlMs);
-                    }
-                }),
-            );
-        }
+        await Promise.all(
+            Array.from(documents.entries()).map(async ([key, value]) => {
+                await this.documentsCacheClient.set(key, value, ttl * 1000);
+                // Track document cache key by recordId for efficient invalidation
+                const recordId = extractRecordIdFromDocKey(key);
+                if (recordId) {
+                    await this.addToTrackingSet(`${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`, key, this.documentsCacheClient, member => member, trackingTtl, getMaxSetCardinality());
+                }
+            }),
+        );
     }
 
     public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -183,8 +179,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
             }
             const parents = (await this.relationsCacheClient.get(childIdentifier)) || new Set<string>();
             parents.add(parentIdentifier);
-            const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
-            await this.relationsCacheClient.set(childIdentifier, parents, ttlMs);
+            await this.relationsCacheClient.set(childIdentifier, parents, getExtendedTtlMs(this.relationsCacheClient, childIdentifier, setsTtl));
         });
     }
 
@@ -198,7 +193,6 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
             incoming.get(childIdentifier)!.add(parentIdentifier);
         }
 
-        const ttlMs = setsTtl > 0 ? setsTtl * 1000 : undefined;
         // Process each unique child sequentially through the lock to prevent
         // lost updates when multiple calls target the same childIdentifier.
         for (const [key, newParents] of incoming.entries()) {
@@ -207,7 +201,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
                 const merged = new Set<string>([...existing, ...newParents]);
                 // If merged set exceeds cardinality, reset to only new parents
                 const shouldReset = maxSetCardinality > 0 && merged.size > maxSetCardinality;
-                await this.relationsCacheClient.set(key, shouldReset ? newParents : merged, ttlMs);
+                await this.relationsCacheClient.set(key, shouldReset ? newParents : merged, getExtendedTtlMs(this.relationsCacheClient, key, setsTtl));
             });
         }
     }

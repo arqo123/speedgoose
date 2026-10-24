@@ -40,7 +40,9 @@ describe('scheduleTTlRefreshing', () => {
         const context = { cacheKey: 'key1', ttl: 100, debug: emptyDebugCallback };
         const mockedDebug = jest.spyOn(context, 'debug');
 
-        await queueUtils.scheduleTTlRefreshing(context, {});
+        const scheduled = await queueUtils.scheduleTTlRefreshing(context);
+
+        expect(scheduled).toBe(false);
 
         expect(mockQueue.push).not.toHaveBeenCalled();
         expect(mockedDebug).not.toHaveBeenCalled();
@@ -55,11 +57,12 @@ describe('scheduleTTlRefreshing', () => {
 
         const context = { cacheKey: 'key1', ttl: 100, debug: emptyDebugCallback };
         const mockedDebug = jest.spyOn(context, 'debug');
-        const value = {};
-        await queueUtils.scheduleTTlRefreshing(context, value);
+        const scheduled = await queueUtils.scheduleTTlRefreshing(context);
 
+        expect(scheduled).toBe(true);
+        expect(setAccess.has(context.cacheKey)).toBe(true);
         expect(mockQueue.push).toHaveBeenCalledTimes(1);
-        expect(mockQueue.push).toHaveBeenCalledWith({ key: context.cacheKey, ttl: context.ttl, value });
+        expect(mockQueue.push).toHaveBeenCalledWith({ key: context.cacheKey, ttl: context.ttl });
         expect(mockedDebug).toHaveBeenCalledWith(`Refreshing TTL time for key ${context.cacheKey}`);
     });
 });

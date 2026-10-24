@@ -2,6 +2,7 @@ import Redis, { RedisOptions } from 'ioredis';
 import Container from 'typedi';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { getConfig } from '../utils/commonUtils';
+import { getMaxSetCardinality, getSetsTtlFor } from '../utils/cacheClientUtils';
 import { CommonCacheStrategyAbstract, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
 // Members checked for an expired result on every write. With k samples the share of dead
@@ -26,34 +27,62 @@ end
 return 1
 `;
 
-// Lua script: add a cache key to the invalidation sets of many namespaces (model/records).
-// Before adding, samples a few members and drops those whose cached result has already expired.
-// Without it, a set written more often than its TTL never expires and keeps every key ever added.
-// KEYS = all namespace keys, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl, ARGV[4] = results key prefix
+// Lua script: add a key to the invalidation sets of many namespaces (model/records/documents).
+// Each member names a cached value stored at <valuesPrefix><member>.
+// - Samples a few members and drops those whose value has already expired. Without it, a set written
+//   more often than its TTL never expires and keeps every key ever added.
+// - When the set is full, evicts members together with their values, so no cached value is left
+//   that invalidation can no longer reach.
+// - Only ever extends the set TTL, so a short-lived value cannot make it expire before a longer-lived one.
+// KEYS = all namespace keys, ARGV[1] = value, ARGV[2] = maxSetCardinality, ARGV[3] = ttl, ARGV[4] = values key prefix
 const LUA_ADD_TO_MANY_SETS = `
 local value = ARGV[1]
 local maxCard = tonumber(ARGV[2])
 local ttl = tonumber(ARGV[3])
-local resultsPrefix = ARGV[4]
+local valuesPrefix = ARGV[4]
 for i = 1, #KEYS do
     local size = redis.call('SCARD', KEYS[i])
     if size > 0 then
         local sample = redis.call('SRANDMEMBER', KEYS[i], ${EXPIRED_MEMBERS_SAMPLE_SIZE})
         for _, member in ipairs(sample) do
-            if redis.call('EXISTS', resultsPrefix .. member) == 0 then
+            if redis.call('EXISTS', valuesPrefix .. member) == 0 then
                 size = size - redis.call('SREM', KEYS[i], member)
             end
         end
     end
-    if maxCard > 0 and size >= maxCard then
-        redis.call('DEL', KEYS[i])
+    if maxCard > 0 and size >= maxCard and redis.call('SISMEMBER', KEYS[i], value) == 0 then
+        local evicted = redis.call('SPOP', KEYS[i], size - maxCard + 1)
+        for _, member in ipairs(evicted) do
+            redis.call('UNLINK', valuesPrefix .. member)
+        end
     end
     redis.call('SADD', KEYS[i], value)
-    if ttl > 0 then
+    if ttl > 0 and redis.call('TTL', KEYS[i]) < ttl then
         redis.call('EXPIRE', KEYS[i], ttl)
     end
 end
 return #KEYS
+`;
+
+// Lua script: delete every value tracked in a set (members are value keys without the ioredis keyPrefix,
+// which ioredis does not apply to keys built inside a script), then the set itself.
+// Deletes in chunks: unpack() of more than ~8000 values fails.
+// KEYS[1] = tracking set, ARGV[1] = keyPrefix
+const LUA_DELETE_TRACKED_VALUES = `
+local members = redis.call('SMEMBERS', KEYS[1])
+local batch = {}
+for _, member in ipairs(members) do
+    batch[#batch + 1] = ARGV[1] .. member
+    if #batch == 500 then
+        redis.call('UNLINK', unpack(batch))
+        batch = {}
+    end
+end
+if #batch > 0 then
+    redis.call('UNLINK', unpack(batch))
+end
+redis.call('DEL', KEYS[1])
+return #members
 `;
 
 // Lua script: atomic per-child relationship addition with cardinality check
@@ -75,7 +104,7 @@ end
 for i = 3, 2 + numParents do
     redis.call('SADD', KEYS[1], ARGV[i])
 end
-if ttl > 0 then
+if ttl > 0 and redis.call('TTL', KEYS[1]) < ttl then
     redis.call('EXPIRE', KEYS[1], ttl)
 end
 return numParents
@@ -108,7 +137,8 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
 
-        await this.client.pipeline().set(keyWithNamespace, JSON.stringify(value)).expire(keyWithNamespace, ttl).exec();
+        // A single SET ... EX: with a separate EXPIRE, a failing EXPIRE left a result that never expired.
+        await (ttl > 0 ? this.client.set(keyWithNamespace, JSON.stringify(value), 'EX', ttl) : this.client.set(keyWithNamespace, JSON.stringify(value)));
     }
 
     public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -121,8 +151,12 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
     }
 
     // Keys built inside Lua are not prefixed by ioredis, only KEYS[] are.
+    private getKeyPrefix(): string {
+        return this.client.options?.keyPrefix ?? '';
+    }
+
     private getResultsKeyPrefix(): string {
-        return `${this.client.options?.keyPrefix ?? ''}${CacheNamespaces.RESULTS_NAMESPACE}:`;
+        return `${this.getKeyPrefix()}${CacheNamespaces.RESULTS_NAMESPACE}:`;
     }
 
     public async removeKeyForCache(namespace: string, key: string): Promise<void> {
@@ -174,22 +208,24 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
 
         // Use consistent tracking TTL from config. Honors setsTtl: 0 (no expiry).
         // Ensures tracking set outlives the documents it tracks.
-        const config = getConfig();
-        const configTtl = config?.setsTtl !== undefined ? config.setsTtl : (config?.defaultTtl ?? 60) * 2;
-        const trackingTtl = configTtl > 0 ? Math.max(configTtl, ttl) : configTtl;
+        const trackingTtl = getSetsTtlFor(ttl);
 
         const pipeline = this.client.pipeline();
         for (const [key, value] of documents.entries()) {
             pipeline.set(key, JSON.stringify(value), 'EX', ttl);
-            // Track document cache key by recordId for efficient invalidation
-            const recordId = extractRecordIdFromDocKey(key);
-            if (recordId) {
-                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
-                pipeline.sadd(trackingKey, key);
-                if (trackingTtl > 0) pipeline.expire(trackingKey, trackingTtl);
-            }
         }
         await pipeline.exec();
+
+        // Track document cache key by recordId for efficient invalidation. Only after the documents are
+        // written, as the script drops members whose value does not exist.
+        await Promise.all(
+            Array.from(documents.keys()).map(key => {
+                const recordId = extractRecordIdFromDocKey(key);
+                if (!recordId) return undefined;
+                const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${recordId}`;
+                return this.client.eval(LUA_ADD_TO_MANY_SETS, 1, trackingKey, key, String(getMaxSetCardinality()), String(trackingTtl), this.getKeyPrefix());
+            }),
+        );
     }
 
     public async addParentToChildRelationship(childIdentifier: string, parentIdentifier: string, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -227,14 +263,7 @@ export class RedisStrategy extends CommonCacheStrategyAbstract {
         const trackingKey = `${CacheNamespaces.DOCUMENT_CACHE_SETS}:${namespace}`;
         // Atomic: read tracked keys, delete them + tracking set in one Lua call.
         // Prevents race where setDocuments adds a key between SMEMBERS and DEL.
-        await this.client.eval(
-            `local keys = redis.call('SMEMBERS', KEYS[1])
-             if #keys > 0 then redis.call('DEL', unpack(keys)) end
-             redis.call('DEL', KEYS[1])
-             return #keys`,
-            1,
-            trackingKey,
-        );
+        await this.client.eval(LUA_DELETE_TRACKED_VALUES, 1, trackingKey, this.getKeyPrefix());
     }
 
     public async clearRelationshipsForModel(parentIdentifier: string): Promise<void> {

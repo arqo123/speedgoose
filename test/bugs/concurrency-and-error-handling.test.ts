@@ -4,6 +4,7 @@
  */
 import { getCacheStrategyInstance } from '../../src/utils/commonUtils';
 import { clearHydrationCache } from '../../src/utils/cacheClientUtils';
+import { CacheNamespaces } from '../../src/types/types';
 
 describe('Redis pub/sub error handling', () => {
     // Replicate the handler logic from redisUtils.ts to verify try/catch behavior
@@ -110,6 +111,8 @@ describe('InMemory concurrent parent-child write safety', () => {
         const strategy = getCacheStrategyInstance();
         const ns = `cacheSet:conc:${Date.now()}`;
 
+        // Members whose result does not exist are pruned, so write the results first as setKeyInResultsCaches does.
+        await Promise.all(Array.from({ length: 10 }, (_, i) => strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, `val-${i}`, [], 60)));
         const promises = Array.from({ length: 10 }, (_, i) => strategy.addValueToCacheSet(ns, `val-${i}`));
         await Promise.all(promises);
 

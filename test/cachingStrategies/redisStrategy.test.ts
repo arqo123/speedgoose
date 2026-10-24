@@ -75,25 +75,17 @@ describe('RedisStrategy.addValueToCacheSet', () => {
 });
 
 describe('RedisStrategy.addValueToCache', () => {
-    test(`should call sadd method on redis client with correct namespace and value with use of pipeline`, () => {
-        const pipeline = strategy.client.pipeline();
-        mockedRedisPipelineMethod.mockReturnValue(pipeline).mockClear();
-
-        const mockedRedisPipelineSetMethod = jest.spyOn(pipeline, 'set').mockClear();
-        const mockedRedisPipelineExecMethod = jest.spyOn(pipeline, 'exec').mockClear();
-        const mockedRedisPipelineExpireMethod = jest.spyOn(pipeline, 'expire').mockClear();
+    test(`should call set method on redis client with correct namespace, value and EX ttl in a single command`, () => {
+        const mockedRedisSetMethod = jest.spyOn(strategy.client, 'set').mockResolvedValue('OK').mockClear();
+        mockedRedisPipelineMethod.mockClear();
 
         strategy.addValueToCache('someNamespace', 'someKey', { testKey: 'testValue' }, 123);
 
-        expect(mockedRedisPipelineMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisPipelineMethod).not.toHaveBeenCalled();
+        expect(mockedRedisSetMethod).toHaveBeenCalledTimes(1);
+        expect(mockedRedisSetMethod).toHaveBeenCalledWith('someNamespace:someKey', '{"testKey":"testValue"}', 'EX', 123);
 
-        expect(mockedRedisPipelineSetMethod).toHaveBeenCalledTimes(1);
-        expect(mockedRedisPipelineSetMethod).toHaveBeenCalledWith('someNamespace:someKey', '{"testKey":"testValue"}');
-
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledTimes(1);
-        expect(mockedRedisPipelineExpireMethod).toHaveBeenCalledWith('someNamespace:someKey', 123);
-
-        expect(mockedRedisPipelineExecMethod).toHaveBeenCalledTimes(1);
+        mockedRedisSetMethod.mockRestore();
     });
 });
 
@@ -291,7 +283,8 @@ describe('RedisStrategy.clearDocumentsCache', () => {
 
         await strategy.clearDocumentsCache('id1');
 
-        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SMEMBERS'), 1, trackingKey);
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('SMEMBERS'), 1, trackingKey, '');
+        expect(mockedEval).toHaveBeenCalledWith(expect.stringContaining('UNLINK'), 1, trackingKey, '');
 
         mockedEval.mockRestore();
     });

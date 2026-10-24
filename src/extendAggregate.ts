@@ -37,7 +37,7 @@ const execAggregationWithCache = async <R extends unknown[] = unknown[]>(aggrega
     if (cachedValue) {
         context?.debug(`Returning cache for key`, context.cacheKey);
 
-        refreshTTLTimeIfNeeded(context, cachedValue);
+        refreshTTLTimeIfNeeded(context, cachedValue, aggregation._model);
         return cachedValue as R;
     }
 

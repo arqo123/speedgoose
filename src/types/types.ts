@@ -179,10 +179,11 @@ export type CacheSetQueuedTask = {
     client: Keyv<Set<string | number>>;
     namespace: string;
     value: string | number;
+    /** TTL in seconds for the set; it is only ever extended. */
+    ttl?: number;
 };
 
 export type RefreshTtlQueuedTask = {
     key: string;
     ttl?: number;
-    value?: CachedResult<unknown>;
 };
