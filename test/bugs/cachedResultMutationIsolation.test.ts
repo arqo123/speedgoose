@@ -61,6 +61,30 @@ const SelectedOwnerSchema = new Schema({ name: String, email: { type: String, de
 const SelectedOwnerModel = (mongoose.models.MutationIsolationOwner as mongoose.Model<any>) || mongoose.model('MutationIsolationOwner', SelectedOwnerSchema);
 const OwnedThingModel = (mongoose.models.MutationIsolationOwnedThing as mongoose.Model<any>) || mongoose.model('MutationIsolationOwnedThing', new Schema({ title: String, owner: { type: Schema.Types.ObjectId, ref: 'MutationIsolationOwner' } }));
 
+const TeamModel = (mongoose.models.MutationIsolationTeam as mongoose.Model<any>) || mongoose.model('MutationIsolationTeam', new Schema({ name: String, motto: { type: String, default: 'default motto' } }));
+const MemberOwnerModel =
+    (mongoose.models.MutationIsolationMemberOwner as mongoose.Model<any>) ||
+    mongoose.model('MutationIsolationMemberOwner', new Schema({ name: String, password: { type: String, required: true, select: false }, team: { type: Schema.Types.ObjectId, ref: 'MutationIsolationTeam' } }));
+const ProjectModel =
+    (mongoose.models.MutationIsolationProject as mongoose.Model<any>) ||
+    mongoose.model(
+        'MutationIsolationProject',
+        new Schema({
+            owner: { type: Schema.Types.ObjectId, ref: 'MutationIsolationMemberOwner' },
+            members: [
+                new Schema({
+                    kind: String,
+                    target: {
+                        type: Schema.Types.ObjectId,
+                        ref(this: { kind: string }) {
+                            return this.kind;
+                        },
+                    },
+                }),
+            ],
+        }),
+    );
+
 const AnimalSchema = new Schema({ name: String }, { discriminatorKey: 'kind' });
 AnimalSchema.plugin(SpeedGooseCacheAutoCleaner);
 const AnimalModel = (mongoose.models.MutationIsolationAnimal as mongoose.Model<any>) || mongoose.model('MutationIsolationAnimal', AnimalSchema);
@@ -96,7 +120,17 @@ const createIsolationDoc = async () => {
 const resetData = async (): Promise<void> => {
     await getRedisInstance()?.flushall();
     clearInflightRequests();
-    await Promise.all([UserModel.deleteMany({}), IsolationModel.deleteMany({}), AnimalModel.deleteMany({}), DynamicRefModel.deleteMany({}), SelectedOwnerModel.deleteMany({}), OwnedThingModel.deleteMany({})]);
+    await Promise.all([
+        UserModel.deleteMany({}),
+        IsolationModel.deleteMany({}),
+        AnimalModel.deleteMany({}),
+        DynamicRefModel.deleteMany({}),
+        SelectedOwnerModel.deleteMany({}),
+        OwnedThingModel.deleteMany({}),
+        TeamModel.deleteMany({}),
+        MemberOwnerModel.deleteMany({}),
+        ProjectModel.deleteMany({}),
+    ]);
 };
 
 describe('BUG: cached results are shared with (and mutated by) callers', () => {
@@ -409,6 +443,48 @@ describe('BUG: cached results are shared with (and mutated by) callers', () => {
             await hit.owner.save();
 
             expect(await SelectedOwnerModel.collection.findOne({ _id: owner.insertedId })).toEqual({ _id: owner.insertedId, name: 'Renamed' });
+        });
+
+        it('keeps the select of a nested populate, so saving the nested document writes no defaults', async () => {
+            const team = await TeamModel.collection.insertOne({ name: 'Team' });
+            const owner = await MemberOwnerModel.create({ name: 'Owner', password: 'secret', team: team.insertedId });
+            const project = await ProjectModel.create({ owner: owner._id });
+            const read = (): Promise<any> =>
+                ProjectModel.findById(project._id)
+                    .populate({ path: 'owner', select: 'name team', populate: { path: 'team', select: 'name' } })
+                    .cacheQuery();
+
+            await read();
+            const hit = await read();
+            hit.owner.team.name = 'Renamed';
+            await hit.owner.team.save();
+
+            expect(await TeamModel.collection.findOne({ _id: team.insertedId })).toEqual({ _id: team.insertedId, name: 'Renamed' });
+        });
+
+        it("applies the populated model's select: false fields when the populate has no select", async () => {
+            const owner = await MemberOwnerModel.create({ name: 'Owner', password: 'secret' });
+            const project = await ProjectModel.create({ owner: owner._id });
+            const read = (): Promise<any> => ProjectModel.findById(project._id).populate('owner').cacheQuery();
+
+            await read();
+            const hit = await read();
+            expect(hit.owner.isSelected('password')).toBe(false);
+            hit.owner.name = 'Renamed';
+            await hit.owner.save();
+
+            expect(await MemberOwnerModel.collection.findOne({ _id: owner._id })).toMatchObject({ name: 'Renamed', password: 'secret' });
+        });
+
+        it('calls a ref function with the subdocument that holds the ref', async () => {
+            const user = await UserModel.create({ name: 'Target', email: 'target@example.com' });
+            const project = await ProjectModel.create({ members: [{ kind: 'User', target: user._id }] });
+            const read = (): Promise<any> => ProjectModel.findById(project._id).populate('members.target').cacheQuery();
+
+            await read();
+            const hit = await read();
+
+            expect(hit.members[0].target?.name).toBe('Target');
         });
 
         it('returns an instance of the discriminator class on a cache hit', async () => {

@@ -204,6 +204,16 @@ describe('singleflightUtils', () => {
             expect(getInflightCount()).toBe(0);
         });
 
+        it('does not leave an empty flight behind when the function throws synchronously', async () => {
+            expect(() =>
+                singleflight('key1', () => {
+                    throw new Error('sync failure');
+                }),
+            ).toThrow('sync failure');
+            expect(getInflightCount()).toBe(0);
+            expect(await singleflight('key1', async () => 'next')).toBe('next');
+        });
+
         it('reports zero when nobody joined', async () => {
             let joined = -1;
             await singleflight('key1', async ({ closeFlight }) => {

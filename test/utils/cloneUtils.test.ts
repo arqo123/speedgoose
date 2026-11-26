@@ -116,6 +116,24 @@ describe('detachCachedValue', () => {
         expect(copy.uuid).toBeInstanceOf(UUID);
     });
 
+    test('copies a Binary inside a Mixed field of a document', () => {
+        const source = CloneDocModel.hydrate({ _id: new Types.ObjectId(), title: 'T', meta: { bin: new Binary(Buffer.from('ab')) } });
+        const copy = detachCachedValue(source);
+
+        expect(copy.meta.bin).not.toBe(source.meta.bin);
+        copy.meta.bin.buffer[0] = 0;
+        expect(Buffer.from(source.meta.bin.value()).toString()).toBe('ab');
+    });
+
+    test('keeps a key named __proto__ as a normal key', () => {
+        const value = JSON.parse('{"__proto__": {"injected": true}, "a": 1}');
+        const copy = detachCachedValue(value);
+
+        expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+        expect(Object.prototype.hasOwnProperty.call(copy, '__proto__')).toBe(true);
+        expect((copy as any).injected).toBeUndefined();
+    });
+
     test('shares immutable BSON values', () => {
         const value = { id: new Types.ObjectId(), amount: Decimal128.fromString('1.5') };
         const copy = detachCachedValue(value);

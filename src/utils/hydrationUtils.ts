@@ -6,15 +6,30 @@ import { ensurePopulatePathsInProjection } from './queryUtils';
 
 type Projection = Record<string, unknown>;
 type ProjectionFor = (model: Model<unknown>) => Projection | undefined;
-type ChildProjectionFor = (path: string, model: Model<unknown>) => Projection | undefined;
-type RefOptions = { ref?: unknown; refPath?: string };
+// For a populated path: the projection to build its documents with, and the same lookup for the paths inside them.
+type ChildProjectionFor = (path: string, model: Model<unknown>) => { projection: Projection | undefined; nested: ChildProjectionFor };
+type RefOptions = { ref?: unknown; refPath?: unknown };
+type PopulateOption = { path?: string; select?: unknown; populate?: unknown };
+// Populate options by path, with the options of nested populates under each path.
+type PopulateTree = Map<string, { select?: unknown; children: PopulateTree }>;
 type PlainRecord = Record<string, unknown>;
 type RefPath = { path: string; schemaType: SchemaType };
 type DocumentConstructor = new (obj: undefined, fields: Projection | undefined, options: Record<string, unknown>) => CachedDocument<unknown>;
 type QueryInternals = Query<unknown, unknown> & {
     model: Model<unknown>;
     _applyPaths?: () => void;
-    _mongooseOptions: { speedGoosePopulate?: SpeedGoosePopulateOptions[]; populate?: Record<string, { select?: unknown }> };
+    _mongooseOptions: { speedGoosePopulate?: SpeedGoosePopulateOptions[]; populate?: Record<string, PopulateOption> };
+};
+
+const { isArray } = Array;
+
+// User functions (ref, refPath) may throw on a plain cached record; treat that as "model unknown".
+const callSafely = (fn: () => unknown): unknown => {
+    try {
+        return fn();
+    } catch {
+        return undefined;
+    }
 };
 
 export const getReferenceModelNameFromSchema = (schema: SchemaType): string => {
@@ -75,17 +90,19 @@ const getModel = (nameOrModel: unknown, ownerModel: Model<unknown>): Model<unkno
  * `refPath`, each document stores the model name in another field, so the result is that field's value(s),
  * in the same shape as the populated value (one name, or an array of names).
  */
-const getRefModelNames = (schemaType: SchemaType, ownerModel: Model<unknown>, record: PlainRecord): unknown => {
+const getRefModelNames = (schemaType: SchemaType, path: string, record: PlainRecord): unknown => {
     const { ref, refPath } = getRefOptions(schemaType);
-    if (refPath) return mpath.get(refPath, record);
-    if (typeof ref === 'function' && !isModel(ref)) {
-        try {
-            return (ref as (doc: unknown) => unknown).call(record, record);
-        } catch {
-            return undefined;
-        }
+    if (typeof refPath === 'function') {
+        const resolvedPath = callSafely(() => (refPath as (doc: unknown, path: string) => unknown).call(record, record, path));
+        return typeof resolvedPath === 'string' ? mpath.get(resolvedPath, record) : undefined;
     }
-    return ref;
+    if (typeof refPath === 'string') return mpath.get(refPath, record);
+    if (typeof ref !== 'function' || isModel(ref)) return ref;
+
+    // Like mongoose, call the function with the subdocument that holds the ref (the record itself for a top-level path).
+    const ownerPath = path.slice(0, Math.max(0, path.length - (schemaType as { path: string }).path.length - 1));
+    const callRef = (owner: unknown): unknown => (isArray(owner) ? owner.map(callRef) : owner == null ? undefined : callSafely(() => (ref as (doc: unknown) => unknown).call(owner, owner)));
+    return callRef(ownerPath ? mpath.get(ownerPath, record) : record);
 };
 
 /** The model mongoose would use for `record`: the discriminator named in its discriminator key, or the model itself. */
@@ -107,15 +124,13 @@ const containsPopulatedRecord = (value: unknown): boolean => (Array.isArray(valu
 // Takes the ids from the built documents, so they are ObjectIds rather than JSON strings. depopulate() puts these exact values back.
 const getPopulatedIds = (value: unknown): unknown => (Array.isArray(value) ? value.map(getPopulatedIds) : isMongooseDocument(value) ? value._id : value);
 
-const withoutProjection: ChildProjectionFor = () => undefined;
-
 /**
  * Builds a document from a cached plain record the way mongoose builds one from a query result: the right
  * (discriminator) class, init instead of set, and the projection of the query, so unselected paths get no
  * defaults and a later save() writes only real changes. Populated children, at any depth, are built first and
  * registered as populated. Note: it changes `record` in place, which is fine because the record was just read from the cache.
  */
-const buildDocument = (model: Model<unknown>, record: PlainRecord, projection: Projection | undefined, childProjectionFor: ChildProjectionFor = withoutProjection): CachedDocument<unknown> => {
+const buildDocument = (model: Model<unknown>, record: PlainRecord, projection: Projection | undefined, childProjectionFor: ChildProjectionFor): CachedDocument<unknown> => {
     const DocumentModel = resolveDiscriminatorModel(model, record);
     const populatedPaths: { path: string; ids: unknown }[] = [];
 
@@ -135,9 +150,10 @@ const buildDocument = (model: Model<unknown>, record: PlainRecord, projection: P
                 allResolved = false;
                 return item._id;
             }
-            return buildDocument(refModel, item, childProjectionFor(path, refModel));
+            const { projection: childProjection, nested } = childProjectionFor(path, refModel);
+            return buildDocument(refModel, item, childProjection, nested);
         };
-        const children = buildChildren(value, getRefModelNames(schemaType, DocumentModel, record));
+        const children = buildChildren(value, getRefModelNames(schemaType, path, record));
         mpath.set(path, children, record);
         if (allResolved) populatedPaths.push({ path, ids: getPopulatedIds(children) });
     }
@@ -178,44 +194,59 @@ const createProjectionResolver = (query: Query<unknown, unknown>): ProjectionFor
     };
 };
 
-// The `select` given to populate() or cachePopulate() for each path of the query.
-const getPopulateSelects = (query: Query<unknown, unknown>): Map<string, unknown> => {
+// Populate options can be a path string ('a b'), an options object, or an array of either.
+const toPopulateOptions = (populate: unknown): PopulateOption[] => {
+    if (typeof populate === 'string')
+        return populate
+            .split(/\s+/)
+            .filter(Boolean)
+            .map(path => ({ path }));
+    if (isArray(populate)) return populate.flatMap(toPopulateOptions);
+    return populate && typeof populate === 'object' ? [populate as PopulateOption] : [];
+};
+
+const buildPopulateTree = (options: PopulateOption[]): PopulateTree => {
+    const tree: PopulateTree = new Map();
+    for (const option of options) {
+        if (!option?.path) continue;
+        for (const path of option.path.split(/\s+/).filter(Boolean)) tree.set(path, { select: option.select, children: buildPopulateTree(toPopulateOptions(option.populate)) });
+    }
+    return tree;
+};
+
+// The populate options of a query: populate() and cachePopulate(), with their nested populates.
+const getPopulateTree = (query: Query<unknown, unknown>): PopulateTree => {
     const options = (query as QueryInternals)._mongooseOptions ?? {};
-    const selects = new Map<string, unknown>();
-    for (const [path, populate] of Object.entries(options.populate ?? {})) {
-        if (populate?.select) selects.set(path, populate.select);
+    return buildPopulateTree([...Object.values(options.populate ?? {}), ...(options.speedGoosePopulate ?? [])]);
+};
+
+// The projection mongoose uses when it loads populated documents: the populate `select` plus the schema's `select: false` fields.
+const getPopulatedProjection = (model: Model<unknown>, select: unknown): Projection | undefined => {
+    try {
+        const query = model.find() as QueryInternals;
+        if (select != null) query.select(select as string);
+        query._applyPaths?.();
+        const projection = query.projection() as Projection | undefined;
+        return projection && Object.keys(projection).length > 0 ? projection : undefined;
+    } catch {
+        return undefined;
     }
-    for (const populate of options.speedGoosePopulate ?? []) {
-        if (populate?.select) selects.set(populate.path, populate.select);
-    }
-    return selects;
 };
 
 /**
- * Projections for populated documents, taken from the `select` of their populate call, so a populated document
- * rebuilt from the cache doesn't get default values for fields that weren't selected.
+ * Projections for populated documents, so a populated document rebuilt from the cache doesn't get default values
+ * for fields its populate didn't load. Works at every depth of nested populates.
  */
-const createChildProjectionResolver = (query: Query<unknown, unknown>): ChildProjectionFor => {
-    const selects = getPopulateSelects(query);
-    const projections = new Map<string, Projection | undefined>();
+const createChildProjectionResolver = (tree: PopulateTree): ChildProjectionFor => {
+    const resolved = new Map<string, ReturnType<ChildProjectionFor>>();
 
     return (path, model) => {
-        const select = selects.get(path);
-        if (select == null) return undefined;
-
         const key = `${path}|${model.modelName}`;
-        if (!projections.has(key)) {
-            let projection: Projection | undefined;
-            try {
-                const childQuery = model.find().select(select as string) as QueryInternals;
-                childQuery._applyPaths?.();
-                projection = childQuery.projection() as Projection | undefined;
-            } catch {
-                projection = undefined;
-            }
-            projections.set(key, projection && Object.keys(projection).length > 0 ? projection : undefined);
+        if (!resolved.has(key)) {
+            const options = tree.get(path);
+            resolved.set(key, { projection: getPopulatedProjection(model, options?.select), nested: createChildProjectionResolver(options?.children ?? new Map()) });
         }
-        return projections.get(key);
+        return resolved.get(key);
     };
 };
 
@@ -225,7 +256,7 @@ const createChildProjectionResolver = (query: Query<unknown, unknown>): ChildPro
  */
 export const hydrateResults = async <T>(query: Query<T, T>, _context: SpeedGooseCacheOperationContext, result: CachedDocument<T> | CachedDocument<T>[]): Promise<CachedDocument<T> | CachedDocument<T>[]> => {
     const projectionFor = createProjectionResolver(query as Query<unknown, unknown>);
-    const childProjectionFor = createChildProjectionResolver(query as Query<unknown, unknown>);
+    const childProjectionFor = createChildProjectionResolver(getPopulateTree(query as Query<unknown, unknown>));
     const hydrate = (record: CachedDocument<T>): CachedDocument<T> => {
         if (!record || isMongooseDocument(record)) return record;
         const plainRecord = record as unknown as PlainRecord;

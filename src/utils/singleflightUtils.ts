@@ -38,7 +38,15 @@ export const singleflight = <T>(key: string, fn: (control: FlightControl) => Pro
     };
 
     inflightRequests.set(key, flight);
-    flight.promise = fn({ closeFlight }).finally(close);
+    let promise: Promise<T>;
+    try {
+        promise = fn({ closeFlight });
+    } catch (error) {
+        // `fn` threw before returning a promise: don't leave an empty flight behind for this key.
+        close();
+        throw error;
+    }
+    flight.promise = promise.finally(close);
     return flight.promise as Promise<T>;
 };
 

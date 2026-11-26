@@ -130,6 +130,7 @@ const cloneDocument = (source: DocumentInternals, copies: CopiedObjects): Docume
     copies.set(source, copy);
 
     const raw = source.toObject(RAW_SNAPSHOT_OPTIONS) as Record<string, unknown>;
+    detachSharedLeaves(raw, copies);
     const populatedPaths = Object.entries(source.$__.populated ?? {});
     if (populatedPaths.length > 0) {
         restorePopulatedDocumentsInObject(source._doc, raw, copies);
@@ -146,11 +147,32 @@ const cloneDocument = (source: DocumentInternals, copies: CopiedObjects): Docume
     return copy;
 };
 
+// A key named `__proto__` (possible in JSON) would change the copy's prototype if simply assigned.
+const setOwnValue = (target: Record<string, unknown>, key: string, value: unknown): void => {
+    if (key === '__proto__') Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true });
+    else target[key] = value;
+};
+
 const copyPlainObject = (value: Record<string, unknown>, prototype: object | null, copies: CopiedObjects): Record<string, unknown> => {
     const copy: Record<string, unknown> = prototype === objectPrototype ? {} : Object.create(prototype);
     copies.set(value, copy);
-    for (const key of getOwnKeys(value)) copy[key] = detachCachedValue(value[key], copies);
+    for (const key of getOwnKeys(value)) setOwnValue(copy, key, detachCachedValue(value[key], copies));
     return copy;
+};
+
+/**
+ * toObject() copies plain objects, arrays and Dates, but returns other values (such as a BSON Binary inside a Mixed
+ * field) as they are. This replaces those values in `raw` with copies, so `raw` shares nothing with the original.
+ */
+const detachSharedLeaves = (raw: unknown, copies: CopiedObjects): void => {
+    if (raw === null || typeof raw !== 'object') return;
+    const container = raw as Record<string, unknown>;
+    for (const key of getOwnKeys(container)) {
+        const item = container[key];
+        if (item === null || typeof item !== 'object' || item instanceof DateClass) continue;
+        if (isArray(item) || isPlainObject(item)) detachSharedLeaves(item, copies);
+        else setOwnValue(container, key, detachCachedValue(item, copies));
+    }
 };
 
 /**
