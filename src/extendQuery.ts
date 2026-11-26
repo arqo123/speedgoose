@@ -1,6 +1,7 @@
 import { Mongoose, Query, Document } from 'mongoose';
 import { CachedDocument, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams, SpeedGoosePopulateOptions } from './types/types';
 import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
+import { isolateCachedValue } from './utils/cloneUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { hydrateResults } from './utils/hydrationUtils';
 import { prepareQueryOperationContext, shouldHydrateResult } from './utils/queryUtils';
@@ -73,13 +74,20 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
     }
 
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
-    const result = await singleflight(context.cacheKey, async () => {
-        const dbResult = (await query.exec()) as CachedResult<T>;
-        if (dbResult !== undefined) {
-            await setKeyInResultsCaches(context, dbResult, query.model);
+    // The caller that runs the query gets the database result as is. Other callers waiting for the same query
+    // get their own copy, taken before the first caller can change it (and only if someone is waiting). The cache
+    // stores yet another copy (or JSON).
+    const leader: { active: boolean; result?: CachedResult<T> } = { active: false };
+    const template = await singleflight(context.cacheKey, async ({ closeFlight }) => {
+        leader.active = true;
+        leader.result = (await query.exec()) as CachedResult<T>;
+        if (leader.result !== undefined) {
+            await setKeyInResultsCaches(context, leader.result, query.model);
         }
-        return dbResult;
+        return closeFlight() > 0 ? isolateCachedValue(leader.result) : undefined;
     });
 
-    return result !== undefined ? prepareQueryResults(query, context, result) : undefined;
+    if (leader.active) return leader.result;
+
+    return template !== undefined ? prepareQueryResults(query, context, isolateCachedValue(template)) : undefined;
 };

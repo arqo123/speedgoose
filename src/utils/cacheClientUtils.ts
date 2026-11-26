@@ -1,14 +1,14 @@
 import Keyv from 'keyv';
 import { Container } from 'typedi';
-import { Document, Model, ObjectId } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { SpeedGooseConfig, SpeedGooseRedisChannels } from '../types/types';
 import { GlobalDiContainerRegistryNames } from '../types/types';
 import { CachedDocument, CachedResult, CacheNamespaces, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from '../types/types';
 import { generateCacheKeyForModelName } from './cacheKeyUtils';
-import { getCacheStrategyInstance, getConfig, getHydrationCache, getHydrationVariationsCache, objectDeserializer, objectSerializer } from './commonUtils';
+import { getCacheStrategyInstance, getConfig, objectDeserializer, objectSerializer } from './commonUtils';
 import { logCacheClear } from './debugUtils';
 import { isResultWithIds } from './mongooseUtils';
-import { getCachedSetsQueue, scheduleTTlRefreshing } from './queueUtils';
+import { scheduleTTlRefreshing } from './queueUtils';
 import { ExpiringMap } from './expiringMap';
 import { publishRecordIdsOnChannel } from './redisUtils';
 
@@ -31,21 +31,6 @@ export const getMaxSetCardinality = (): number => {
     return 10000;
 };
 
-const clearKeysInCache = async <T>(keysToClean: string[], cacheClient: Keyv<T>): Promise<void> => {
-    if (keysToClean && Array.isArray(keysToClean)) {
-        await Promise.all(keysToClean.map(keyToClean => cacheClient.delete(keyToClean)));
-    }
-};
-
-const setKeyInHydratedDocumentsCache = async <T>(document: CachedDocument<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    await getHydrationCache().set(key, document, params.ttl * 1000);
-};
-
-const setKeyInHydratedDocumentsVariationsCache = async <T>(document: Document<T>, key: string, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    const recordId = String(document._id);
-    await addValueToInternalCachedSet(getHydrationVariationsCache(), recordId, key, getSetsTtlFor(params.ttl));
-};
-
 const setKeyInResultsCache = async <T>(results: CachedResult<T>, params: SpeedGooseCacheOperationParams): Promise<void> => getCacheStrategyInstance().addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, params.cacheKey, results, params.ttl);
 
 const setKeyInModelCache = async <T>(model: Model<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
@@ -60,10 +45,6 @@ const setKeyInRecordsCache = async <T>(result: CachedDocument<T>, params: SpeedG
     if (resultsIds.length > 0) {
         await getCacheStrategyInstance().addValueToManyCachedSets(resultsIds, params.cacheKey, getSetsTtlFor(params.ttl), getMaxSetCardinality());
     }
-};
-
-export const addValueToInternalCachedSet = async <T extends string | number>(client: Keyv<Set<string | number>>, namespace: string, value: T, ttl?: number): Promise<void> => {
-    await getCachedSetsQueue().push({ client, namespace, value, ttl });
 };
 
 /**
@@ -82,8 +63,8 @@ export const clearCacheForKey = async (key: string): Promise<void> => {
  */
 export const clearCacheForRecordId = async (recordId: string): Promise<void> => {
     recordId = String(recordId);
-    logCacheClear(`Clearing results and hydration cache for recordId`, recordId);
-    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), clearHydrationCache(recordId), getCacheStrategyInstance().clearDocumentsCache(recordId)]);
+    logCacheClear(`Clearing results and documents cache for recordId`, recordId);
+    await Promise.all([getCacheStrategyInstance().clearResultsCacheWithSet(recordId), getCacheStrategyInstance().clearDocumentsCache(recordId)]);
 };
 
 /**
@@ -96,15 +77,6 @@ export const clearCachedResultsForModel = async (modelName: string, multitenantV
     logCacheClear(`Clearing model cache for key`, modelCacheKey);
 
     await getCacheStrategyInstance().clearResultsCacheWithSet(modelCacheKey);
-};
-
-export const clearHydrationCache = async (recordId: string): Promise<void> => {
-    logCacheClear(`Clearing hydration cache for recordId`, recordId);
-
-    const hydratedDocumentVariations = await getHydrationVariationsCache().get(recordId);
-    if (hydratedDocumentVariations?.size > 0) {
-        await Promise.all([clearKeysInCache(Array.from(hydratedDocumentVariations), getHydrationCache()), getHydrationVariationsCache().delete(recordId)]);
-    }
 };
 
 const setKeyInInvalidationSets = async <T>(context: SpeedGooseCacheOperationContext, result: CachedResult<T>, model: Model<T>): Promise<void> => {
@@ -130,10 +102,6 @@ export const setKeyInResultsCaches = async <T>(context: SpeedGooseCacheOperation
     context?.debug(`Cache key set`, context.cacheKey);
 };
 
-export const setKeyInHydrationCaches = async <T>(key: string, document: CachedDocument<T>, params: SpeedGooseCacheOperationParams): Promise<void> => {
-    await Promise.all([setKeyInHydratedDocumentsCache(document, key, params), setKeyInHydratedDocumentsVariationsCache(document, key, params)]);
-};
-
 export const createInMemoryCacheClientWithNamespace = <T>(namespace: string) =>
     new Keyv<T>(
         //@ts-expect-error There is a incorrect typo in the library for custom serializers
@@ -149,13 +117,21 @@ export const getResultsFromCache = async (key: string): Promise<CachedResult | n
 
 export const isCached = async (key: string): Promise<boolean> => getCacheStrategyInstance().isValueCached(CacheNamespaces.RESULTS_NAMESPACE, key);
 
+// The invalidation sets only need the ids. Take them now, because the caller may change the result before the timer runs.
+const toInvalidationSource = <T>(value: CachedResult<T>): CachedResult<T> => {
+    if (!isResultWithIds(value)) return value;
+
+    return (Array.isArray(value) ? value.map(record => ({ _id: (record as CachedDocument<T>)?._id })) : { _id: (value as CachedDocument<T>)._id }) as CachedResult<T>;
+};
+
 export const refreshTTLTimeIfNeeded = <T>(context: SpeedGooseCacheOperationContext, cachedValue: CachedResult<T>, model?: Model<T>): void => {
     if (context.refreshTtlOnRead) {
+        const invalidationSource = toInvalidationSource(cachedValue);
         setTimeout(async () => {
             try {
                 const scheduled = await scheduleTTlRefreshing(context);
                 // The result now outlives its invalidation sets' TTL; extend them too or it can no longer be invalidated.
-                if (scheduled && model) await setKeyInInvalidationSets(context, cachedValue, model);
+                if (scheduled && model) await setKeyInInvalidationSets(context, invalidationSource, model);
             } catch (error) {
                 context?.debug?.(`Refreshing TTL failed`, error);
             }
@@ -197,7 +173,8 @@ export const clearParentCacheBulk = async (modelName: string, docIds: (string | 
         // Invalidate unique parents in batches
         if (uniqueParentRecordIds.size > 0) {
             logCacheClear(`Bulk invalidating ${uniqueParentRecordIds.size} unique parents for ${docIds.length} children`, modelName);
-            // Other instances hold their own hydrated copies of these parents.
+            // Only instances running an older speedgoose version still cache these parents locally. This message keeps them
+            // up to date during a rolling deploy. Remove it in a later version.
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, Array.from(uniqueParentRecordIds));
 
             const BATCH_SIZE = 25;
@@ -231,7 +208,8 @@ export const clearParentCache = async (modelName: string, docId: string | Object
     try {
         if (parentIdentifiers.length > 0) {
             logCacheClear(`Invalidating ${parentIdentifiers.length} parents for child`, `${modelName}:${docId}`);
-            // Other instances hold their own hydrated copies of these parents.
+            // Only instances running an older speedgoose version still cache these parents locally. This message keeps them
+            // up to date during a rolling deploy. Remove it in a later version.
             await publishRecordIdsOnChannel(SpeedGooseRedisChannels.RECORDS_CHANGED, parentIdentifiers.slice(0, CACHE_PARENT_LIMIT).map(getRecordIdFromParentIdentifier));
 
             if (parentIdentifiers.length > CACHE_PARENT_LIMIT) {

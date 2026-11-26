@@ -1,6 +1,7 @@
 import { Aggregate, Mongoose } from 'mongoose';
 import { AggregationResult, CachedResult, SpeedGooseCacheOperationContext, SpeedGooseCacheOperationParams } from './types/types';
 import { getResultsFromCache, isCached, refreshTTLTimeIfNeeded, setKeyInResultsCaches } from './utils/cacheClientUtils';
+import { isolateCachedValue } from './utils/cloneUtils';
 import { isCachingEnabled } from './utils/commonUtils';
 import { prepareAggregateOperationParams } from './utils/queryUtils';
 import { singleflight } from './utils/singleflightUtils';
@@ -42,11 +43,16 @@ const execAggregationWithCache = async <R extends unknown[] = unknown[]>(aggrega
     }
 
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
-    return singleflight(context.cacheKey, async () => {
-        const result = await aggregation.exec();
-        if (result !== undefined) {
-            await setKeyInResultsCaches(context, result as CachedResult, aggregation._model);
+    // Same as for queries: the caller that runs the pipeline gets the result as is, other waiting callers get a copy.
+    const leader: { active: boolean; result?: R } = { active: false };
+    const template = await singleflight(context.cacheKey, async ({ closeFlight }) => {
+        leader.active = true;
+        leader.result = await aggregation.exec();
+        if (leader.result !== undefined) {
+            await setKeyInResultsCaches(context, leader.result as CachedResult, aggregation._model);
         }
-        return result;
+        return closeFlight() > 0 ? isolateCachedValue(leader.result) : undefined;
     });
+
+    return leader.active ? leader.result : isolateCachedValue(template);
 };

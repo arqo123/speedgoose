@@ -2,21 +2,11 @@ import Container from 'typedi';
 import * as Fastq from 'fastq';
 import * as queueUtils from '../../src/utils/queueUtils';
 
-import { CacheSetQueuedTask, GlobalDiContainerRegistryNames } from '../../src/types/types';
+import { GlobalDiContainerRegistryNames, RefreshTtlQueuedTask } from '../../src/types/types';
 import { registerInternalQueueWorkers } from '../../src/utils/queueUtils';
 import { emptyDebugCallback } from '../../src/utils/debugUtils';
 
 const containerSetSpy = jest.spyOn(Container, 'set');
-
-describe('getCachedSetsQueue', () => {
-    it(`should return access to queue of sets`, () => {
-        const queueAccess = Container.get<Fastq.queueAsPromised<CacheSetQueuedTask>>(GlobalDiContainerRegistryNames.GLOBAL_CACHED_SETS_QUEUE_ACCESS);
-
-        expect(queueAccess).toBeInstanceOf(Object);
-        expect(typeof queueAccess.push).toEqual('function');
-        expect(typeof queueAccess.getQueue).toEqual('function');
-    });
-});
 
 describe('registerInternalQueueWorkers', () => {
     it(`should register new service in DiContainer with access to queues`, async () => {
@@ -32,7 +22,7 @@ describe('scheduleTTlRefreshing', () => {
 
     it('should not push to the queue if the key is already scheduled', async () => {
         const mockQueue = { push: jest.fn() };
-        Container.set<Fastq.queueAsPromised<CacheSetQueuedTask>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_QUEUE_ACCESS, mockQueue);
+        Container.set<Fastq.queueAsPromised<RefreshTtlQueuedTask>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_QUEUE_ACCESS, mockQueue);
         const setAccess = Container.get<Set<string>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_SETS_QUEUE_ACCESS);
 
         setAccess.add('key1');
@@ -50,7 +40,7 @@ describe('scheduleTTlRefreshing', () => {
 
     it('should push to the queue if the key is not already scheduled', async () => {
         const mockQueue = { push: jest.fn() };
-        const queueAccess = Container.set<Fastq.queueAsPromised<CacheSetQueuedTask>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_QUEUE_ACCESS, mockQueue);
+        const queueAccess = Container.set<Fastq.queueAsPromised<RefreshTtlQueuedTask>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_QUEUE_ACCESS, mockQueue);
         const setAccess = Container.get<Set<string>>(GlobalDiContainerRegistryNames.GLOBAL_REFRESH_TTL_SETS_QUEUE_ACCESS);
 
         setAccess.add('testKey2');

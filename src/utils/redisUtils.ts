@@ -1,55 +1,28 @@
 import Redis, { RedisOptions } from 'ioredis';
 import { Container } from 'typedi';
-import { clearHydrationCache } from './cacheClientUtils';
 import { GlobalDiContainerRegistryNames, SpeedGooseRedisChannels } from '../types/types';
-
-const redisPubSubMessageHandler = async (channel: SpeedGooseRedisChannels, recordIds: string): Promise<void> => {
-    try {
-        const parsedRecordIds = JSON.parse(recordIds);
-        if (Array.isArray(parsedRecordIds)) {
-            await Promise.all(parsedRecordIds.map(recordId => clearHydrationCache(recordId)));
-            return;
-        }
-        await clearHydrationCache(parsedRecordIds);
-    } catch (error) {
-        console.error(`[speedgoose] Failed to handle pub/sub message on channel "${channel}":`, error);
-    }
-};
-
-const listenOnMessages = async (redisClient: Redis): Promise<void> => {
-    await redisClient.subscribe(SpeedGooseRedisChannels.RECORDS_CHANGED);
-
-    redisClient.on('message', redisPubSubMessageHandler);
-};
 
 export const registerRedisClient = async (uri?: string, redisOptions?: RedisOptions, existingClient?: Redis): Promise<Redis> => {
     const registeredClient = getRedisInstance();
     if (registeredClient) {
         return registeredClient;
     } else if (existingClient) {
-        const redisListenerClient = existingClient.duplicate();
-
         Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS, existingClient);
-        Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS, redisListenerClient);
-
-        await listenOnMessages(redisListenerClient);
 
         return existingClient;
     } else if (uri) {
         const redisClient = new Redis(uri, redisOptions ?? {});
-        const redisListenerClient = new Redis(uri, redisOptions ?? {});
 
         Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS, redisClient);
-        Container.set<Redis>(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS, redisListenerClient);
-
-        await listenOnMessages(redisListenerClient);
 
         return redisClient;
     }
 };
 
-export const getRedisListenerInstance = (): Redis => (Container.has(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS) ? Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_LISTENER_GLOBAL_ACCESS) : null);
-
 export const getRedisInstance = (): Redis => (Container.has(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS) ? Container.get<Redis>(GlobalDiContainerRegistryNames.REDIS_GLOBAL_ACCESS) : null);
 
+/**
+ * Announces changed records. This version doesn't listen to these messages, but older speedgoose versions use them to
+ * clear their local caches, so we keep sending them for rolling deploys. Remove in a later version.
+ */
 export const publishRecordIdsOnChannel = (channel: SpeedGooseRedisChannels, recordIds: string | string[]): Promise<number> => getRedisInstance()?.publish(channel, JSON.stringify(recordIds)) ?? Promise.resolve(0);

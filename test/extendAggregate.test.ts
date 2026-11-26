@@ -219,6 +219,9 @@ describe('extendAggregate', () => {
                     expect(result).toHaveLength(1);
                     expect(result[0].name).toBe('SFAlice');
                 }
+                // Callers that shared one database query still get separate objects.
+                expect(new Set(results).size).toBe(results.length);
+                expect(new Set(results.map(result => result[0])).size).toBe(results.length);
 
                 expect(setKeySpy).toHaveBeenCalledTimes(1);
             } finally {

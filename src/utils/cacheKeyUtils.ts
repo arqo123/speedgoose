@@ -1,8 +1,7 @@
 import { createHash } from 'crypto';
 import { Document, Aggregate, Query } from 'mongoose';
-import { CachedDocument, DocumentWithIdAndTenantValue } from '../types/types';
+import { DocumentWithIdAndTenantValue } from '../types/types';
 import { getConfig } from './commonUtils';
-import { stringifyQueryParam } from './queryUtils';
 
 // Mongoose internal populate/runtime-only fields that carry non-deterministic object references
 // and transient state. Excluding them ensures stable, serializable cache keys.
@@ -137,28 +136,6 @@ export const generateCacheKeyFromPipeline = <R>(aggregation: Aggregate<R>): stri
 // Generated keys embed the whole query and can reach tens of KB. Each key is stored as a member of
 // several invalidation sets, so it is kept at a fixed size.
 export const hashCacheKey = (key: string): string => createHash('sha1').update(key).digest('hex');
-
-export const generateCacheKeyForSingleDocument = <T>(query: Query<T, T>, record: CachedDocument<T>): string => {
-    if (!record) return '';
-
-    const populateOptions = query?._mongooseOptions?.populate;
-    const speedGoosePopulate = query?._mongooseOptions?.speedGoosePopulate;
-    const hasPopulate = (populateOptions && typeof populateOptions === 'object' && Object.keys(populateOptions).length > 0) || (Array.isArray(speedGoosePopulate) && speedGoosePopulate.length > 0);
-
-    if (!query.selected() && !hasPopulate) {
-        return String(record._id);
-    }
-
-    const projectionFields = stringifyQueryParam((query?.projection() as Record<string, number>) ?? {});
-    const populationFields = hasPopulate
-        ? stableSerialize({
-              populate: normalizePopulateValue(populateOptions) ?? null,
-              speedGoosePopulate: normalizePopulateValue(speedGoosePopulate) ?? null,
-          })
-        : '';
-
-    return `${record?._id}_${projectionFields}_${populationFields}`;
-};
 
 export const generateCacheKeyForModelName = (modelName: string, multitenantValue = ''): string => `${modelName}_${String(multitenantValue)}`;
 

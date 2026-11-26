@@ -240,6 +240,8 @@ describe('extendQuery', () => {
                     expect(result).toBeDefined();
                     expect(result!.name).toBe('SFUser');
                 }
+                // Callers that shared one database query still get separate objects.
+                expect(new Set(results).size).toBe(results.length);
 
                 expect(setKeySpy).toHaveBeenCalledTimes(1);
             } finally {

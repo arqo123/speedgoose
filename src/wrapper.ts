@@ -1,17 +1,16 @@
 import { Container } from 'typedi';
-import Keyv from 'keyv';
-import { Document, Mongoose, Query } from 'mongoose';
-import { CacheNamespaces, GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig, SpeedGoosePopulateOptions } from './types/types';
+import { Mongoose, Query } from 'mongoose';
+import { GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig } from './types/types';
 import { addCachingToQuery } from './extendQuery';
 import { addCachingToAggregate } from './extendAggregate';
 import { registerListenerForInternalEvents } from './mongooseModelEvents';
 import { setupDebugger } from './utils/debugUtils';
 import { RedisStrategy } from './cachingStrategies/redisStrategy';
-import { createInMemoryCacheClientWithNamespace } from './utils/cacheClientUtils';
 import { InMemoryStrategy } from './cachingStrategies/inMemoryStrategy';
 import { registerRedisClient } from './utils/redisUtils';
 import { registerInternalQueueWorkers } from './utils/queueUtils';
 import { handleCachedPopulation } from './utils/populationUtils';
+import { ensurePopulatePathsInProjection } from './utils/queryUtils';
 
 const prepareConfig = (config: SpeedGooseConfig): void => {
     config.debugConfig = {
@@ -27,16 +26,11 @@ const prepareConfig = (config: SpeedGooseConfig): void => {
     config.multitenancyConfig = config.multitenancyConfig ?? { multitenantKey: undefined };
     config.cacheParentLimit = config.cacheParentLimit ?? 100;
     config.clearModelCacheOnUpdate = config.clearModelCacheOnUpdate ?? false;
+    config.shareCachedInstances = config.shareCachedInstances ?? false;
 };
 
 const registerGlobalConfigAccess = (config: SpeedGooseConfig): void => {
     Container.set<SpeedGooseConfig>(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, config);
-};
-
-const registerHydrationCaches = (): void => {
-    Container.set<Keyv<Document>>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS, createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_NAMESPACE));
-
-    Container.set<Keyv<Set<string>>>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS, createInMemoryCacheClientWithNamespace(CacheNamespaces.HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE));
 };
 
 const registerGlobalMongooseAccess = (mongoose: Mongoose): void => {
@@ -50,27 +44,6 @@ const registerCacheStrategyInstance = (config: SpeedGooseConfig): Promise<void> 
         case SharedCacheStrategies.REDIS:
         default:
             return RedisStrategy.register();
-    }
-};
-
-/**
- * Ensures that populate paths are included in the query's projection.
- * Without this, an inclusive select like `.select('name email')` would not return
- * the ObjectId field needed for population, causing cachePopulate to silently skip.
- * Mirrors native Mongoose behavior in Query.prototype._castFields().
- */
-const ensurePopulatePathsInProjection = (query: Query<any, any>, populateOptions: SpeedGoosePopulateOptions[]): void => {
-    const projection = query.projection() as Record<string, any> | null;
-    if (!projection || Object.keys(projection).length === 0) return;
-
-    const isInclusive = Object.entries(projection).some(([key, val]) => key !== '_id' && (val === 1 || val === true));
-    if (!isInclusive) return;
-
-    for (const opt of populateOptions) {
-        const rootField = opt.path.split('.')[0];
-        if (!projection[rootField]) {
-            query.select(rootField);
-        }
     }
 };
 
@@ -104,7 +77,6 @@ export const applySpeedGooseCacheLayer = async (mongoose: Mongoose, config: Spee
     await registerRedisClient(config.redisUri, config.redisOptions, config.redisClient);
     await registerCacheStrategyInstance(config);
     registerInternalQueueWorkers();
-    registerHydrationCaches();
     registerListenerForInternalEvents(mongoose);
     addCachingToQuery(mongoose);
     addCachingToAggregate(mongoose);

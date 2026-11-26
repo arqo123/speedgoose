@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { GlobalDiContainerRegistryNames, SpeedGooseConfig } from '../../src/types/types';
-import { customStringifyReplacer, getCacheStrategyInstance, getConfig, getHydrationCache, getHydrationVariationsCache, isCachingEnabled, objectDeserializer, objectSerializer } from '../../src/utils/commonUtils';
+import { customStringifyReplacer, getCacheStrategyInstance, getConfig, isCachingEnabled, objectDeserializer, objectSerializer } from '../../src/utils/commonUtils';
 import { TEST_SPEEDGOOSE_CONFIG } from '../constants';
 
 describe(`getConfig`, () => {
@@ -65,28 +65,6 @@ describe('Cache-related functions', () => {
 
     afterEach(() => {
         jest.clearAllMocks();
-    });
-
-    it('should return the Hydration Cache', () => {
-        const mockCache = {}; // your mock cache object
-        containerGetSpy.mockReturnValueOnce(mockCache);
-
-        const result = getHydrationCache();
-
-        expect(containerGetSpy).toHaveBeenCalledTimes(1);
-        expect(containerGetSpy).toHaveBeenCalledWith(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS);
-        expect(result).toEqual(mockCache);
-    });
-
-    it('should return the Hydration Variations Cache', () => {
-        const mockCache = {}; // your mock cache object
-        containerGetSpy.mockReturnValueOnce(mockCache).nic;
-
-        const result = getHydrationVariationsCache();
-
-        expect(containerGetSpy).toHaveBeenCalledTimes(1);
-        expect(containerGetSpy).toHaveBeenCalledWith(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS);
-        expect(result).toEqual(mockCache);
     });
 
     it('should return the Cache Strategy Instance', () => {

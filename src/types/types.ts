@@ -1,4 +1,3 @@
-import Keyv from 'keyv';
 import './mongoose';
 import { Document, ObjectId } from 'mongoose';
 import { RedisStrategy } from '../cachingStrategies/redisStrategy';
@@ -73,6 +72,14 @@ export type SpeedGooseConfig = {
     setsTtl?: number;
     /** Maximum number of members in a single invalidation set. When exceeded, the set is reset. Defaults to 10000. Set 0 to disable. */
     maxSetCardinality?: number;
+    /**
+     * By default every cached read returns its own copy, so changing a result in your code never affects other reads.
+     * Set to true to skip the copying and return the same object to every caller. This is faster, but only safe if
+     * your code never modifies results of cacheQuery/cachePipeline/cachePopulate. Mainly affects the in-memory strategy:
+     * Redis results are parsed fresh on every hit, so there it only affects callers that wait for the same query on a
+     * cache miss. Default: false.
+     */
+    shareCachedInstances?: boolean;
 };
 
 export type SpeedGooseCacheOperationParams = {
@@ -130,8 +137,6 @@ export type SpeedGoosePopulateOptions = {
 
 export enum CacheNamespaces {
     RESULTS_NAMESPACE = 'resultsNamespace',
-    HYDRATED_DOCUMENTS_NAMESPACE = 'hydratedDocumentsNamespace',
-    HYDRATED_DOCUMENTS_VARIATIONS_KEY_NAMESPACE = 'hydratedDocumentsVariationsKeyNamespace',
     RECORD_RESULTS_SETS = 'recordResultsSets',
     DOCUMENTS = 'doc',
     DOCUMENT_CACHE_SETS = 'docCacheSets',
@@ -143,11 +148,7 @@ export enum GlobalDiContainerRegistryNames {
     CONFIG_GLOBAL_ACCESS = 'speedGooseConfigAccess',
     MONGOOSE_GLOBAL_ACCESS = 'mongooseAccess',
     REDIS_GLOBAL_ACCESS = 'redisAccess',
-    REDIS_LISTENER_GLOBAL_ACCESS = 'redisListenerAccess',
     KEYV_REDIS_GLOBAL_ACCESS = 'keyvRedisAccess',
-    HYDRATED_DOCUMENTS_CACHE_ACCESS = 'hydratedDocumentsCacheAccess',
-    HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS = 'hydratedDocumentsVariationsCacheAccess',
-    GLOBAL_CACHED_SETS_QUEUE_ACCESS = 'globalCachedSetsQueueAccess',
     GLOBAL_REFRESH_TTL_SETS_QUEUE_ACCESS = 'globalResfeshTtlSetsQueueAccess',
     GLOBAL_REFRESH_TTL_QUEUE_ACCESS = 'globalResfeshTtlsQueueAccess',
 }
@@ -174,14 +175,6 @@ export enum SharedCacheStrategies {
 }
 
 export type CacheStrategiesTypes = RedisStrategy | InMemoryStrategy;
-
-export type CacheSetQueuedTask = {
-    client: Keyv<Set<string | number>>;
-    namespace: string;
-    value: string | number;
-    /** TTL in seconds for the set; it is only ever extended. */
-    ttl?: number;
-};
 
 export type RefreshTtlQueuedTask = {
     key: string;

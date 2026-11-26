@@ -3,48 +3,7 @@
  * in caching strategies and utility functions.
  */
 import { getCacheStrategyInstance } from '../../src/utils/commonUtils';
-import { clearHydrationCache } from '../../src/utils/cacheClientUtils';
 import { CacheNamespaces } from '../../src/types/types';
-
-describe('Redis pub/sub error handling', () => {
-    // Replicate the handler logic from redisUtils.ts to verify try/catch behavior
-    const handler = async (_channel: string, recordIds: string): Promise<void> => {
-        try {
-            const parsedRecordIds = JSON.parse(recordIds);
-            if (Array.isArray(parsedRecordIds)) {
-                await Promise.all(parsedRecordIds.map(recordId => clearHydrationCache(recordId)));
-                return;
-            }
-            await clearHydrationCache(parsedRecordIds);
-        } catch (error) {
-            console.error(`[speedgoose] Failed to handle pub/sub message on channel "${_channel}":`, error);
-        }
-    };
-
-    test('malformed JSON is caught and logged, not thrown', async () => {
-        const spy = jest.spyOn(console, 'error').mockImplementation();
-        await expect(handler('records_changed', 'NOT_VALID_JSON')).resolves.not.toThrow();
-        expect(spy).toHaveBeenCalledWith(expect.stringContaining('[speedgoose]'), expect.any(SyntaxError));
-        spy.mockRestore();
-    });
-
-    test('empty string is caught and logged', async () => {
-        const spy = jest.spyOn(console, 'error').mockImplementation();
-        await expect(handler('records_changed', '')).resolves.not.toThrow();
-        expect(spy).toHaveBeenCalled();
-        spy.mockRestore();
-    });
-
-    test('valid JSON works correctly', async () => {
-        await expect(handler('records_changed', '"some-record-id"')).resolves.not.toThrow();
-    });
-
-    test('redisPubSubMessageHandler source contains try/catch', () => {
-        const source = require('fs').readFileSync(require('path').join(__dirname, '../../src/utils/redisUtils.ts'), 'utf8');
-        expect(source).toContain('try {');
-        expect(source).toContain('catch (error)');
-    });
-});
 
 describe('InMemory concurrent parent-child write safety', () => {
     test('concurrent addManyParentToChildRelationships preserves all parents', async () => {
