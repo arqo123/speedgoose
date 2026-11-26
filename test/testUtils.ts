@@ -1,7 +1,5 @@
 import mongoose, { Aggregate, PipelineStage, ProjectionType, QueryOptions } from 'mongoose';
 import { clearAllCaches } from '../src/utils/cacheUtils';
-import { SpeedGooseRedisChannels } from '../src/types/types';
-import { getRedisListenerInstance } from '../src/utils/redisUtils';
 import { MongooseTestDocument, MongooseTestModel } from './types';
 import { getMongooseInstance } from '../src/utils/mongooseUtils';
 import { TEST_MODEL_NAME } from './constants';
@@ -96,7 +94,6 @@ export const getValuesFromSet = <T>(set: Set<T>): T[] => Array.from(set).sort();
 
 export const clearTestEventListeners = (): void => {
     getMongooseTestModel().removeAllListeners();
-    getRedisListenerInstance()?.removeAllListeners(SpeedGooseRedisChannels.RECORDS_CHANGED);
 };
 
 export const wait = (ms: number): Promise<unknown> => {

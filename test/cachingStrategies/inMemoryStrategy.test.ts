@@ -1,6 +1,7 @@
+import Container from 'typedi';
 import { InMemoryStrategy } from '../../src/cachingStrategies/inMemoryStrategy';
-import { CacheNamespaces } from '../../src/types/types';
-import { getCacheStrategyInstance } from '../../src/utils/commonUtils';
+import { CacheNamespaces, CachedResult, GlobalDiContainerRegistryNames } from '../../src/types/types';
+import { getCacheStrategyInstance, getConfig } from '../../src/utils/commonUtils';
 import { wait } from '../testUtils';
 
 describe('InMemoryStrategy.isHydrationEnabled', () => {
@@ -151,5 +152,73 @@ describe('InMemoryStrategy.isValueCached', () => {
 
         const isCached = await strategy.isValueCached(CacheNamespaces.RESULTS_NAMESPACE, testData.key);
         expect(isCached).toBe(true);
+    });
+});
+
+describe('InMemoryStrategy keeps cached values isolated from callers', () => {
+    const storedValue = () => ({ name: 'Original', nested: { tags: ['a'] }, when: new Date(0) });
+
+    test(`a value changed by the caller after it was stored does not change the cache`, async () => {
+        const strategy = getCacheStrategyInstance();
+        const value = storedValue();
+
+        await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey1', value);
+        value.name = 'Mutated';
+        value.nested.tags.push('b');
+        value.when.setTime(1);
+
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey1')).toEqual(storedValue());
+    });
+
+    test(`every read gets its own copy`, async () => {
+        const strategy = getCacheStrategyInstance();
+        await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey2', storedValue());
+
+        const firstRead = (await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey2')) as ReturnType<typeof storedValue>;
+        firstRead.nested.tags.push('b');
+        const secondRead = await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey2');
+
+        expect(secondRead).not.toBe(firstRead);
+        expect(secondRead).toEqual(storedValue());
+    });
+
+    test(`documents stored for cachePopulate are copied on store and on read`, async () => {
+        const strategy = getCacheStrategyInstance();
+        const child = { _id: 'childId', name: 'Child' };
+
+        await strategy.setDocuments(new Map<string, CachedResult<unknown>>([['doc:Child:childId', child]]), 60);
+        child.name = 'MutatedBeforeRead';
+        const firstRead = (await strategy.getDocuments(['doc:Child:childId'])).get('doc:Child:childId') as typeof child;
+        firstRead.name = 'MutatedAfterRead';
+        const secondRead = (await strategy.getDocuments(['doc:Child:childId'])).get('doc:Child:childId');
+
+        expect(secondRead).toEqual({ _id: 'childId', name: 'Child' });
+    });
+
+    test(`with shareCachedInstances every read gets the stored instance`, async () => {
+        Container.set(GlobalDiContainerRegistryNames.CONFIG_GLOBAL_ACCESS, { ...getConfig(), shareCachedInstances: true });
+        const strategy = getCacheStrategyInstance();
+        const value = storedValue();
+
+        await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey3', value);
+
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, 'isolationKey3')).toBe(value);
+    });
+});
+
+describe('InMemoryStrategy.clearAll', () => {
+    test(`drops results, documents, invalidation sets and relations`, async () => {
+        const strategy = getCacheStrategyInstance() as InMemoryStrategy;
+        await strategy.addValueToCache(CacheNamespaces.RESULTS_NAMESPACE, 'clearAllKey', { a: 1 });
+        await strategy.addValueToCacheSet('clearAllSet', 'clearAllKey');
+        await strategy.setDocuments(new Map<string, CachedResult<unknown>>([['doc:Child:clearAllId', { _id: 'clearAllId' }]]), 60);
+        await strategy.addParentToChildRelationship('rel:child:Child:clearAllId', 'Parent:parentId');
+
+        await strategy.clearAll();
+
+        expect(await strategy.getValueFromCache(CacheNamespaces.RESULTS_NAMESPACE, 'clearAllKey')).toBeNull();
+        expect(await strategy.getValuesFromCachedSet('clearAllSet')).toEqual([]);
+        expect((await strategy.getDocuments(['doc:Child:clearAllId'])).size).toBe(0);
+        expect(await strategy.getParentsOfChild('rel:child:Child:clearAllId')).toEqual([]);
     });
 });

@@ -17,9 +17,9 @@
 This project is a next-level mongoose caching library that is fully written in typescript.
 It's caching on two levels. Shared - with Redis. And local inside memory. Supports all mongoose operations like find,findOne, count, aggregate... and others. Also supports lean queries. Why it is different?
 
--   It supports caching not only JSON objects in Redis but also the whole Mongoose. Document instances in local memory to speed up code, and prevent unnecessary hydrations. Also supports full in-memory caching, without Redis.
+-   It caches results in Redis or purely in memory. Every cached read returns its own copy, just like a database read, so changing a result in your code never affects what other reads get. If you never modify cached results, you can turn the copying off with `shareCachedInstances`.
 -   It has an auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime, those records change, all cached-related results will be cleared.
--   It supports deep hydration, for caching not only the root document instances but also those that are populated.
+-   Cached results come back as real Mongoose documents, including the populated ones, not just plain objects.
 -   Supports custom eventing. For example, if you want to remove given results from cache, but removal logic is not based on removing documents from DB but rather field based (like deleted: true), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
 -   Supports multitenancy by clearing cached results only for a related tenant.
 -   It has a `cachePopulate` method that solves the N+1 problem with Mongoose population.
@@ -39,12 +39,12 @@ Speedgoose delivers **massive speedups** on cached reads. Benchmarks below were 
 
 | Operation | Uncached | Cached | Speedup |
 |-----------|----------|--------|---------|
-| `findOne` | ~1.4 ms  | ~0.03 ms | **~50x** |
-| `find` (20 results) | ~1.5 ms | ~0.02 ms | **~75x** |
-| `aggregate` ($group) | ~3.9 ms | ~0.02 ms | **~200x** |
-| `populate` (10 docs) | ~4.4 ms | ~0.02 ms | **~230x** |
+| `findOne` | ~0.8 ms  | ~0.10 ms | **~8x** |
+| `find` (20 results) | ~0.75 ms | ~0.23 ms | **~3x** |
+| `aggregate` ($group, 500 rows) | ~4.1 ms | ~0.47 ms | **~9x** |
+| `populate` (10 docs) | ~2.7 ms | ~1.3 ms | **~2x** |
 
-> Results may vary depending on hardware, dataset size, and query complexity. With Redis or DragonflyDB as the shared cache, latencies will be slightly higher than in-memory but still significantly faster than hitting MongoDB directly.
+> A cached read returns a fresh copy of the result, and most of the cached time above is Mongoose building those documents. The benchmark runs inside Jest, which makes this part slower than in a normal Node process. `.lean()` queries are the fastest because they only copy plain objects. If your code never modifies cached results, `shareCachedInstances: true` skips the copying. Results may vary depending on hardware, dataset size, and query complexity. With Redis or DragonflyDB as the shared cache, latencies will be slightly higher than in-memory but still significantly faster than hitting MongoDB directly.
 
 Run the benchmarks yourself:
 
@@ -102,7 +102,7 @@ applySpeedGooseCacheLayer(mongoose, {
 });
 ```
 
-> When `redisClient` is provided, `redisUri` and `redisOptions` are ignored. Speedgoose will use your client directly for cache operations and PubSub publishing, and call `duplicate()` on it for the PubSub subscriber connection.
+> When `redisClient` is provided, `redisUri` and `redisOptions` are ignored. Speedgoose uses your client for everything and doesn't open a second connection. It still publishes record changes so that instances running an older Speedgoose version stay in sync during a rolling deploy.
 
 2. To enable auto-clearing for a given schema, just add the plugin to it (required)
 
@@ -158,6 +158,25 @@ const isPipelineCached = await model.aggregate<AggregationResultType>([]).isCach
 ```ts
 const result = await model.find<ResultType>({}).cachePopulate('user')
 ```
+
+5. Every cached read returns its own copy
+
+Results of `cacheQuery()`, `cachePipeline()` and `cachePopulate()` behave like results read straight from the database. If you change one and don't call `save()`, other reads still see the stored data. If you do call `save()`, only your own changes are written.
+
+```ts
+const user = await User.findById(id).cacheQuery();
+user.name = 'Not saved';
+
+const again = await User.findById(id).cacheQuery(); // served from the cache
+again.name; // the stored name, not 'Not saved'
+```
+
+If your code never modifies cached results, you can set `shareCachedInstances: true` to skip the copying. Every caller then gets the same object, so a change made by one caller shows up in all later reads.
+
+> Good to know:
+> - A copy doesn't carry over `$locals` or the session of the request that filled the cache.
+> - Document `init` hooks run on every cached read, the same as on a database read.
+> - With Redis, populated virtuals aren't stored in the cache, so they are missing on a cache hit.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -272,7 +291,9 @@ applySpeedGooseCacheLayer(mongoose, {
     /** Indicates if caching is enabled or disabled, by default is enabled */
     enabled?: boolean,
     /** If true, clears model-level cache also on update events. Useful for aggregates that don't include record _id (e.g. $group with _id: null). Default: false */
-    clearModelCacheOnUpdate?: boolean
+    clearModelCacheOnUpdate?: boolean,
+    /** Set to true to skip copying: every cached read then returns the same object. Faster, but only safe if your code never modifies cached results. Mainly affects the in-memory strategy; with Redis it only affects callers that wait for the same query on a cache miss. Default: false */
+    shareCachedInstances?: boolean
     }
 ```
 

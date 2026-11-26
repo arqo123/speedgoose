@@ -16,6 +16,9 @@ export const isArrayOfObjectsWithIds = (value: unknown): boolean => {
 
 export const isResultWithIds = (result: unknown): boolean => isArrayOfObjectsWithIds(result) || isResultWithId(result);
 
+/** Shape-based rather than `instanceof`, so documents created by another copy of mongoose are recognized as well. */
+export const isMongooseDocument = (value: unknown): value is Document => Boolean(value) && typeof value === 'object' && (value as { $__?: unknown }).$__ != null && typeof (value as { toObject?: unknown }).toObject === 'function';
+
 export const getValueFromDocument = <T>(pathToValue: string, record: T): unknown => mpath.get(pathToValue, record);
 
 export const setValueOnDocument = <T>(pathToValue: string, valueToSet: unknown, record: Document<T>): void => mpath.set(pathToValue, valueToSet, record);

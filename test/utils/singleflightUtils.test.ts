@@ -184,4 +184,34 @@ describe('singleflightUtils', () => {
             resolve2!();
         });
     });
+
+    describe('closeFlight', () => {
+        it('reports how many callers joined and lets later callers start a new flight', async () => {
+            let release: () => void;
+            const gate = new Promise<void>(resolve => (release = resolve));
+            let joined = -1;
+            const first = singleflight('key1', async ({ closeFlight }) => {
+                await gate;
+                joined = closeFlight();
+                return 'first';
+            });
+            const second = singleflight('key1', async () => 'never runs');
+            release!();
+
+            expect(await first).toBe('first');
+            expect(await second).toBe('first');
+            expect(joined).toBe(1);
+            expect(getInflightCount()).toBe(0);
+        });
+
+        it('reports zero when nobody joined', async () => {
+            let joined = -1;
+            await singleflight('key1', async ({ closeFlight }) => {
+                joined = closeFlight();
+                return 1;
+            });
+
+            expect(joined).toBe(0);
+        });
+    });
 });

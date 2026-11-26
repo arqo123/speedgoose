@@ -1,11 +1,11 @@
-import { Container } from 'typedi';
-import { GlobalDiContainerRegistryNames } from '../types/types';
-import Keyv from 'keyv';
+import { InMemoryStrategy } from '../cachingStrategies/inMemoryStrategy';
+import { getCacheStrategyInstance } from './commonUtils';
 
+/** Clears the in-memory cache of this process. A shared Redis cache is not touched. */
 export const clearAllCaches = async (): Promise<void> => {
-    const hydrationCache = Container.get<Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS);
-    const variationsCache = Container.get<Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS);
-    
-    await hydrationCache.clear();
-    await variationsCache.clear();
+    const strategy = getCacheStrategyInstance();
+
+    if (strategy instanceof InMemoryStrategy) {
+        await strategy.clearAll();
+    }
 };

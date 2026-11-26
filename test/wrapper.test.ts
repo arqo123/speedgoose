@@ -1,7 +1,6 @@
 import Redis from 'ioredis-mock';
 import Container from 'typedi';
 import mongoose, { Mongoose } from 'mongoose';
-import Keyv from 'keyv';
 import { GlobalDiContainerRegistryNames, SharedCacheStrategies, SpeedGooseConfig } from '../src/types/types';
 import { InMemoryStrategy } from '../src/cachingStrategies/inMemoryStrategy';
 import { applySpeedGooseCacheLayer } from '../src/wrapper';
@@ -19,14 +18,6 @@ describe(`applySpeedGooseCacheLayer`, () => {
     it(`should register new service in DiContainer with access to cache strategy instance`, async () => {
         const cachingStrategy = Container.get<typeof Redis>(GlobalDiContainerRegistryNames.CACHE_CLIENT_GLOBAL_ACCESS);
         expect(cachingStrategy).toBeInstanceOf(InMemoryStrategy);
-    });
-
-    it(`should register two new services in DiContainer with access to hydrated documents access`, async () => {
-        const hydratedDocumentsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_CACHE_ACCESS);
-        const hydratedDocumentVariationsCache = Container.get<typeof Keyv>(GlobalDiContainerRegistryNames.HYDRATED_DOCUMENTS_VARIATIONS_CACHE_ACCESS);
-
-        expect(hydratedDocumentsCache).toBeInstanceOf(Keyv);
-        expect(hydratedDocumentVariationsCache).toBeInstanceOf(Keyv);
     });
 
     it(`should register new service in DiContainer with access to config`, async () => {

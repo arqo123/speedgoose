@@ -1,10 +1,8 @@
 import { ObjectId } from 'mongodb';
-import { CachedDocument } from '../../src/types/types';
-import { generateCacheKeyForModelName, generateCacheKeyForRecordAndModelName, generateCacheKeyForSingleDocument, generateCacheKeyFromPipeline, generateCacheKeyFromQuery, stableSerialize } from '../../src/utils/cacheKeyUtils';
+import { generateCacheKeyForModelName, generateCacheKeyForRecordAndModelName, generateCacheKeyFromPipeline, generateCacheKeyFromQuery, stableSerialize } from '../../src/utils/cacheKeyUtils';
 import * as commonUtils from '../../src/utils/commonUtils';
-import { generateCacheKeyForRecordAndModelNameTestData, generateCacheKeyForSingleDocumentTestData } from '../assets/utils/cacheKeyUtils';
+import { generateCacheKeyForRecordAndModelNameTestData } from '../assets/utils/cacheKeyUtils';
 import { generateTestAggregate, getMongooseTestModel } from '../testUtils';
-import { TestModel } from '../types';
 
 const mockedGetConfig = jest.spyOn(commonUtils, 'getConfig');
 
@@ -34,15 +32,6 @@ describe(`generateCacheKeyForModelName`, () => {
 
     test(`should properly generate key when multitenantValue is NOT in input`, () => {
         expect(generateCacheKeyForModelName('testModelName')).toEqual('testModelName_');
-    });
-});
-
-describe(`generateCacheKeyForSingleDocument`, () => {
-    test(`should properly generate key for record and model name `, () => {
-        generateCacheKeyForSingleDocumentTestData().forEach(testCase => {
-            const key = generateCacheKeyForSingleDocument(testCase.given.query, testCase.given.record as CachedDocument<TestModel>);
-            expect(key).toEqual(testCase.expected);
-        });
     });
 });
 

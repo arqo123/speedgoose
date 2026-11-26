@@ -3,6 +3,7 @@ import Container from 'typedi';
 import { staticImplements } from '../types/decorators';
 import { CachedResult, CacheNamespaces, GlobalDiContainerRegistryNames } from '../types/types';
 import { createInMemoryCacheClientWithNamespace, getMaxSetCardinality, getSetsTtlFor } from '../utils/cacheClientUtils';
+import { isolateCachedValue } from '../utils/cloneUtils';
 import { extendStoredTtl, getExtendedTtlMs } from '../utils/expiringMap';
 import { CommonCacheStrategyAbstract, CommonCacheStrategyStaticMethods, extractRecordIdFromDocKey } from './commonCacheStrategyAbstract';
 
@@ -45,7 +46,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         const keyWithNamespace = `${namespace}:${key}`;
         const result = await this.resultsCacheClient.get(keyWithNamespace);
 
-        return (result ?? null) as CachedResult | null;
+        return result == null ? null : (isolateCachedValue(result) as CachedResult);
     }
 
     public async isValueCached(namespace: string, key: string): Promise<boolean> {
@@ -58,7 +59,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
     public async addValueToCache<T>(namespace: string, key: string, value: CachedResult<T>, ttl?: number): Promise<void> {
         const keyWithNamespace = `${namespace}:${key}`;
 
-        await this.resultsCacheClient.set(keyWithNamespace, value, ttl * 1000);
+        await this.resultsCacheClient.set(keyWithNamespace, isolateCachedValue(value), ttl * 1000);
     }
 
     public async addValueToCacheSet<T extends string | number>(namespace: string, value: T, setsTtl?: number, maxSetCardinality?: number): Promise<void> {
@@ -117,7 +118,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         return setMembers ? Array.from(setMembers) : [];
     }
 
-    /* In case of in memory strategy, we keep already hydrated objects */
+    /* The in-memory cache keeps ready-made documents and returns a copy on every read, so nothing needs hydrating. */
     public isHydrationEnabled(): boolean {
         return false;
     }
@@ -142,12 +143,17 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
         this.setClients();
     }
 
+    /** Removes everything from the in-memory cache: results, populated documents, invalidation sets and relations. */
+    public async clearAll(): Promise<void> {
+        await Promise.all([this.resultsCacheClient.clear(), this.recordResultsSetsClient.clear(), this.documentsCacheClient.clear(), this.relationsCacheClient.clear()]);
+    }
+
     public async getDocuments<T>(keys: string[]): Promise<Map<string, CachedResult<T>>> {
         const resultsMap = new Map<string, CachedResult<T>>();
         const promises = keys.map(async key => {
             const value = await this.documentsCacheClient.get(key);
             if (value) {
-                resultsMap.set(key, value as CachedResult<T>);
+                resultsMap.set(key, isolateCachedValue(value) as CachedResult<T>);
             }
         });
         await Promise.all(promises);
@@ -159,7 +165,7 @@ export class InMemoryStrategy extends CommonCacheStrategyAbstract {
 
         await Promise.all(
             Array.from(documents.entries()).map(async ([key, value]) => {
-                await this.documentsCacheClient.set(key, value, ttl * 1000);
+                await this.documentsCacheClient.set(key, isolateCachedValue(value), ttl * 1000);
                 // Track document cache key by recordId for efficient invalidation
                 const recordId = extractRecordIdFromDocKey(key);
                 if (recordId) {

@@ -1,5 +1,5 @@
 import { Query, Aggregate, isObjectIdOrHexString } from 'mongoose';
-import { MongooseCountQueries, MongooseSpecialQueries, SpeedGooseCacheOperationContext, SpeedGooseDebuggerOperations } from '../types/types';
+import { MongooseCountQueries, MongooseSpecialQueries, SpeedGooseCacheOperationContext, SpeedGooseDebuggerOperations, SpeedGoosePopulateOptions } from '../types/types';
 import { generateCacheKeyFromPipeline, generateCacheKeyFromQuery, hashCacheKey } from './cacheKeyUtils';
 import { getCacheStrategyInstance, getConfig } from './commonUtils';
 import { getDebugger } from './debugUtils';
@@ -71,4 +71,25 @@ export const shouldHydrateResult = <T>(query: Query<T, T>): boolean => {
     }
 
     return !isLeanQuery(query) && !isCountQuery(query) && !isDistinctQuery(query);
+};
+
+/**
+ * Ensures that populate paths are included in the query's projection.
+ * Without this, an inclusive select like `.select('name email')` would not return
+ * the ObjectId field needed for population, causing cachePopulate to silently skip.
+ * Mirrors native Mongoose behavior in Query.prototype._castFields().
+ */
+export const ensurePopulatePathsInProjection = (query: Query<any, any>, populateOptions: SpeedGoosePopulateOptions[]): void => {
+    const projection = query.projection() as Record<string, any> | null;
+    if (!projection || Object.keys(projection).length === 0) return;
+
+    const isInclusive = Object.entries(projection).some(([key, val]) => key !== '_id' && (val === 1 || val === true));
+    if (!isInclusive) return;
+
+    for (const opt of populateOptions) {
+        const rootField = opt.path.split('.')[0];
+        if (!projection[rootField]) {
+            query.select(rootField);
+        }
+    }
 };
