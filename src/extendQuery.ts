@@ -74,7 +74,7 @@ const execQueryWithCache = async <T>(query: Query<T, T>, context: SpeedGooseCach
     }
 
     context?.debug(`Key didn't exists in cache, fetching value from database`, context.cacheKey);
-    // The caller that actually runs the query gets the database result as is. Other callers waiting for the same query
+    // The caller that runs the query gets the database result as is. Other callers waiting for the same query
     // get their own copy, taken before the first caller can change it (and only if someone is waiting). The cache
     // stores yet another copy (or JSON).
     const leader: { active: boolean; result?: CachedResult<T> } = { active: false };

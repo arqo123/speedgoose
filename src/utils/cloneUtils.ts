@@ -116,8 +116,7 @@ const restorePopulatedDocumentsInObject = (source: Record<string, unknown>, raw:
 /**
  * Copies a document the same way mongoose builds one from a query result: same class, same projection, and init()
  * instead of set(), so nothing is marked as modified and unselected fields don't get defaults. Then it restores
- * which paths are populated. The copy shares nothing with the original: not the data, not the populated documents,
- * not `$locals` and not the session.
+ * which paths are populated. The copy shares no data, populated documents, `$locals` or session with the original.
  */
 const cloneDocument = (source: DocumentInternals, copies: CopiedObjects): DocumentInternals => {
     const known = copies.get(source);

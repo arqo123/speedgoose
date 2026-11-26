@@ -19,7 +19,7 @@ It's caching on two levels. Shared - with Redis. And local inside memory. Suppor
 
 -   It caches results in Redis or purely in memory. Every cached read returns its own copy, just like a database read, so changing a result in your code never affects what other reads get. If you never modify cached results, you can turn the copying off with `shareCachedInstances`.
 -   It has an auto-clearing ability based on mongoose events. So if the query was cached for some records, and in the meantime, those records change, all cached-related results will be cleared.
--   Cached results come back as real Mongoose documents, including the populated ones, not just plain objects.
+-   Cached results come back as Mongoose documents, populated documents included.
 -   Supports custom eventing. For example, if you want to remove given results from cache, but removal logic is not based on removing documents from DB but rather field based (like deleted: true), then you can apply a `wasRecordDeleted` callback as an option for the plugin.
 -   Supports multitenancy by clearing cached results only for a related tenant.
 -   It has a `cachePopulate` method that solves the N+1 problem with Mongoose population.
@@ -173,7 +173,7 @@ again.name; // the stored name, not 'Not saved'
 
 If your code never modifies cached results, you can set `shareCachedInstances: true` to skip the copying. Every caller then gets the same object, so a change made by one caller shows up in all later reads.
 
-> Good to know:
+> Notes:
 > - A copy doesn't carry over `$locals` or the session of the request that filled the cache.
 > - Document `init` hooks run on every cached read, the same as on a database read.
 > - With Redis, populated virtuals aren't stored in the cache, so they are missing on a cache hit.
